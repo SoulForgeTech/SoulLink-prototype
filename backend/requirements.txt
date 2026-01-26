@@ -1,0 +1,20 @@
+# Flask 核心
+Flask==3.0.0
+flask-cors==4.0.0
+
+# 数据库
+pymongo==4.6.1
+dnspython==2.4.2  # MongoDB Atlas 连接需要
+
+# 认证
+PyJWT==2.8.0
+requests==2.31.0
+
+# 环境变量
+python-dotenv==1.0.0
+
+# 生产环境 WSGI 服务器
+gunicorn==21.2.0
+
+# 可选: 更好的 JSON 处理
+orjson==3.9.10

@@ -1,0 +1,31 @@
+MongoDB
+
+jingbinqian_db_user
+wXIGb5KhNHc4xaV7
+
+mongodb+srv://jingbinqian_db_user:wXIGb5KhNHc4xaV7@cluster0.ckwmhx1.mongodb.net/?appName=Cluster0
+
+Google OAuth:
+Client ID:
+797657256365-m2g1r5lf7jkm01gll22dbphh66ud9u2f.apps.googleusercontent.com
+
+Client Secret:
+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
+
+AWS Setup:
+# 复制到用户目录
+copy "E:\AI Companion Startup\prototype\soullink.pem" "C:\Users\lenovo\.ssh\soullink.pem"
+
+# 设置权限
+icacls "C:\Users\lenovo\.ssh\soullink.pem" /inheritance:r /grant:r "lenovo:F"
+
+# 用新路径连接
+ssh -i "C:\Users\lenovo\.ssh\soullink.pem" ubuntu@ec2-52-14-41-63.us-east-2.compute.amazonaws.com
+
+
+Google API Key:
+AIzaSyAwZp4aAla1-g5zkOHb1pMzi84lQaBnOqo
+
+AnythingLLM API Key:
+ANYTHINGLLM_BASE_URL=http://52.14.41.63:3001
+ANYTHINGLLM_API_KEY=SD3WWRR-2KJ4Y3B-PXTAV71-1QX44EH

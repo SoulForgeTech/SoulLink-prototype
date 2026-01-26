@@ -1,0 +1,28 @@
+{
+  "anythingllm": {
+    "base_url": "http://localhost:3001",
+    "api_key_file_path": "./anythingllm_api_key.txt",
+    "workspace_slug": "soullink"
+  },
+  "evaluator": {
+    "api_key_file_path": "./evaluator_api_key.txt"
+  },
+  "maxkb": {
+    "base_url": "http://localhost:8080",
+    "api_key_file_path": "./maxkb_api_key.txt",
+    "application_id": "019af7bc-be59-73c3-810b-1186f34cf745",
+    "knowledge_base_name": "SemiRAG"
+  },
+  "metaso": {
+    "base_url": "https://metaso.cn",
+    "api_key_file_path": "./metaso_api_key.txt",
+    "workspace_id": "8685873843221913600",
+    "dir_id": "8685873843221913600"
+  },
+  "ragflow": {
+    "base_url": "http://localhost",
+    "api_key_file_path": "./ragflow_api_key.txt",
+    "dataset_id": "53dd6f94772511f0b0366ea9c18083ce",
+    "chat_id": "f2e58c5c773e11f0b9196ea9c18083ce"
+  }
+}
