@@ -3,6 +3,10 @@
   "name": "soullink-frontend",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/index_new.html"
+    },
+    {
       "source": "/callback",
       "destination": "/index_new.html"
     }
