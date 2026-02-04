@@ -204,6 +204,22 @@
             font-size: 1.5rem;
         }
 
+        .lang-toggle-btn {
+            margin-left: auto;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lang-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+
         .sidebar-title {
             font-size: 1.2rem;
             font-weight: 600;
@@ -1222,6 +1238,579 @@
             border-color: #9ca3db;
             box-shadow: 0 0 0 3px rgba(156, 163, 219, 0.3);
         }
+
+        /* ==================== 性格测试页面 ==================== */
+        .personality-page {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a0a1a 100%);
+            overflow-y: auto;
+        }
+
+        .personality-page.active {
+            display: flex;
+        }
+
+        /* 星空背景 */
+        .personality-page::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.4), transparent),
+                radial-gradient(2px 2px at 40% 70%, rgba(255,255,255,0.3), transparent),
+                radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 80% 60%, rgba(255,255,255,0.3), transparent),
+                radial-gradient(2px 2px at 10% 80%, rgba(255,255,255,0.2), transparent),
+                radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.4), transparent),
+                radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.3), transparent),
+                radial-gradient(2px 2px at 90% 10%, rgba(255,255,255,0.2), transparent),
+                radial-gradient(1px 1px at 30% 90%, rgba(255,255,255,0.4), transparent),
+                radial-gradient(1px 1px at 15% 50%, rgba(255,255,255,0.3), transparent);
+            pointer-events: none;
+            animation: twinkle 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* 问题页面 */
+        .question-container {
+            position: relative;
+            z-index: 1;
+            max-width: 560px;
+            width: 90%;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .question-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+
+        .progress-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+
+        .progress-dot.filled {
+            background: #a78bfa;
+            box-shadow: 0 0 8px rgba(167,139,250,0.5);
+        }
+
+        .progress-dot.current {
+            background: #c4b5fd;
+            box-shadow: 0 0 12px rgba(196,181,253,0.6);
+            transform: scale(1.3);
+        }
+
+        .progress-text {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            margin-left: 12px;
+        }
+
+        .question-text {
+            font-size: 22px;
+            font-weight: 500;
+            color: #e8e0ff;
+            margin-bottom: 36px;
+            line-height: 1.5;
+        }
+
+        .question-options {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .question-option {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 18px 24px;
+            color: #d4c8f0;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-align: left;
+        }
+
+        .question-option:hover {
+            background: rgba(167,139,250,0.15);
+            border-color: rgba(167,139,250,0.4);
+            transform: translateX(4px);
+        }
+
+        .question-option.selected {
+            background: rgba(167,139,250,0.25);
+            border-color: #a78bfa;
+        }
+
+        /* MBTI 网格 */
+        .mbti-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mbti-option {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 12px 8px;
+            color: #d4c8f0;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-align: center;
+        }
+
+        .mbti-option:hover {
+            background: rgba(167,139,250,0.15);
+            border-color: rgba(167,139,250,0.4);
+        }
+
+        .mbti-option.selected {
+            background: rgba(167,139,250,0.25);
+            border-color: #a78bfa;
+        }
+
+        .mbti-hint {
+            color: rgba(255,255,255,0.4);
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .skip-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.5);
+            padding: 10px 32px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .skip-btn:hover {
+            border-color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* 塔罗牌抽取页面 */
+        .tarot-draw-container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .tarot-draw-title {
+            font-size: 24px;
+            color: #e8e0ff;
+            margin-bottom: 8px;
+        }
+
+        .tarot-draw-subtitle {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+
+        .tarot-cards-row {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .tarot-card-slot {
+            perspective: 800px;
+            width: 160px;
+            height: 260px;
+        }
+
+        .tarot-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .tarot-card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .tarot-card-inner.locked {
+            cursor: default;
+            opacity: 0.5;
+        }
+
+        .tarot-card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255,255,255,0.15);
+        }
+
+        /* 牌背面 */
+        .tarot-card-back {
+            background: linear-gradient(135deg, #2d1b69 0%, #11001c 50%, #2d1b69 100%);
+            box-shadow: 0 4px 24px rgba(100, 50, 200, 0.3);
+        }
+
+        .tarot-card-back .card-back-symbol {
+            font-size: 48px;
+            opacity: 0.6;
+        }
+
+        .tarot-card-back .card-back-text {
+            color: rgba(255,255,255,0.3);
+            font-size: 12px;
+            margin-top: 12px;
+        }
+
+        /* 牌正面 */
+        .tarot-card-front {
+            transform: rotateY(180deg);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .tarot-card-numeral {
+            font-size: 20px;
+            font-weight: 300;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 16px;
+        }
+
+        .tarot-card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .tarot-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e8e0ff;
+            margin-bottom: 4px;
+        }
+
+        .tarot-card-name-zh {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 12px;
+        }
+
+        .tarot-card-traits {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.4;
+        }
+
+        .tarot-position-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+            margin-top: 12px;
+            font-weight: 500;
+        }
+
+        /* 22种卡牌渐变色 */
+        .tarot-gradient-0  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .tarot-gradient-1  { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .tarot-gradient-2  { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .tarot-gradient-3  { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .tarot-gradient-4  { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .tarot-gradient-5  { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+        .tarot-gradient-6  { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+        .tarot-gradient-7  { background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); }
+        .tarot-gradient-8  { background: linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%); }
+        .tarot-gradient-9  { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); }
+        .tarot-gradient-10 { background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%); }
+        .tarot-gradient-11 { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
+        .tarot-gradient-12 { background: linear-gradient(135deg, #cfd9df 0%, #e2ebf0 100%); }
+        .tarot-gradient-13 { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .tarot-gradient-14 { background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); }
+        .tarot-gradient-15 { background: linear-gradient(135deg, #f5576c 0%, #ff6f91 100%); }
+        .tarot-gradient-16 { background: linear-gradient(135deg, #e8198b 0%, #c7eafd 100%); }
+        .tarot-gradient-17 { background: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%); }
+        .tarot-gradient-18 { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%); }
+        .tarot-gradient-19 { background: linear-gradient(135deg, #fddb92 0%, #d1fdff 100%); }
+        .tarot-gradient-20 { background: linear-gradient(135deg, #9890e3 0%, #b1f4cf 100%); }
+        .tarot-gradient-21 { background: linear-gradient(135deg, #ebc0fd 0%, #d9ded8 100%); }
+
+        /* 查看结果按钮 */
+        .view-results-btn {
+            display: none;
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            color: white;
+            border: none;
+            padding: 14px 48px;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .view-results-btn.visible {
+            display: inline-block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .view-results-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(124, 58, 237, 0.4);
+        }
+
+        /* 结果页面 */
+        .results-container {
+            position: relative;
+            z-index: 1;
+            max-width: 700px;
+            width: 90%;
+            text-align: center;
+            padding: 20px 20px 40px;
+        }
+
+        .results-title {
+            font-size: 26px;
+            color: #e8e0ff;
+            margin-bottom: 32px;
+        }
+
+        .results-cards-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+
+        .result-card {
+            width: 180px;
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .result-card-numeral {
+            font-size: 16px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 8px;
+        }
+
+        .result-card-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 2px;
+        }
+
+        .result-card-name-zh {
+            font-size: 13px;
+            color: rgba(26,26,46,0.7);
+            margin-bottom: 10px;
+        }
+
+        .result-card-position {
+            font-size: 12px;
+            color: rgba(26,26,46,0.6);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .result-card-traits {
+            font-size: 12px;
+            color: rgba(26,26,46,0.6);
+            line-height: 1.5;
+        }
+
+        .results-profile {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .results-profile h3 {
+            color: #c4b5fd;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .results-profile p {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .start-chat-btn {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            color: white;
+            border: none;
+            padding: 16px 56px;
+            border-radius: 28px;
+            font-size: 17px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+        }
+
+        .start-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(124, 58, 237, 0.4);
+        }
+
+        /* 提醒弹窗 */
+        .reminder-popup {
+            position: fixed;
+            inset: 0;
+            z-index: 1500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .reminder-popup.active {
+            display: flex;
+        }
+
+        .reminder-content {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 36px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .reminder-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .reminder-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #e8e0ff;
+            margin-bottom: 12px;
+        }
+
+        .reminder-message {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .reminder-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .reminder-btn {
+            padding: 12px 28px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reminder-btn.secondary {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.6);
+        }
+
+        .reminder-btn.secondary:hover {
+            border-color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.8);
+        }
+
+        .reminder-btn.primary {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 2px 12px rgba(124, 58, 237, 0.3);
+        }
+
+        .reminder-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
+        }
+
+        /* 侧边栏测试链接 */
+        .sidebar-test-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            margin: 8px 12px;
+            border: none;
+            background: none;
+            width: calc(100% - 24px);
+            text-align: left;
+        }
+
+        .sidebar-test-link:hover {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.9);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -1239,13 +1828,13 @@
         <div class="login-container">
             <div class="login-logo">💫</div>
             <h1 class="login-title">SoulLink</h1>
-            <p class="login-subtitle">Your AI Companion, Always Here</p>
+            <p class="login-subtitle" data-i18n="login.subtitle">Your AI Companion, Always Here</p>
 
             <!-- Email Login/Register Form -->
             <div class="auth-form">
                 <div class="auth-tabs">
-                    <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
-                    <button class="auth-tab" onclick="switchAuthTab('register')">Sign Up</button>
+                    <button class="auth-tab active" onclick="switchAuthTab('login')" data-i18n="login.tab.signin">Sign In</button>
+                    <button class="auth-tab" onclick="switchAuthTab('register')" data-i18n="login.tab.signup">Sign Up</button>
                 </div>
 
                 <div id="auth-error" class="auth-error"></div>
@@ -1253,40 +1842,40 @@
                 <!-- Login Form -->
                 <form id="login-form" onsubmit="handleEmailLogin(event)">
                     <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="login-email" placeholder="your@email.com" required>
+                        <label data-i18n="login.email">Email</label>
+                        <input type="email" id="login-email" data-i18n="login.email.placeholder" data-i18n-attr="placeholder" placeholder="your@email.com" required>
                     </div>
                     <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="login-password" placeholder="Enter your password" required>
+                        <label data-i18n="login.password">Password</label>
+                        <input type="password" id="login-password" data-i18n="login.password.placeholder" data-i18n-attr="placeholder" placeholder="Enter your password" required>
                     </div>
-                    <button type="submit" class="auth-submit-btn" id="login-submit-btn">Sign In</button>
+                    <button type="submit" class="auth-submit-btn" id="login-submit-btn" data-i18n="login.submit">Sign In</button>
                 </form>
 
                 <!-- Register Form -->
                 <form id="register-form" style="display: none;" onsubmit="handleEmailRegister(event)">
                     <div class="form-group">
-                        <label>What should Abigail call you? <span class="required">*</span></label>
-                        <input type="text" id="register-name" placeholder="Your nickname" required minlength="2" maxlength="20">
-                        <div class="form-hint">This is how your AI companion will address you</div>
+                        <label><span data-i18n="register.nickname.label">What should Abigail call you?</span> <span class="required">*</span></label>
+                        <input type="text" id="register-name" data-i18n="register.nickname.placeholder" data-i18n-attr="placeholder" placeholder="Your nickname" required minlength="2" maxlength="20">
+                        <div class="form-hint" data-i18n="register.nickname.hint">This is how your AI companion will address you</div>
                     </div>
                     <div class="form-group">
-                        <label>Email <span class="required">*</span></label>
+                        <label><span data-i18n="register.email.label">Email</span> <span class="required">*</span></label>
                         <input type="email" id="register-email" placeholder="your@email.com" required>
                     </div>
                     <div class="form-group">
-                        <label>Password <span class="required">*</span></label>
-                        <input type="password" id="register-password" placeholder="At least 6 characters" required minlength="6">
+                        <label><span data-i18n="register.password.label">Password</span> <span class="required">*</span></label>
+                        <input type="password" id="register-password" data-i18n="register.password.placeholder" data-i18n-attr="placeholder" placeholder="At least 6 characters" required minlength="6">
                     </div>
                     <div class="form-group">
-                        <label>Confirm Password <span class="required">*</span></label>
-                        <input type="password" id="register-password-confirm" placeholder="Re-enter your password" required minlength="6">
+                        <label><span data-i18n="register.confirm.label">Confirm Password</span> <span class="required">*</span></label>
+                        <input type="password" id="register-password-confirm" data-i18n="register.confirm.placeholder" data-i18n-attr="placeholder" placeholder="Re-enter your password" required minlength="6">
                     </div>
-                    <button type="submit" class="auth-submit-btn" id="register-submit-btn">Create Account</button>
+                    <button type="submit" class="auth-submit-btn" id="register-submit-btn" data-i18n="register.submit">Create Account</button>
                 </form>
 
                 <div class="auth-divider">
-                    <span>or</span>
+                    <span data-i18n="login.divider">or</span>
                 </div>
             </div>
 
@@ -1297,7 +1886,7 @@
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Continue with Google
+                <span data-i18n="login.google">Continue with Google</span>
             </button>
         </div>
 
@@ -1316,7 +1905,7 @@
         <div class="modal-overlay" onclick="closeSettingsModal()"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Profile Settings</h3>
+                <h3 data-i18n="settings.title">Profile Settings</h3>
                 <button class="modal-close-btn" onclick="closeSettingsModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1334,12 +1923,12 @@
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
-                            Upload
+                            <span data-i18n="settings.upload">Upload</span>
                         </label>
                         <input type="file" id="avatar-upload" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
                     </div>
                     <div class="avatar-presets">
-                        <p>Or choose a color:</p>
+                        <p data-i18n="settings.color">Or choose a color:</p>
                         <div class="avatar-preset-grid">
                             <div class="avatar-color-preset" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" onclick="selectColorAvatar('#667eea')"></div>
                             <div class="avatar-color-preset" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);" onclick="selectColorAvatar('#f093fb')"></div>
@@ -1352,19 +1941,61 @@
                 </div>
                 <div class="settings-form">
                     <div class="form-group">
-                        <label>Nickname (How Abigail calls you)</label>
-                        <input type="text" id="settings-name" placeholder="Your nickname" maxlength="20">
+                        <label data-i18n="settings.nickname">Nickname (How Abigail calls you)</label>
+                        <input type="text" id="settings-name" data-i18n="settings.nickname.placeholder" data-i18n-attr="placeholder" placeholder="Your nickname" maxlength="20">
                     </div>
                     <div class="form-group">
-                        <label>Email</label>
+                        <label data-i18n="settings.email">Email</label>
                         <input type="email" id="settings-email" disabled>
-                        <div class="form-hint">Email cannot be changed</div>
+                        <div class="form-hint" data-i18n="settings.email.hint">Email cannot be changed</div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="modal-btn secondary" onclick="closeSettingsModal()">Cancel</button>
-                <button class="modal-btn primary" onclick="saveSettings()">Save Changes</button>
+                <button class="modal-btn secondary" onclick="closeSettingsModal()" data-i18n="settings.cancel">Cancel</button>
+                <button class="modal-btn primary" onclick="saveSettings()" data-i18n="settings.save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性格测试 - 问题页面 -->
+    <div id="personality-test-page" class="personality-page">
+        <div class="question-container">
+            <div class="question-progress" id="question-progress"></div>
+            <div class="question-text" id="question-text"></div>
+            <div class="question-options" id="question-options"></div>
+        </div>
+    </div>
+
+    <!-- 性格测试 - 塔罗牌抽取页面 -->
+    <div id="tarot-draw-page" class="personality-page">
+        <div class="tarot-draw-container">
+            <h2 class="tarot-draw-title" id="tarot-draw-title"></h2>
+            <p class="tarot-draw-subtitle" id="tarot-draw-subtitle"></p>
+            <div class="tarot-cards-row" id="tarot-cards-row"></div>
+            <button class="view-results-btn" id="view-results-btn" onclick="showTarotResults()"></button>
+        </div>
+    </div>
+
+    <!-- 性格测试 - 结果页面 -->
+    <div id="tarot-results-page" class="personality-page">
+        <div class="results-container">
+            <h2 class="results-title" id="results-title"></h2>
+            <div class="results-cards-row" id="results-cards-row"></div>
+            <div class="results-profile" id="results-profile"></div>
+            <button class="start-chat-btn" onclick="finishPersonalityTest()"></button>
+        </div>
+    </div>
+
+    <!-- 性格测试提醒弹窗 -->
+    <div id="test-reminder-popup" class="reminder-popup">
+        <div class="reminder-content">
+            <div class="reminder-icon">🔮</div>
+            <h3 class="reminder-title" data-i18n="reminder.title">Discover Your Soul Match</h3>
+            <p class="reminder-message" data-i18n="reminder.message">Take a quick personality test so Abigail can truly understand you.</p>
+            <div class="reminder-buttons">
+                <button class="reminder-btn secondary" onclick="dismissReminder()" data-i18n="reminder.later">Maybe Later</button>
+                <button class="reminder-btn primary" onclick="startPersonalityTest()" data-i18n="reminder.start">Take the Test</button>
             </div>
         </div>
     </div>
@@ -1376,6 +2007,7 @@
             <div class="sidebar-header">
                 <span class="sidebar-logo">💫</span>
                 <span class="sidebar-title">SoulLink</span>
+                <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()">中文</button>
             </div>
 
             <button class="new-chat-btn" onclick="createNewConversation()">
@@ -1383,12 +2015,14 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                New Chat
+                <span data-i18n="sidebar.newchat">New Chat</span>
             </button>
 
             <div class="conversations-list" id="conversations-list">
                 <!-- 动态填充 -->
             </div>
+
+            <button class="sidebar-test-link" onclick="startPersonalityTest()" data-i18n="sidebar.test">🔮 Personality Test</button>
 
             <div class="user-section">
                 <div class="user-avatar-wrapper" onclick="openSettingsModal()">
@@ -1404,7 +2038,7 @@
                     <div id="user-name" class="user-name"></div>
                     <div id="user-email" class="user-email"></div>
                 </div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
+                <button class="logout-btn" onclick="logout()" data-i18n="sidebar.logout">Logout</button>
             </div>
         </aside>
 
@@ -1417,7 +2051,7 @@
                     <h2>Abigail</h2>
                     <div class="companion-status">
                         <span class="status-dot"></span>
-                        Online
+                        <span data-i18n="chat.online">Online</span>
                     </div>
                 </div>
             </header>
@@ -1426,8 +2060,8 @@
             <div class="messages-container" id="messages-container">
                 <div class="welcome-message" id="welcome-message">
                     <div class="welcome-emoji">👋</div>
-                    <h2 class="welcome-title">Welcome back!</h2>
-                    <p class="welcome-subtitle">Start a conversation with your AI companion. I'm here to chat, help, and keep you company.</p>
+                    <h2 class="welcome-title" data-i18n="chat.welcome.title">Welcome back!</h2>
+                    <p class="welcome-subtitle" data-i18n="chat.welcome.subtitle">Start a conversation with your AI companion. I'm here to chat, help, and keep you company.</p>
                 </div>
 
                 <div class="typing-indicator" id="typing-indicator">
@@ -1447,6 +2081,7 @@
                 <div class="input-wrapper">
                     <textarea
                         id="message-input"
+                        data-i18n="chat.input.placeholder" data-i18n-attr="placeholder"
                         placeholder="Type a message..."
                         rows="1"
                         onkeydown="handleKeyDown(event)"
@@ -1470,10 +2105,176 @@
             GOOGLE_CLIENT_ID: '594679782289-12l51teae0va12nhe406ogs5jteui9ga.apps.googleusercontent.com'
         };
 
+        // ==================== 国际化 ====================
+        const TRANSLATIONS = {
+            en: {
+                'login.subtitle': 'Your AI Companion, Always Here',
+                'login.tab.signin': 'Sign In',
+                'login.tab.signup': 'Sign Up',
+                'login.email': 'Email',
+                'login.password': 'Password',
+                'login.email.placeholder': 'your@email.com',
+                'login.password.placeholder': 'Enter your password',
+                'login.submit': 'Sign In',
+                'register.nickname.label': 'What should Abigail call you?',
+                'register.nickname.placeholder': 'Your nickname',
+                'register.nickname.hint': 'This is how your AI companion will address you',
+                'register.email.label': 'Email',
+                'register.password.label': 'Password',
+                'register.password.placeholder': 'At least 6 characters',
+                'register.confirm.label': 'Confirm Password',
+                'register.confirm.placeholder': 'Re-enter your password',
+                'register.submit': 'Create Account',
+                'login.divider': 'or',
+                'login.google': 'Continue with Google',
+                'settings.title': 'Profile Settings',
+                'settings.upload': 'Upload',
+                'settings.color': 'Or choose a color:',
+                'settings.nickname': 'Nickname (How Abigail calls you)',
+                'settings.nickname.placeholder': 'Your nickname',
+                'settings.email': 'Email',
+                'settings.email.hint': 'Email cannot be changed',
+                'settings.cancel': 'Cancel',
+                'settings.save': 'Save Changes',
+                'sidebar.newchat': 'New Chat',
+                'sidebar.logout': 'Logout',
+                'sidebar.test': 'Personality Test',
+                'chat.online': 'Online',
+                'chat.welcome.title': 'Welcome back!',
+                'chat.welcome.subtitle': 'Start a conversation with your AI companion. I\'m here to chat, help, and keep you company.',
+                'chat.input.placeholder': 'Type a message...',
+                'loading.workspace': 'Preparing your personal AI companion...',
+                'loading.workspace.init': 'Initializing workspace...',
+                'loading.workspace.config': 'Configuring AI companion...',
+                'loading.workspace.almost': 'Almost ready...',
+                'loading.workspace.done': 'All set! Welcome!',
+                'error.send': 'Error: Failed to send message',
+                'error.network': 'Connection error. Please check your network.',
+                'error.login': 'Login failed. Please try again.',
+                'error.register.password.length': 'Password must be at least 6 characters',
+                'error.register.password.match': 'Passwords do not match',
+                'error.register.name.length': 'Nickname must be 2-20 characters',
+                'reminder.title': 'Discover Your Soul Match',
+                'reminder.message': 'Take a quick personality test so Abigail can truly understand you.',
+                'reminder.later': 'Maybe Later',
+                'reminder.start': 'Take the Test',
+                'tarot.draw.title': 'Your Soul Reading',
+                'tarot.draw.subtitle': 'Click each card to reveal your destiny',
+                'tarot.position.past': 'Past',
+                'tarot.position.present': 'Present',
+                'tarot.position.future': 'Future Companion',
+                'tarot.view.results': 'View Your Reading',
+                'tarot.results.title': 'Your Soul Cards',
+                'tarot.start.chat': 'Start Chatting →',
+                'tarot.profile.title': 'Your Companion\'s Personality',
+            },
+            'zh-CN': {
+                'login.subtitle': '你的AI灵魂伴侣，始终在这里',
+                'login.tab.signin': '登录',
+                'login.tab.signup': '注册',
+                'login.email': '邮箱',
+                'login.password': '密码',
+                'login.email.placeholder': 'your@email.com',
+                'login.password.placeholder': '输入密码',
+                'login.submit': '登录',
+                'register.nickname.label': 'Abigail该怎么称呼你？',
+                'register.nickname.placeholder': '你的昵称',
+                'register.nickname.hint': '这将是你的AI伴侣称呼你的方式',
+                'register.email.label': '邮箱',
+                'register.password.label': '密码',
+                'register.password.placeholder': '至少6个字符',
+                'register.confirm.label': '确认密码',
+                'register.confirm.placeholder': '再次输入密码',
+                'register.submit': '创建账号',
+                'login.divider': '或',
+                'login.google': '使用Google登录',
+                'settings.title': '个人设置',
+                'settings.upload': '上传',
+                'settings.color': '或选择一个颜色：',
+                'settings.nickname': '昵称（Abigail怎么称呼你）',
+                'settings.nickname.placeholder': '你的昵称',
+                'settings.email': '邮箱',
+                'settings.email.hint': '邮箱不能修改',
+                'settings.cancel': '取消',
+                'settings.save': '保存修改',
+                'sidebar.newchat': '新对话',
+                'sidebar.logout': '退出',
+                'sidebar.test': '性格测试',
+                'chat.online': '在线',
+                'chat.welcome.title': '欢迎回来！',
+                'chat.welcome.subtitle': '和你的AI伴侣开始聊天吧，我一直在这里陪你。',
+                'chat.input.placeholder': '输入消息...',
+                'loading.workspace': '正在为你准备专属AI伴侣...',
+                'loading.workspace.init': '初始化工作空间...',
+                'loading.workspace.config': '配置AI伴侣...',
+                'loading.workspace.almost': '即将就绪...',
+                'loading.workspace.done': '一切准备就绪！欢迎！',
+                'error.send': '错误：发送消息失败',
+                'error.network': '网络错误，请检查你的网络连接。',
+                'error.login': '登录失败，请重试。',
+                'error.register.password.length': '密码至少需要6个字符',
+                'error.register.password.match': '两次输入的密码不一致',
+                'error.register.name.length': '昵称需要2-20个字符',
+                'reminder.title': '探索你的灵魂匹配',
+                'reminder.message': '做一个简短的性格测试，让Abigail真正了解你。',
+                'reminder.later': '稍后再说',
+                'reminder.start': '开始测试',
+                'tarot.draw.title': '灵魂占卜',
+                'tarot.draw.subtitle': '点击每张牌揭示你的命运',
+                'tarot.position.past': '过去',
+                'tarot.position.present': '现在',
+                'tarot.position.future': '未来伴侣',
+                'tarot.view.results': '查看你的占卜结果',
+                'tarot.results.title': '你的灵魂之牌',
+                'tarot.start.chat': '开始聊天 →',
+                'tarot.profile.title': '你的伴侣性格',
+            }
+        };
+
+        function t(key) {
+            const lang = state.language || 'en';
+            return TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+        }
+
+        function applyLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const attr = el.getAttribute('data-i18n-attr');
+                if (attr) {
+                    el.setAttribute(attr, t(key));
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+            localStorage.setItem('soullink_language', state.language);
+            // Update language toggle button text
+            const langBtn = document.getElementById('lang-toggle');
+            if (langBtn) {
+                langBtn.textContent = state.language === 'zh-CN' ? 'EN' : '中文';
+            }
+        }
+
+        function toggleLanguage() {
+            state.language = state.language === 'zh-CN' ? 'en' : 'zh-CN';
+            applyLanguage();
+            // Sync to server if logged in
+            if (state.token) {
+                fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: JSON.stringify({ language: state.language })
+                }).catch(err => console.warn('Failed to sync language:', err));
+            }
+        }
+
         // ==================== 状态管理 ====================
         let state = {
             token: localStorage.getItem('soullink_token'),
             user: JSON.parse(localStorage.getItem('soullink_user') || 'null'),
+            language: localStorage.getItem('soullink_language') || (navigator.language.startsWith('zh') ? 'zh-CN' : 'en'),
             currentConversationId: null,
             conversations: [],
             messages: [],
@@ -1482,6 +2283,9 @@
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async () => {
+            // 应用语言设置
+            applyLanguage();
+
             // 设置 Google Client ID
             const onloadDiv = document.getElementById('g_id_onload');
             if (onloadDiv) {
@@ -1494,6 +2298,7 @@
                 if (isValid) {
                     showApp();
                     await loadConversations();
+                    checkPersonalityTestStatus();
                 } else {
                     showLogin();
                 }
@@ -1622,6 +2427,7 @@
                     // 初始化 workspace（新用户会显示加载进度）
                     await initializeWorkspace();
                     await loadConversations();
+                    checkPersonalityTestStatus();
                 } else {
                     showAuthError(data.error || 'Login failed');
                 }
@@ -1701,6 +2507,8 @@
                     // 初始化 workspace（新用户会显示加载进度）
                     await initializeWorkspace();
                     await loadConversations();
+                    // 新用户直接开始性格测试
+                    startPersonalityTest();
                 } else {
                     showAuthError(data.error || 'Registration failed');
                 }
@@ -1806,6 +2614,7 @@
                     // 初始化 workspace（新用户会显示加载进度）
                     await initializeWorkspace();
                     await loadConversations();
+                    checkPersonalityTestStatus();
                 } else {
                     hideLoading();
                     alert('Login failed: ' + (data.error || 'Unknown error'));
@@ -1853,6 +2662,7 @@
                     // 初始化 workspace（新用户会显示加载进度）
                     await initializeWorkspace();
                     await loadConversations();
+                    checkPersonalityTestStatus();
                 } else {
                     hideLoading();
                     alert('Login failed: ' + (data.error || 'Unknown error'));
@@ -2574,6 +3384,304 @@
                 }
             }
         });
+
+        // ==================== 性格测试 ====================
+        let personalityTestState = {
+            questions: [],
+            currentQuestion: 0,
+            answers: [],
+            mbti: null,
+            tarotCards: [],
+            dimensions: {}
+        };
+
+        async function checkPersonalityTestStatus() {
+            if (!state.token) return;
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/status`, {
+                    headers: { 'Authorization': `Bearer ${state.token}` }
+                });
+                const data = await response.json();
+                if (!data.completed) {
+                    const dismissed = localStorage.getItem('soullink_reminder_dismissed');
+                    if (!dismissed) {
+                        document.getElementById('test-reminder-popup').classList.add('active');
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed to check personality test status:', err);
+            }
+        }
+
+        function dismissReminder() {
+            document.getElementById('test-reminder-popup').classList.remove('active');
+            localStorage.setItem('soullink_reminder_dismissed', 'true');
+        }
+
+        async function startPersonalityTest() {
+            // Hide reminder if visible
+            document.getElementById('test-reminder-popup').classList.remove('active');
+
+            // Reset state
+            personalityTestState = {
+                questions: [],
+                currentQuestion: 0,
+                answers: [],
+                mbti: null,
+                tarotCards: [],
+                dimensions: {}
+            };
+
+            // Fetch questions
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/questions?lang=${state.language || 'en'}`, {
+                    headers: { 'Authorization': `Bearer ${state.token}` }
+                });
+                const data = await response.json();
+                personalityTestState.questions = data.questions;
+
+                // Show first question
+                document.getElementById('personality-test-page').classList.add('active');
+                renderQuestion();
+            } catch (err) {
+                console.error('Failed to load questions:', err);
+                alert('Failed to load personality test. Please try again.');
+            }
+        }
+
+        function renderQuestion() {
+            const q = personalityTestState.questions[personalityTestState.currentQuestion];
+            if (!q) return;
+
+            const total = personalityTestState.questions.length;
+            const current = personalityTestState.currentQuestion;
+            const isMbti = q.type === 'mbti';
+
+            // Progress dots
+            const progressHtml = [];
+            for (let i = 0; i < total; i++) {
+                let cls = 'progress-dot';
+                if (i < current) cls += ' filled';
+                if (i === current) cls += ' current';
+                progressHtml.push(`<div class="${cls}"></div>`);
+            }
+            progressHtml.push(`<span class="progress-text">${current + 1}/${total}</span>`);
+            document.getElementById('question-progress').innerHTML = progressHtml.join('');
+
+            // Question text
+            document.getElementById('question-text').textContent = q.text;
+
+            // Options
+            const optionsContainer = document.getElementById('question-options');
+
+            if (isMbti) {
+                // MBTI grid layout
+                let html = `<p class="mbti-hint">${q.hint || ''}</p>`;
+                html += '<div class="mbti-grid">';
+                q.options.forEach(opt => {
+                    html += `<div class="mbti-option" onclick="selectMbti('${opt}')">${opt}</div>`;
+                });
+                html += '</div>';
+                html += `<button class="skip-btn" onclick="selectMbti(null)">${q.skip_text || 'Skip'}</button>`;
+                optionsContainer.innerHTML = html;
+            } else {
+                // Normal question
+                let html = '';
+                q.options.forEach((opt, i) => {
+                    html += `<div class="question-option" onclick="selectAnswer(${q.id}, ${opt.score}, this)">${opt.text}</div>`;
+                });
+                optionsContainer.innerHTML = html;
+            }
+        }
+
+        function selectAnswer(questionId, score, element) {
+            // Visual feedback
+            document.querySelectorAll('.question-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+
+            // Save answer
+            personalityTestState.answers.push({ question_id: questionId, score: score });
+
+            // Auto-advance after brief delay
+            setTimeout(() => {
+                personalityTestState.currentQuestion++;
+                if (personalityTestState.currentQuestion < personalityTestState.questions.length) {
+                    renderQuestion();
+                } else {
+                    submitPersonalityTest();
+                }
+            }, 400);
+        }
+
+        function selectMbti(mbtiType) {
+            personalityTestState.mbti = mbtiType;
+            submitPersonalityTest();
+        }
+
+        async function submitPersonalityTest() {
+            document.getElementById('personality-test-page').classList.remove('active');
+
+            showLoading(t('loading.workspace'));
+
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        answers: personalityTestState.answers,
+                        mbti: personalityTestState.mbti
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (data.success) {
+                    personalityTestState.tarotCards = data.tarot_cards;
+                    personalityTestState.dimensions = data.dimensions;
+
+                    // Clear reminder dismissed flag
+                    localStorage.removeItem('soullink_reminder_dismissed');
+
+                    showTarotDraw();
+                } else {
+                    alert(data.error || 'Failed to submit test');
+                }
+            } catch (err) {
+                hideLoading();
+                console.error('Submit error:', err);
+                alert('Network error. Please try again.');
+            }
+        }
+
+        function showTarotDraw() {
+            const page = document.getElementById('tarot-draw-page');
+            page.classList.add('active');
+
+            document.getElementById('tarot-draw-title').textContent = t('tarot.draw.title');
+            document.getElementById('tarot-draw-subtitle').textContent = t('tarot.draw.subtitle');
+
+            const positionLabels = {
+                'past': t('tarot.position.past'),
+                'present': t('tarot.position.present'),
+                'future': t('tarot.position.future')
+            };
+
+            const row = document.getElementById('tarot-cards-row');
+            let html = '';
+
+            personalityTestState.tarotCards.forEach((card, i) => {
+                const locked = i > 0 ? ' locked' : '';
+                html += `
+                    <div>
+                        <div class="tarot-card-slot">
+                            <div class="tarot-card-inner${locked}" id="tarot-card-${i}" onclick="flipCard(${i})">
+                                <div class="tarot-card-face tarot-card-back">
+                                    <div class="card-back-symbol">🔮</div>
+                                    <div class="card-back-text">${positionLabels[card.position]}</div>
+                                </div>
+                                <div class="tarot-card-face tarot-card-front tarot-gradient-${card.card_id}">
+                                    <div class="tarot-card-numeral">${card.card_numeral}</div>
+                                    <div class="tarot-card-name">${card.card_name}</div>
+                                    <div class="tarot-card-name-zh">${card.card_name_zh}</div>
+                                    <div class="tarot-card-traits">${state.language === 'zh-CN' ? card.traits_zh : card.traits_en}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tarot-position-label">${positionLabels[card.position]}</div>
+                    </div>
+                `;
+            });
+
+            row.innerHTML = html;
+
+            const btn = document.getElementById('view-results-btn');
+            btn.textContent = t('tarot.view.results');
+            btn.classList.remove('visible');
+        }
+
+        function flipCard(index) {
+            const card = document.getElementById(`tarot-card-${index}`);
+            if (card.classList.contains('locked') || card.classList.contains('flipped')) return;
+
+            card.classList.add('flipped');
+
+            // Unlock next card
+            const next = document.getElementById(`tarot-card-${index + 1}`);
+            if (next) {
+                setTimeout(() => next.classList.remove('locked'), 600);
+            }
+
+            // Check if all flipped
+            const total = personalityTestState.tarotCards.length;
+            const flipped = document.querySelectorAll('.tarot-card-inner.flipped').length + 1;
+            if (flipped >= total) {
+                setTimeout(() => {
+                    document.getElementById('view-results-btn').classList.add('visible');
+                }, 800);
+            }
+        }
+
+        function showTarotResults() {
+            document.getElementById('tarot-draw-page').classList.remove('active');
+            const page = document.getElementById('tarot-results-page');
+            page.classList.add('active');
+
+            document.getElementById('results-title').textContent = t('tarot.results.title');
+
+            const positionLabels = {
+                'past': t('tarot.position.past'),
+                'present': t('tarot.position.present'),
+                'future': t('tarot.position.future')
+            };
+
+            // Render result cards
+            const cardsRow = document.getElementById('results-cards-row');
+            let cardsHtml = '';
+            personalityTestState.tarotCards.forEach(card => {
+                cardsHtml += `
+                    <div class="result-card tarot-gradient-${card.card_id}">
+                        <div class="result-card-position">${positionLabels[card.position]}</div>
+                        <div class="result-card-numeral">${card.card_numeral}</div>
+                        <div class="result-card-name">${card.card_name}</div>
+                        <div class="result-card-name-zh">${card.card_name_zh}</div>
+                        <div class="result-card-traits">${state.language === 'zh-CN' ? card.traits_zh : card.traits_en}</div>
+                    </div>
+                `;
+            });
+            cardsRow.innerHTML = cardsHtml;
+
+            // Profile summary
+            const profileDiv = document.getElementById('results-profile');
+            const dims = personalityTestState.dimensions;
+            const dimLabels = state.language === 'zh-CN'
+                ? { social_energy: '社交能量', emotional_expression: '情绪风格', stress_response: '压力应对', life_approach: '生活态度', connection_style: '关系需求' }
+                : { social_energy: 'Social Energy', emotional_expression: 'Emotional Style', stress_response: 'Stress Response', life_approach: 'Life Approach', connection_style: 'Connection Style' };
+
+            let profileHtml = `<h3>${t('tarot.profile.title')}</h3>`;
+            profileHtml += '<p>';
+            Object.entries(dims).forEach(([key, val]) => {
+                const label = dimLabels[key] || key;
+                const bar = val > 0 ? '▓'.repeat(Math.min(val, 4)) + '░'.repeat(4 - Math.min(val, 4))
+                           : '░'.repeat(4 - Math.min(Math.abs(val), 4)) + '▓'.repeat(Math.min(Math.abs(val), 4));
+                profileHtml += `${label}: ${bar} (${val > 0 ? '+' : ''}${val})<br>`;
+            });
+            profileHtml += '</p>';
+            profileDiv.innerHTML = profileHtml;
+
+            // Start chat button
+            const chatBtn = page.querySelector('.start-chat-btn');
+            chatBtn.textContent = t('tarot.start.chat');
+        }
+
+        function finishPersonalityTest() {
+            document.getElementById('tarot-results-page').classList.remove('active');
+            // Already in app view, just ensure it's visible
+            showApp();
+        }
     </script>
 </body>
 </html>

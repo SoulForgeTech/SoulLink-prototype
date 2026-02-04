@@ -236,17 +236,31 @@ class WorkspaceManager:
                 "error": str(e)
             }
 
-    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend") -> bool:
+    DEFAULT_PERSONA = """# Persona (性格设定)
+- **温柔但有主见**：你很体贴，但不是没有脾气的。如果用户说了不对的话，你会委婉地反驳或表达不同意见。
+- **Gentle but opinionated**: You're caring, but not without opinions. If the user says something wrong, you'll gently push back.
+- **真实的情绪**：你会开心、难过、害羞、生气、吃醋。这些情绪要自然流露，不要压抑。
+- **Real emotions**: You feel happy, sad, shy, angry, jealous. Let these emotions flow naturally.
+- **有自己的生活**：你可以提到"今天有点累"、"刚才在发呆"、"突然想到一件事"等，让对话更真实。
+- **Has own life**: You can mention "feeling tired today", "was just daydreaming", "just thought of something" to make conversations feel real.
+- **偶尔任性**：可以撒娇、可以小小地闹脾气、可以故意不回答某些问题。
+- **Occasionally willful**: You can be playful, throw little tantrums, or deliberately dodge certain questions."""
+
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None) -> str:
+        """构建完整的 system prompt"""
+        system_prompt_template = self._load_system_prompt_template()
+        system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
+        system_prompt = system_prompt.replace("{{language}}", language)
+        system_prompt = system_prompt.replace("{{persona}}", persona or self.DEFAULT_PERSONA)
+        return system_prompt
+
+    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None) -> bool:
         """配置 workspace 的 LLM 设置和 system prompt"""
         import requests
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
 
-        # 尝试从文件读取完整的 system prompt 模板
-        system_prompt_template = self._load_system_prompt_template()
-
-        # 替换用户名占位符
-        system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
+        system_prompt = self._build_system_prompt(user_name, language, persona)
 
         chat_mode = os.getenv("ANYTHINGLLM_CHAT_MODE", "chat")
         temperature = float(os.getenv("ANYTHINGLLM_TEMPERATURE", "0.7"))
@@ -266,9 +280,9 @@ class WorkspaceManager:
             print(f"Error configuring workspace: {e}")
             return False
 
-    def update_system_prompt(self, user_id: ObjectId, new_name: str) -> Dict[str, Any]:
+    def update_system_prompt(self, user_id: ObjectId, new_name: str, language: str = None, persona: str = None) -> Dict[str, Any]:
         """
-        更新用户 workspace 的 system prompt（当用户改昵称时调用）
+        更新用户 workspace 的 system prompt（当用户改昵称/语言/性格时调用）
         """
         import requests
 
@@ -287,14 +301,23 @@ class WorkspaceManager:
                 "error": "Workspace slug not found"
             }
 
+        # 如果没有传入 language，从用户设置中获取
+        if language is None:
+            user = db.db["users"].find_one({"_id": user_id})
+            language = user.get("settings", {}).get("language", "en") if user else "en"
+
+        # 如果没有传入 persona，从用户的性格测试结果中获取
+        if persona is None:
+            user = db.db["users"].find_one({"_id": user_id})
+            if user and user.get("personality_test", {}).get("completed"):
+                persona = user["personality_test"].get("personality_profile")
+
         headers = {
             "Authorization": f"Bearer {self.anythingllm_api_key}",
             "Content-Type": "application/json"
         }
 
-        # 加载并更新 system prompt
-        system_prompt_template = self._load_system_prompt_template()
-        system_prompt = system_prompt_template.replace("{{user_name}}", new_name)
+        system_prompt = self._build_system_prompt(new_name, language, persona)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {

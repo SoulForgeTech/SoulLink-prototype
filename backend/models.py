@@ -23,15 +23,15 @@ class UserModel:
         auth_provider: str = "email"  # "email" 或 "google"
     ) -> Dict[str, Any]:
         """创建新用户文档"""
-        return {
+        doc = {
             "email": email,
             "name": name,
             "password_hash": password_hash,  # 邮箱注册用户的密码哈希
-            "google_id": google_id,  # Google 登录用户的 ID
             "auth_provider": auth_provider,  # 认证方式
             "avatar_url": avatar_url,
             "email_verified": auth_provider == "google",  # Google 用户默认已验证
             "workspace_slug": None,  # 将在首次使用时创建
+            "personality_test": None,  # 性格测试结果（完成后填充）
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "last_login": datetime.utcnow(),
@@ -41,12 +41,16 @@ class UserModel:
                 "notifications_enabled": True
             }
         }
+        # 只在有值时才加 google_id，避免 sparse unique 索引冲突
+        if google_id is not None:
+            doc["google_id"] = google_id
+        return doc
 
     @staticmethod
     def get_indexes() -> List[Dict]:
         """返回需要创建的索引"""
         return [
-            {"keys": [("google_id", 1)], "unique": True, "sparse": True},
+            {"keys": [("google_id", 1)], "unique": True, "sparse": True, "name": "google_id_sparse_unique"},
             {"keys": [("email", 1)], "unique": True},
             {"keys": [("workspace_slug", 1)], "sparse": True}
         ]

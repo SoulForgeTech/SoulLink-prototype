@@ -28,6 +28,12 @@ from auth import (
 )
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
+from personality_engine import (
+    get_questions,
+    calculate_dimensions,
+    draw_tarot_cards,
+    generate_personality_profile
+)
 
 # 配置日志
 logging.basicConfig(
@@ -338,6 +344,16 @@ def update_settings():
         {"_id": user_id},
         {"$set": updates}
     )
+
+    # 如果语言改变了，同步更新 system prompt
+    if "language" in data:
+        try:
+            user = get_current_user()
+            workspace_manager.update_system_prompt(
+                user_id, user["name"], language=data["language"]
+            )
+        except Exception as e:
+            logger.warning(f"Error updating system prompt for language change: {e}")
 
     return jsonify({"success": True})
 
@@ -695,6 +711,106 @@ def upload_document():
     except Exception as e:
         logger.error(f"Document upload error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ==================== 性格测试接口 ====================
+
+@app.route("/api/personality-test/status", methods=["GET"])
+@login_required
+def personality_test_status():
+    """获取用户性格测试状态"""
+    user = get_current_user()
+    pt = user.get("personality_test")
+
+    if pt and pt.get("completed"):
+        return jsonify({
+            "completed": True,
+            "completed_at": pt.get("completed_at").isoformat() if pt.get("completed_at") else None,
+            "tarot_cards": pt.get("tarot_cards", []),
+            "dimensions": pt.get("dimensions", {}),
+            "mbti": pt.get("mbti")
+        })
+    else:
+        return jsonify({"completed": False})
+
+
+@app.route("/api/personality-test/questions", methods=["GET"])
+@login_required
+def personality_test_questions():
+    """获取性格测试题目"""
+    user = get_current_user()
+    # 优先使用前端传来的语言参数，其次用数据库设置
+    language = request.args.get("lang") or user.get("settings", {}).get("language", "en")
+    questions = get_questions(language)
+    return jsonify({"questions": questions})
+
+
+@app.route("/api/personality-test/submit", methods=["POST"])
+@login_required
+def personality_test_submit():
+    """提交性格测试答案"""
+    user_id = get_current_user_id()
+    user = get_current_user()
+    data = request.get_json()
+
+    if not data or "answers" not in data:
+        return jsonify({"error": "Missing answers"}), 400
+
+    answers = data["answers"]
+
+    # 验证答案：需要10道题的答案
+    if not isinstance(answers, list) or len(answers) < 10:
+        return jsonify({"error": "Need at least 10 answers"}), 400
+
+    # 验证每个答案格式
+    for ans in answers[:10]:
+        if "question_id" not in ans or "score" not in ans:
+            return jsonify({"error": "Each answer needs question_id and score"}), 400
+
+    # 计算维度分数
+    dimensions = calculate_dimensions(answers[:10])
+
+    # 抽取塔罗牌
+    tarot_cards = draw_tarot_cards(dimensions)
+
+    # 获取 MBTI（可选）
+    mbti = data.get("mbti")
+
+    # 生成性格描述
+    language = user.get("settings", {}).get("language", "en")
+    personality_profile = generate_personality_profile(dimensions, tarot_cards, language)
+
+    # 保存到用户文档
+    from datetime import datetime
+    personality_test = {
+        "completed": True,
+        "completed_at": datetime.utcnow(),
+        "answers": answers,
+        "dimensions": dimensions,
+        "mbti": mbti,
+        "tarot_cards": tarot_cards,
+        "personality_profile": personality_profile
+    }
+
+    db.db["users"].update_one(
+        {"_id": user_id},
+        {"$set": {"personality_test": personality_test}}
+    )
+
+    # 更新 system prompt
+    try:
+        workspace_manager.update_system_prompt(
+            user_id, user["name"], language=language, persona=personality_profile
+        )
+    except Exception as e:
+        logger.warning(f"Error updating system prompt after personality test: {e}")
+
+    return jsonify({
+        "success": True,
+        "dimensions": dimensions,
+        "tarot_cards": tarot_cards,
+        "mbti": mbti
+    })
 
 
 # ==================== 错误处理 ====================
