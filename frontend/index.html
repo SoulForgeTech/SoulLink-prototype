@@ -411,6 +411,8 @@
             display: flex;
             flex-direction: column;
             z-index: 10;
+            min-height: 0;
+            overflow: hidden;
         }
 
         /* 聊天头部 */
@@ -762,6 +764,22 @@
             flex-shrink: 0;
         }
 
+        /* 侧边栏关闭按钮（仅手机端显示） */
+        .sidebar-close-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            padding: 4px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-close-btn:hover {
+            color: #fff;
+        }
+
         /* 侧边栏遮罩层 */
         .sidebar-overlay {
             display: none;
@@ -784,8 +802,21 @@
 
         /* ==================== 响应式 - 手机 ==================== */
         @media (max-width: 768px) {
+            /* 修复手机浏览器100vh问题（地址栏高度） */
+            #app {
+                height: 100vh;
+                height: 100dvh;
+            }
+
             /* 汉堡菜单按钮 */
             .mobile-menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* 侧边栏关闭按钮 */
+            .sidebar-close-btn {
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -2733,6 +2764,12 @@
                 <span class="sidebar-logo">💫</span>
                 <span class="sidebar-title">SoulLink</span>
                 <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()">中文</button>
+                <button class="sidebar-close-btn" onclick="closeMobileSidebar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
 
             <button class="new-chat-btn" onclick="createNewConversation()">
