@@ -176,9 +176,19 @@ def verify_token():
             "email": user["email"],
             "name": user["name"],
             "avatar_url": user.get("avatar_url"),
-            "workspace_slug": user.get("workspace_slug")
+            "workspace_slug": user.get("workspace_slug"),
+            "settings": user.get("settings", {})
         }
     })
+
+
+@app.route("/api/models", methods=["GET"])
+@login_required
+def get_available_models():
+    """获取可用的 AI 模型列表"""
+    from workspace_manager import WorkspaceManager
+    models = WorkspaceManager.get_available_models()
+    return jsonify({"models": models})
 
 
 @app.route("/api/auth/logout", methods=["POST"])
@@ -334,11 +344,17 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
         return jsonify({"error": "No valid fields to update"}), 400
+
+    # 验证 model 值
+    if "model" in data:
+        from workspace_manager import WorkspaceManager
+        if data["model"] not in WorkspaceManager.SUPPORTED_MODELS:
+            return jsonify({"error": "Unsupported model"}), 400
 
     db.db["users"].update_one(
         {"_id": user_id},
@@ -354,6 +370,17 @@ def update_settings():
             )
         except Exception as e:
             logger.warning(f"Error updating system prompt for language change: {e}")
+
+    # 如果模型改变了，同步更新 workspace 的 LLM 设置
+    if "model" in data:
+        try:
+            result = workspace_manager.update_workspace_model(user_id, data["model"])
+            if not result.get("success"):
+                logger.warning(f"Failed to update workspace model: {result.get('error')}")
+                return jsonify({"error": f"Model saved but failed to apply: {result.get('error')}"}), 500
+        except Exception as e:
+            logger.warning(f"Error updating workspace model: {e}")
+            return jsonify({"error": "Failed to apply model change"}), 500
 
     return jsonify({"success": True})
 

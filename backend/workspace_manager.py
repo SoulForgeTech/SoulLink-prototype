@@ -17,6 +17,27 @@ from anythingllm_api import AnythingLLMAPI
 class WorkspaceManager:
     """用户 Workspace 管理器"""
 
+    # 支持的 AI 模型列表（先做 Gemini + GPT-4o）
+    SUPPORTED_MODELS = {
+        "gemini": {
+            "id": "gemini",
+            "name": "Gemini 2.5 Flash",
+            "chatProvider": None,       # None = 使用系统默认（generic-openai）
+            "chatModel": None,          # None = 使用系统默认
+            "icon": "✦",
+            "is_default": True,
+        },
+        "gpt4o": {
+            "id": "gpt4o",
+            "name": "GPT-4o",
+            "chatProvider": "openai",
+            "chatModel": "gpt-4o",
+            "icon": "◉",
+            "is_default": False,
+        },
+    }
+    DEFAULT_MODEL = "gemini"
+
     def __init__(self):
         """初始化 Workspace 管理器"""
         self.anythingllm_base_url = os.getenv(
@@ -341,6 +362,74 @@ class WorkspaceManager:
                 "success": False,
                 "error": str(e)
             }
+
+    def update_workspace_model(self, user_id: ObjectId, model_id: str) -> Dict[str, Any]:
+        """
+        更新用户 workspace 的 LLM 模型
+        """
+        import requests
+
+        # 验证模型
+        if model_id not in self.SUPPORTED_MODELS:
+            return {"success": False, "error": f"Unsupported model: {model_id}"}
+
+        model_config = self.SUPPORTED_MODELS[model_id]
+
+        # 获取用户的 workspace
+        workspace = db.get_workspace_by_user(user_id)
+        if not workspace:
+            return {"success": False, "error": "Workspace not found"}
+
+        slug = workspace.get("slug")
+        if not slug:
+            return {"success": False, "error": "Workspace slug not found"}
+
+        headers = {
+            "Authorization": f"Bearer {self.anythingllm_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
+
+        # 如果是默认模型（gemini），清除 workspace 级别覆盖，回到系统默认
+        if model_config.get("is_default"):
+            payload = {
+                "chatProvider": None,
+                "chatModel": None,
+            }
+        else:
+            payload = {
+                "chatProvider": model_config["chatProvider"],
+                "chatModel": model_config["chatModel"],
+            }
+
+        try:
+            response = requests.post(update_url, headers=headers, json=payload)
+            print(f"Update workspace model response: {response.status_code}")
+
+            if response.status_code == 200:
+                return {"success": True, "model": model_id}
+            else:
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+        except Exception as e:
+            print(f"Error updating workspace model: {e}")
+            return {"success": False, "error": str(e)}
+
+    @classmethod
+    def get_available_models(cls) -> list:
+        """返回前端可用的模型列表"""
+        return [
+            {
+                "id": m["id"],
+                "name": m["name"],
+                "icon": m["icon"],
+                "is_default": m["is_default"]
+            }
+            for m in cls.SUPPORTED_MODELS.values()
+        ]
 
     def _copy_template_documents(
         self,

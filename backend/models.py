@@ -38,7 +38,8 @@ class UserModel:
             "settings": {
                 "theme": "dark",
                 "language": "zh-CN",
-                "notifications_enabled": True
+                "notifications_enabled": True,
+                "model": "gemini"
             }
         }
         # 只在有值时才加 google_id，避免 sparse unique 索引冲突

@@ -280,7 +280,8 @@ def handle_google_login(google_user_info: Dict[str, Any]) -> Dict[str, Any]:
             "name": user["name"],
             "avatar_url": user.get("avatar_url"),
             "workspace_slug": user.get("workspace_slug"),
-            "auth_provider": user.get("auth_provider", "google")
+            "auth_provider": user.get("auth_provider", "google"),
+            "settings": user.get("settings", {})
         },
         "is_new_user": is_new_user
     }
@@ -328,7 +329,8 @@ def handle_email_register(email: str, password: str, name: Optional[str] = None)
             "name": user["name"],
             "avatar_url": user.get("avatar_url"),
             "workspace_slug": user.get("workspace_slug"),
-            "auth_provider": "email"
+            "auth_provider": "email",
+            "settings": user.get("settings", {})
         },
         "is_new_user": True
     }
@@ -369,7 +371,8 @@ def handle_email_login(email: str, password: str) -> Dict[str, Any]:
             "name": user["name"],
             "avatar_url": user.get("avatar_url"),
             "workspace_slug": user.get("workspace_slug"),
-            "auth_provider": user.get("auth_provider", "email")
+            "auth_provider": user.get("auth_provider", "email"),
+            "settings": user.get("settings", {})
         },
         "is_new_user": False
     }

@@ -1141,6 +1141,77 @@
             box-shadow: 0 4px 15px rgba(156, 163, 219, 0.4);
         }
 
+        /* 模型选择器 */
+        .model-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .model-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .model-option:hover {
+            border-color: #9ca3db;
+            background: #f0f0ff;
+        }
+
+        .model-option.selected {
+            border-color: #7c3aed;
+            background: rgba(124, 58, 237, 0.08);
+        }
+
+        .model-option-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            background: rgba(124, 58, 237, 0.1);
+        }
+
+        .model-option-info {
+            flex: 1;
+        }
+
+        .model-option-name {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .model-option-badge {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(72, 187, 120, 0.15);
+            color: #38a169;
+            font-weight: 600;
+        }
+
+        /* 聊天头部模型标识 */
+        .model-indicator {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            background: rgba(124, 58, 237, 0.12);
+            color: #7c3aed;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-weight: 500;
+        }
+
         /* 头像设置区域 */
         .settings-avatar-section {
             text-align: center;
@@ -1949,6 +2020,13 @@
                         <input type="email" id="settings-email" disabled>
                         <div class="form-hint" data-i18n="settings.email.hint">Email cannot be changed</div>
                     </div>
+                    <div class="form-group">
+                        <label data-i18n="settings.model">AI Model</label>
+                        <div class="model-selector" id="model-selector">
+                            <!-- 由 JS 动态填充 -->
+                        </div>
+                        <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers Abigail</div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -2052,6 +2130,7 @@
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
+                        <span class="model-indicator" id="model-indicator">Gemini 2.5 Flash</span>
                     </div>
                 </div>
             </header>
@@ -2134,6 +2213,8 @@
                 'settings.nickname.placeholder': 'Your nickname',
                 'settings.email': 'Email',
                 'settings.email.hint': 'Email cannot be changed',
+                'settings.model': 'AI Model',
+                'settings.model.hint': 'Choose the AI model that powers Abigail',
                 'settings.cancel': 'Cancel',
                 'settings.save': 'Save Changes',
                 'sidebar.newchat': 'New Chat',
@@ -2195,6 +2276,8 @@
                 'settings.nickname.placeholder': '你的昵称',
                 'settings.email': '邮箱',
                 'settings.email.hint': '邮箱不能修改',
+                'settings.model': 'AI 模型',
+                'settings.model.hint': '选择驱动 Abigail 的AI模型',
                 'settings.cancel': '取消',
                 'settings.save': '保存修改',
                 'sidebar.newchat': '新对话',
@@ -2351,6 +2434,7 @@
                 document.getElementById('user-name').textContent = state.user.name;
                 document.getElementById('user-email').textContent = state.user.email;
                 document.getElementById('user-avatar').src = state.user.avatar_url || 'images/avatar.png';
+                updateModelIndicator();
             }
         }
 
@@ -3183,6 +3267,54 @@
             return div.innerHTML;
         }
 
+        // ==================== AI 模型选择 ====================
+        const MODEL_DEFINITIONS = [
+            { id: 'gemini',   name: 'Gemini 2.5 Flash', icon: '✦', badge_en: 'Free', badge_zh: '免费' },
+            { id: 'gpt4o',    name: 'GPT-4o',           icon: '◉', badge_en: '',     badge_zh: ''     },
+        ];
+
+        let selectedModel = null;
+
+        function renderModelSelector() {
+            const container = document.getElementById('model-selector');
+            if (!container) return;
+
+            const currentModel = state.user?.settings?.model || 'gemini';
+            selectedModel = currentModel;
+
+            container.innerHTML = MODEL_DEFINITIONS.map(model => {
+                const isSelected = model.id === currentModel;
+                const badge = state.language === 'zh-CN' ? model.badge_zh : model.badge_en;
+                return `
+                    <div class="model-option ${isSelected ? 'selected' : ''}"
+                         onclick="selectModel('${model.id}')"
+                         data-model="${model.id}">
+                        <div class="model-option-icon">${model.icon}</div>
+                        <div class="model-option-info">
+                            <div class="model-option-name">${model.name}</div>
+                        </div>
+                        ${badge ? `<span class="model-option-badge">${badge}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectModel(modelId) {
+            selectedModel = modelId;
+            document.querySelectorAll('.model-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.model === modelId);
+            });
+        }
+
+        function updateModelIndicator() {
+            const indicator = document.getElementById('model-indicator');
+            if (!indicator) return;
+
+            const modelId = state.user?.settings?.model || 'gemini';
+            const model = MODEL_DEFINITIONS.find(m => m.id === modelId);
+            indicator.textContent = model ? model.name : 'Gemini 2.5 Flash';
+        }
+
         // ==================== 用户设置模态框 ====================
         let pendingAvatarData = null; // 临时存储待保存的头像
 
@@ -3198,6 +3330,9 @@
             // 清除之前的选中状态
             document.querySelectorAll('.avatar-preset').forEach(el => el.classList.remove('selected'));
             pendingAvatarData = null;
+
+            // 渲染模型选择器
+            renderModelSelector();
         }
 
         function closeSettingsModal() {
@@ -3341,34 +3476,64 @@
                 hasChanges = true;
             }
 
+            // 检测模型变化
+            const currentModel = state.user?.settings?.model || 'gemini';
+            const modelChanged = selectedModel && selectedModel !== currentModel;
+            if (modelChanged) hasChanges = true;
+
             if (!hasChanges) {
                 closeSettingsModal();
                 return;
             }
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/profile`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updates)
-                });
+                // 1. 保存头像/昵称变化
+                if (updates.name || updates.avatar_url) {
+                    const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${state.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updates)
+                    });
 
-                if (response.ok) {
-                    // 更新本地状态
-                    if (updates.name) state.user.name = updates.name;
-                    if (updates.avatar_url) state.user.avatar_url = updates.avatar_url;
-                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
-
-                    // 更新 UI
-                    updateUserInfo();
-                    closeSettingsModal();
-                } else {
-                    const data = await response.json();
-                    alert(data.error || 'Failed to save settings');
+                    if (response.ok) {
+                        if (updates.name) state.user.name = updates.name;
+                        if (updates.avatar_url) state.user.avatar_url = updates.avatar_url;
+                        localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                        updateUserInfo();
+                    } else {
+                        const data = await response.json();
+                        alert(data.error || 'Failed to save settings');
+                        return;
+                    }
                 }
+
+                // 2. 保存模型变化
+                if (modelChanged) {
+                    const modelResponse = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${state.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ model: selectedModel })
+                    });
+
+                    if (modelResponse.ok) {
+                        if (!state.user.settings) state.user.settings = {};
+                        state.user.settings.model = selectedModel;
+                        localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                        updateModelIndicator();
+                    } else {
+                        const errData = await modelResponse.json();
+                        alert(errData.error || 'Failed to change model');
+                        return;
+                    }
+                }
+
+                closeSettingsModal();
             } catch (error) {
                 console.error('Save settings error:', error);
                 alert('Network error. Please try again.');
