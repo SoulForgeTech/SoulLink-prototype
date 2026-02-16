@@ -22,8 +22,8 @@ class WorkspaceManager:
         "gemini": {
             "id": "gemini",
             "name": "Gemini 2.5 Flash",
-            "chatProvider": None,       # None = 使用系统默认（generic-openai）
-            "chatModel": None,          # None = 使用系统默认
+            "chatProvider": "gemini",
+            "chatModel": "gemini-2.5-flash",
             "icon": "✦",
             "is_default": True,
         },
@@ -391,17 +391,11 @@ class WorkspaceManager:
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
 
-        # 如果是默认模型（gemini），清除 workspace 级别覆盖，回到系统默认
-        if model_config.get("is_default"):
-            payload = {
-                "chatProvider": None,
-                "chatModel": None,
-            }
-        else:
-            payload = {
-                "chatProvider": model_config["chatProvider"],
-                "chatModel": model_config["chatModel"],
-            }
+        # 所有模型都明确设置 provider 和 model
+        payload = {
+            "chatProvider": model_config["chatProvider"],
+            "chatModel": model_config["chatModel"],
+        }
 
         try:
             response = requests.post(update_url, headers=headers, json=payload)
