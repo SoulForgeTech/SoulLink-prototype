@@ -751,14 +751,514 @@
             to { transform: rotate(360deg); }
         }
 
-        /* 响应式 */
+        /* ==================== 移动端汉堡菜单按钮 ==================== */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #4a5568;
+            cursor: pointer;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        /* 侧边栏遮罩层 */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9;
+        }
+
+        /* ==================== 响应式 - 平板 ==================== */
+        @media (max-width: 1024px) {
+            .message {
+                max-width: 80%;
+            }
+
+            .companion-info h2 {
+                font-size: 1.15rem;
+            }
+        }
+
+        /* ==================== 响应式 - 手机 ==================== */
         @media (max-width: 768px) {
+            /* 汉堡菜单按钮 */
+            .mobile-menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* 侧边栏：默认隐藏，从左侧滑入 */
             .sidebar {
-                display: none;
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            /* 登录页面 */
+            .login-container {
+                padding: 28px 24px;
+                margin: 0 16px;
+                max-width: 100%;
+                border-radius: 20px;
+            }
+
+            .login-logo {
+                font-size: 2.4rem;
+            }
+
+            .login-title {
+                font-size: 1.8rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 28px;
+            }
+
+            .google-login-btn {
+                padding: 12px 24px;
+                font-size: 0.95rem;
+            }
+
+            .auth-form {
+                max-width: 100%;
+            }
+
+            .auth-divider {
+                margin: 18px 0;
+            }
+
+            /* 验证码输入框 */
+            .verify-code-input {
+                font-size: 1.3rem !important;
+                letter-spacing: 6px !important;
+            }
+
+            /* 聊天头部 */
+            .chat-header {
+                padding: 12px 16px;
+                gap: 10px;
+            }
+
+            .companion-avatar {
+                width: 38px;
+                height: 38px;
+                border-width: 2px;
+            }
+
+            .companion-info h2 {
+                font-size: 1.05rem;
+            }
+
+            .companion-status {
+                font-size: 0.8rem;
+            }
+
+            .model-indicator {
+                font-size: 0.6rem;
+                padding: 1px 6px;
+            }
+
+            /* 消息区域 */
+            .messages-container {
+                padding: 16px 12px;
             }
 
             .message {
-                max-width: 85%;
+                max-width: 88%;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+
+            .message-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .message-content {
+                padding: 12px 16px;
+                font-size: 0.92rem;
+                border-radius: 20px;
+            }
+
+            .message.assistant .message-content {
+                border-bottom-left-radius: 6px;
+            }
+
+            .message.user .message-content {
+                border-bottom-right-radius: 6px;
+            }
+
+            .typing-indicator .message-avatar {
+                width: 32px;
+                height: 32px;
+            }
+
+            .typing-bubble {
+                padding: 12px 16px;
+                border-radius: 20px;
+                border-bottom-left-radius: 6px;
+            }
+
+            /* 欢迎消息 */
+            .welcome-message {
+                padding: 40px 16px;
+            }
+
+            .welcome-emoji {
+                font-size: 3rem;
+            }
+
+            .welcome-title {
+                font-size: 1.2rem;
+            }
+
+            .welcome-subtitle {
+                font-size: 0.9rem;
+            }
+
+            /* 输入框 */
+            .input-container {
+                padding: 10px 12px 16px;
+            }
+
+            .input-wrapper {
+                padding: 8px 8px 8px 18px;
+                gap: 8px;
+                border-radius: 24px;
+            }
+
+            #message-input {
+                font-size: 0.92rem;
+            }
+
+            .send-btn {
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+                min-height: 36px;
+            }
+
+            .send-btn svg {
+                width: 17px;
+                height: 17px;
+            }
+
+            /* 模态框 */
+            .modal-content {
+                width: 94%;
+                max-width: 400px;
+                border-radius: 16px;
+            }
+
+            .modal-header {
+                padding: 16px 18px;
+            }
+
+            .modal-header h3 {
+                font-size: 1.1rem;
+            }
+
+            .modal-body {
+                padding: 18px;
+            }
+
+            .modal-footer {
+                padding: 14px 18px;
+            }
+
+            /* 模型选择器 */
+            .model-option {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+
+            .model-option-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+            }
+
+            .model-option-icon img,
+            .model-option-icon svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .model-option-name {
+                font-size: 0.9rem;
+            }
+
+            /* 头像设置 */
+            .settings-avatar-preview img {
+                width: 64px;
+                height: 64px;
+            }
+
+            .avatar-preset-grid {
+                gap: 8px;
+            }
+
+            .avatar-preset {
+                width: 42px;
+                height: 42px;
+            }
+
+            /* 性格测试 */
+            .question-container {
+                max-width: 100%;
+                width: 92%;
+                padding: 16px;
+            }
+
+            .question-text {
+                font-size: 18px;
+                margin-bottom: 24px;
+            }
+
+            .question-option {
+                padding: 14px 18px;
+                font-size: 14px;
+            }
+
+            .question-progress {
+                margin-bottom: 24px;
+            }
+
+            .progress-dot {
+                width: 8px;
+                height: 8px;
+            }
+
+            /* MBTI 网格 */
+            .mbti-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+
+            .mbti-option {
+                padding: 10px 4px;
+                font-size: 12px;
+            }
+
+            /* 塔罗牌 */
+            .tarot-draw-container {
+                padding: 16px;
+            }
+
+            .tarot-draw-title {
+                font-size: 20px;
+            }
+
+            .tarot-draw-subtitle {
+                font-size: 13px;
+                margin-bottom: 24px;
+            }
+
+            .tarot-cards-row {
+                gap: 14px;
+                margin-bottom: 24px;
+            }
+
+            .tarot-card-slot {
+                width: 120px;
+                height: 200px;
+            }
+
+            .tarot-card-back .card-back-symbol {
+                font-size: 36px;
+            }
+
+            .tarot-card-numeral {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            .tarot-card-icon {
+                font-size: 36px;
+                margin-bottom: 10px;
+            }
+
+            .tarot-card-name {
+                font-size: 12px;
+            }
+
+            .tarot-card-name-zh {
+                font-size: 10px;
+            }
+
+            .tarot-card-traits {
+                font-size: 10px;
+            }
+
+            .view-results-btn {
+                padding: 12px 36px;
+                font-size: 15px;
+            }
+
+            /* 结果页面 */
+            .results-container {
+                width: 94%;
+                padding: 16px 12px 32px;
+            }
+
+            .results-title {
+                font-size: 22px;
+                margin-bottom: 24px;
+            }
+
+            .results-cards-row {
+                gap: 12px;
+            }
+
+            .result-card {
+                width: 140px;
+                padding: 16px 10px;
+            }
+
+            .result-card-name {
+                font-size: 14px;
+            }
+
+            .results-profile {
+                padding: 18px;
+            }
+
+            .results-profile h3 {
+                font-size: 15px;
+            }
+
+            .results-profile p {
+                font-size: 13px;
+            }
+
+            .start-chat-btn {
+                padding: 14px 40px;
+                font-size: 15px;
+            }
+
+            /* 提醒弹窗 */
+            .reminder-content {
+                padding: 28px 20px;
+                max-width: 340px;
+            }
+        }
+
+        /* ==================== 响应式 - 小屏手机 ==================== */
+        @media (max-width: 400px) {
+            .login-container {
+                padding: 24px 18px;
+                margin: 0 10px;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.88rem;
+            }
+
+            .verify-code-input {
+                font-size: 1.1rem !important;
+                letter-spacing: 4px !important;
+            }
+
+            .chat-header {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+
+            .companion-avatar {
+                width: 34px;
+                height: 34px;
+            }
+
+            .companion-info h2 {
+                font-size: 0.95rem;
+            }
+
+            .messages-container {
+                padding: 12px 8px;
+            }
+
+            .message {
+                max-width: 92%;
+            }
+
+            .message-content {
+                padding: 10px 14px;
+                font-size: 0.88rem;
+            }
+
+            .input-container {
+                padding: 8px 8px 12px;
+            }
+
+            .input-wrapper {
+                padding: 6px 6px 6px 14px;
+            }
+
+            /* 塔罗牌 - 小屏 */
+            .tarot-card-slot {
+                width: 100px;
+                height: 170px;
+            }
+
+            .tarot-card-icon {
+                font-size: 28px;
+            }
+
+            .result-card {
+                width: 100%;
+                max-width: 280px;
+            }
+
+            .results-cards-row {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            /* MBTI 小屏 */
+            .mbti-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+            }
+
+            .mbti-option {
+                padding: 8px 2px;
+                font-size: 11px;
+                border-radius: 8px;
+            }
+        }
+
+        /* ==================== 安全区域 (刘海屏) ==================== */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .input-container {
+                padding-bottom: calc(16px + env(safe-area-inset-bottom));
+            }
+
+            @media (max-width: 768px) {
+                .input-container {
+                    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+                }
             }
         }
 
@@ -2266,11 +2766,19 @@
                 <button class="logout-btn" onclick="logout()" data-i18n="sidebar.logout">Logout</button>
             </div>
         </aside>
+        <div class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
         <!-- 主内容区 -->
         <main class="main-content">
             <!-- 聊天头部 -->
             <header class="chat-header">
+                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
                 <img class="companion-avatar" src="images/avatar.png" alt="Companion">
                 <div class="companion-info">
                     <h2>Abigail</h2>
@@ -2496,6 +3004,27 @@
             if (langBtn) {
                 langBtn.textContent = state.language === 'zh-CN' ? 'EN' : '中文';
             }
+        }
+
+        // ==================== 移动端侧边栏 ====================
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const isOpen = sidebar.classList.contains('mobile-open');
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+            }
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
         }
 
         function toggleLanguage() {
@@ -3231,6 +3760,7 @@
         async function selectConversation(convId) {
             state.currentConversationId = convId;
             renderConversationsList();
+            closeMobileSidebar();
 
             // 加载对话消息
             try {
@@ -3251,6 +3781,7 @@
         }
 
         async function createNewConversation() {
+            closeMobileSidebar();
             try {
                 const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
                     method: 'POST',
@@ -3944,6 +4475,7 @@
         }
 
         async function startPersonalityTest() {
+            closeMobileSidebar();
             // Hide reminder if visible
             document.getElementById('test-reminder-popup').classList.remove('active');
 
