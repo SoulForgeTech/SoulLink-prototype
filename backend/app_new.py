@@ -24,7 +24,9 @@ from auth import (
     get_current_user_id,
     handle_google_login,
     handle_email_register,
-    handle_email_login
+    handle_email_login,
+    handle_verify_email,
+    handle_resend_code
 )
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
@@ -244,7 +246,53 @@ def login():
     if result.get("success"):
         return jsonify(result)
     else:
+        # 对未验证用户返回 200（携带 requires_verification 让前端跳转）
+        if result.get("requires_verification"):
+            return jsonify(result), 200
         return jsonify(result), 401
+
+
+@app.route("/api/auth/verify-email", methods=["POST"])
+def verify_email():
+    """验证邮箱验证码"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    email = data.get("email", "").strip().lower()
+    code = data.get("code", "").strip()
+
+    if not email or not code:
+        return jsonify({"success": False, "error": "Email and code are required"}), 400
+
+    if len(code) != 6 or not code.isdigit():
+        return jsonify({"success": False, "error": "Invalid code format"}), 400
+
+    result = handle_verify_email(email, code)
+
+    if result.get("success"):
+        return jsonify(result)
+    else:
+        return jsonify(result), 400
+
+
+@app.route("/api/auth/resend-code", methods=["POST"])
+def resend_code():
+    """重新发送验证码"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"success": False, "error": "Email is required"}), 400
+
+    result = handle_resend_code(email)
+
+    if result.get("success"):
+        return jsonify(result)
+    else:
+        return jsonify(result), 429
 
 
 # ==================== 用户接口 ====================

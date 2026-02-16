@@ -890,6 +890,91 @@
             display: block;
         }
 
+        /* Verification Form */
+        .verification-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .verification-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .verification-header h3 {
+            color: white;
+            font-size: 1.3rem;
+            margin: 0 0 8px 0;
+        }
+
+        .verification-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.88rem;
+            margin: 0;
+        }
+
+        .verification-email {
+            color: #e8b4b8;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin: 4px 0 0 0;
+        }
+
+        .verify-code-input {
+            text-align: center !important;
+            font-size: 1.6rem !important;
+            letter-spacing: 10px !important;
+            font-family: 'Courier New', monospace !important;
+            font-weight: 700 !important;
+        }
+
+        .verification-actions {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .verification-resend-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            margin: 0 0 8px 0;
+        }
+
+        .resend-link {
+            background: none;
+            border: none;
+            color: #e8b4b8;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: underline;
+            padding: 0;
+        }
+
+        .resend-link:disabled {
+            color: rgba(255, 255, 255, 0.3);
+            cursor: default;
+            text-decoration: none;
+        }
+
+        .resend-timer {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.8rem;
+            margin: 0 0 12px 0;
+            display: none;
+        }
+
+        .back-link {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.45);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0;
+        }
+
+        .back-link:hover {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         /* Animations */
         @keyframes fadeInUp {
             from {
@@ -1969,6 +2054,44 @@
                     <button type="submit" class="auth-submit-btn" id="register-submit-btn" data-i18n="register.submit">Create Account</button>
                 </form>
 
+                <!-- Email Verification Form -->
+                <div id="verification-form" style="display: none;">
+                    <div class="verification-header">
+                        <div class="verification-icon">&#9993;</div>
+                        <h3 data-i18n="verify.title">Check your email</h3>
+                        <p class="verification-subtitle" data-i18n="verify.subtitle">We sent a 6-digit code to</p>
+                        <p class="verification-email" id="verification-email-display"></p>
+                    </div>
+
+                    <div id="verify-error" class="auth-error"></div>
+
+                    <div class="form-group">
+                        <label data-i18n="verify.code.label">Verification Code</label>
+                        <input type="text" id="verify-code-input"
+                               maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+                               placeholder="000000" autocomplete="one-time-code"
+                               class="verify-code-input"
+                               onkeydown="if(event.key==='Enter')handleVerifyCode()">
+                    </div>
+
+                    <button class="auth-submit-btn" id="verify-submit-btn" onclick="handleVerifyCode()">
+                        <span data-i18n="verify.submit">Verify</span>
+                    </button>
+
+                    <div class="verification-actions">
+                        <p class="verification-resend-text">
+                            <span data-i18n="verify.no_code">Didn't receive the code?</span>
+                            <button id="resend-btn" onclick="handleResendCode()" class="resend-link">
+                                <span data-i18n="verify.resend">Resend</span>
+                            </button>
+                        </p>
+                        <p id="resend-timer" class="resend-timer"></p>
+                        <button onclick="backToRegister()" class="back-link">
+                            &#8592; <span data-i18n="verify.back">Back to registration</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="auth-divider">
                     <span data-i18n="login.divider">or</span>
                 </div>
@@ -2228,6 +2351,13 @@
                 'register.confirm.label': 'Confirm Password',
                 'register.confirm.placeholder': 'Re-enter your password',
                 'register.submit': 'Create Account',
+                'verify.title': 'Check your email',
+                'verify.subtitle': 'We sent a 6-digit code to',
+                'verify.code.label': 'Verification Code',
+                'verify.submit': 'Verify',
+                'verify.no_code': "Didn't receive the code?",
+                'verify.resend': 'Resend',
+                'verify.back': 'Back to registration',
                 'login.divider': 'or',
                 'login.google': 'Continue with Google',
                 'settings.title': 'Profile Settings',
@@ -2291,6 +2421,13 @@
                 'register.confirm.label': '确认密码',
                 'register.confirm.placeholder': '再次输入密码',
                 'register.submit': '创建账号',
+                'verify.title': '验证你的邮箱',
+                'verify.subtitle': '我们发送了一个6位验证码到',
+                'verify.code.label': '验证码',
+                'verify.submit': '验证',
+                'verify.no_code': '没有收到验证码？',
+                'verify.resend': '重新发送',
+                'verify.back': '返回注册',
                 'login.divider': '或',
                 'login.google': '使用Google登录',
                 'settings.title': '个人设置',
@@ -2515,7 +2652,10 @@
 
                 const data = await response.json();
 
-                if (data.success) {
+                if (data.requires_verification) {
+                    // 未验证用户 → 显示验证码输入界面
+                    showVerificationScreen(data.email || email);
+                } else if (data.success) {
                     // 重置状态（清除之前用户的数据）
                     state.currentConversationId = null;
                     state.conversations = [];
@@ -2596,27 +2736,25 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // 重置状态（清除之前用户的数据）
-                    state.currentConversationId = null;
-                    state.conversations = [];
-                    state.messages = [];
-
-                    state.token = data.token;
-                    state.user = data.user;
-                    localStorage.setItem('soullink_token', data.token);
-                    localStorage.setItem('soullink_user', JSON.stringify(data.user));
-
-                    showApp();
-
-                    // 清空UI并显示欢迎信息
-                    document.getElementById('conversations-list').innerHTML = '';
-                    renderMessages();
-
-                    // 初始化 workspace（新用户会显示加载进度）
-                    await initializeWorkspace();
-                    await loadConversations();
-                    // 新用户直接开始性格测试
-                    startPersonalityTest();
+                    if (data.requires_verification) {
+                        // 显示验证码输入界面
+                        showVerificationScreen(email);
+                    } else {
+                        // 兜底（不应该走到这里了）
+                        state.currentConversationId = null;
+                        state.conversations = [];
+                        state.messages = [];
+                        state.token = data.token;
+                        state.user = data.user;
+                        localStorage.setItem('soullink_token', data.token);
+                        localStorage.setItem('soullink_user', JSON.stringify(data.user));
+                        showApp();
+                        document.getElementById('conversations-list').innerHTML = '';
+                        renderMessages();
+                        await initializeWorkspace();
+                        await loadConversations();
+                        startPersonalityTest();
+                    }
                 } else {
                     showAuthError(data.error || 'Registration failed');
                 }
@@ -2627,6 +2765,184 @@
 
             submitBtn.disabled = false;
             submitBtn.textContent = 'Create Account';
+        }
+
+        // ==================== 邮箱验证码 ====================
+        let pendingVerificationEmail = null;
+        let resendCooldownTimer = null;
+
+        function showVerificationScreen(email) {
+            pendingVerificationEmail = email;
+
+            // 隐藏登录/注册表单，显示验证表单
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const verificationForm = document.getElementById('verification-form');
+            const authTabs = document.querySelector('.auth-tabs');
+            const authDivider = document.querySelector('.auth-divider');
+            const googleBtn = document.querySelector('.google-login-btn');
+
+            if (loginForm) loginForm.style.display = 'none';
+            if (registerForm) registerForm.style.display = 'none';
+            if (verificationForm) verificationForm.style.display = 'block';
+            if (authTabs) authTabs.style.display = 'none';
+            if (authDivider) authDivider.style.display = 'none';
+            if (googleBtn) googleBtn.style.display = 'none';
+
+            document.getElementById('verification-email-display').textContent = email;
+            document.getElementById('verify-code-input').value = '';
+            document.getElementById('verify-code-input').focus();
+
+            hideVerifyError();
+            startResendCooldown(60);
+        }
+
+        function backToRegister() {
+            pendingVerificationEmail = null;
+
+            const verificationForm = document.getElementById('verification-form');
+            const registerForm = document.getElementById('register-form');
+            const authTabs = document.querySelector('.auth-tabs');
+            const authDivider = document.querySelector('.auth-divider');
+            const googleBtn = document.querySelector('.google-login-btn');
+
+            if (verificationForm) verificationForm.style.display = 'none';
+            if (registerForm) registerForm.style.display = 'block';
+            if (authTabs) authTabs.style.display = 'flex';
+            if (authDivider) authDivider.style.display = 'flex';
+            if (googleBtn) googleBtn.style.display = 'block';
+
+            switchAuthTab('register');
+
+            if (resendCooldownTimer) {
+                clearInterval(resendCooldownTimer);
+                resendCooldownTimer = null;
+            }
+        }
+
+        function showVerifyError(message) {
+            const errorDiv = document.getElementById('verify-error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('visible');
+        }
+
+        function hideVerifyError() {
+            const errorDiv = document.getElementById('verify-error');
+            if (errorDiv) errorDiv.classList.remove('visible');
+        }
+
+        async function handleVerifyCode() {
+            hideVerifyError();
+
+            const code = document.getElementById('verify-code-input').value.trim();
+            const submitBtn = document.getElementById('verify-submit-btn');
+
+            if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+                showVerifyError(state.language === 'zh-CN' ? '请输入6位数字验证码' : 'Please enter a valid 6-digit code');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = state.language === 'zh-CN' ? '验证中...' : 'Verifying...';
+
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/verify-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingVerificationEmail, code })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 验证成功 → 拿到 token，进入应用
+                    state.currentConversationId = null;
+                    state.conversations = [];
+                    state.messages = [];
+
+                    state.token = data.token;
+                    state.user = data.user;
+                    localStorage.setItem('soullink_token', data.token);
+                    localStorage.setItem('soullink_user', JSON.stringify(data.user));
+
+                    // 恢复 UI 元素显示状态
+                    document.getElementById('verification-form').style.display = 'none';
+                    const authTabs = document.querySelector('.auth-tabs');
+                    const authDivider = document.querySelector('.auth-divider');
+                    const googleBtn = document.querySelector('.google-login-btn');
+                    if (authTabs) authTabs.style.display = 'flex';
+                    if (authDivider) authDivider.style.display = 'flex';
+                    if (googleBtn) googleBtn.style.display = 'block';
+
+                    showApp();
+                    document.getElementById('conversations-list').innerHTML = '';
+                    renderMessages();
+                    await initializeWorkspace();
+                    await loadConversations();
+                    startPersonalityTest();
+                } else {
+                    showVerifyError(data.error || (state.language === 'zh-CN' ? '验证失败' : 'Verification failed'));
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                showVerifyError(state.language === 'zh-CN' ? '网络错误，请重试' : 'Network error. Please try again.');
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = state.language === 'zh-CN' ? '验证' : 'Verify';
+        }
+
+        async function handleResendCode() {
+            hideVerifyError();
+            const resendBtn = document.getElementById('resend-btn');
+            resendBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/resend-code`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingVerificationEmail })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    startResendCooldown(60);
+                } else {
+                    showVerifyError(data.error || (state.language === 'zh-CN' ? '发送失败' : 'Failed to resend code'));
+                    resendBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Resend error:', error);
+                showVerifyError(state.language === 'zh-CN' ? '网络错误，请重试' : 'Network error. Please try again.');
+                resendBtn.disabled = false;
+            }
+        }
+
+        function startResendCooldown(seconds) {
+            const resendBtn = document.getElementById('resend-btn');
+            const timerEl = document.getElementById('resend-timer');
+
+            resendBtn.disabled = true;
+            timerEl.style.display = 'block';
+
+            let remaining = seconds;
+            const isZh = state.language === 'zh-CN';
+            timerEl.textContent = isZh ? `${remaining}秒后可重新发送` : `Resend available in ${remaining}s`;
+
+            if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+
+            resendCooldownTimer = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(resendCooldownTimer);
+                    resendCooldownTimer = null;
+                    resendBtn.disabled = false;
+                    timerEl.style.display = 'none';
+                } else {
+                    timerEl.textContent = isZh ? `${remaining}秒后可重新发送` : `Resend available in ${remaining}s`;
+                }
+            }, 1000);
         }
 
         // ==================== 认证相关 ====================
