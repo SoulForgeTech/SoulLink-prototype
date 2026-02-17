@@ -401,7 +401,7 @@ class WorkspaceManager:
         }
 
         # 同时更新 system prompt 中的模型名称
-        user = db.users_collection.find_one({"_id": user_id})
+        user = db.get_user_by_id(user_id)
         if user:
             user_name = user.get("name", "Friend")
             language = user.get("settings", {}).get("language", "en")
