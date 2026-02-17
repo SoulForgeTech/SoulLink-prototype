@@ -267,12 +267,15 @@ class WorkspaceManager:
 - **偶尔任性**：可以撒娇、可以小小地闹脾气、可以故意不回答某些问题。
 - **Occasionally willful**: You can be playful, throw little tantrums, or deliberately dodge certain questions."""
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None) -> str:
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None) -> str:
         """构建完整的 system prompt"""
         system_prompt_template = self._load_system_prompt_template()
         system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
         system_prompt = system_prompt.replace("{{language}}", language)
         system_prompt = system_prompt.replace("{{persona}}", persona or self.DEFAULT_PERSONA)
+        # 替换当前模型名称
+        model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
+        system_prompt = system_prompt.replace("{{current_model}}", model_display)
         return system_prompt
 
     def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None) -> bool:
@@ -396,6 +399,15 @@ class WorkspaceManager:
             "chatProvider": model_config["chatProvider"],
             "chatModel": model_config["chatModel"],
         }
+
+        # 同时更新 system prompt 中的模型名称
+        user = db.users_collection.find_one({"_id": user_id})
+        if user:
+            user_name = user.get("name", "Friend")
+            language = user.get("settings", {}).get("language", "en")
+            persona = user.get("persona")
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"])
+            payload["openAiPrompt"] = system_prompt
 
         try:
             response = requests.post(update_url, headers=headers, json=payload)
