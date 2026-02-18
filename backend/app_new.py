@@ -392,7 +392,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
@@ -404,20 +404,37 @@ def update_settings():
         if data["model"] not in WorkspaceManager.SUPPORTED_MODELS:
             return jsonify({"error": "Unsupported model"}), 400
 
+    # 验证 companion_name 值
+    if "companion_name" in data:
+        cname = data["companion_name"].strip()
+        if len(cname) < 1 or len(cname) > 20:
+            return jsonify({"error": "Companion name must be 1-20 characters"}), 400
+
+    # 验证 companion_avatar 值
+    if "companion_avatar" in data:
+        avatar_val = data["companion_avatar"]
+        if not isinstance(avatar_val, str):
+            return jsonify({"error": "Invalid avatar data"}), 400
+        # Allow relative paths or data URLs, limit size to ~500KB
+        if avatar_val.startswith("data:") and len(avatar_val) > 500000:
+            return jsonify({"error": "Avatar image too large (max 500KB)"}), 400
+
     db.db["users"].update_one(
         {"_id": user_id},
         {"$set": updates}
     )
 
-    # 如果语言改变了，同步更新 system prompt
-    if "language" in data:
+    # 如果语言或AI昵称改变了，同步更新 system prompt
+    if "language" in data or "companion_name" in data:
         try:
             user = get_current_user()
             workspace_manager.update_system_prompt(
-                user_id, user["name"], language=data["language"]
+                user_id, user["name"],
+                language=data.get("language"),
+                companion_name=data.get("companion_name")
             )
         except Exception as e:
-            logger.warning(f"Error updating system prompt for language change: {e}")
+            logger.warning(f"Error updating system prompt: {e}")
 
     # 如果模型改变了，同步更新 workspace 的 LLM 设置
     if "model" in data:
@@ -543,10 +560,24 @@ def chat():
         # 获取最近的对话历史作为上下文
         recent_messages = conversation.get("messages", [])[-10:]  # 最近10条消息
 
+        # 检测用户消息是否可能包含改名意图，如果是则追加提醒让 AI 记得输出标记
+        import re
+        rename_hint_patterns = [
+            r'叫你|叫做|就叫|改叫|你叫|叫回|改回|换回|交回|改名|取名|起名',
+            r'call you|name you|rename|your name',
+            r'名字.*叫|名字.*是',
+        ]
+        message_to_send = user_message
+        for p in rename_hint_patterns:
+            if re.search(p, user_message, re.IGNORECASE):
+                message_to_send = user_message + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
+                logger.info(f"[RENAME] Detected possible rename intent, adding hint to message")
+                break
+
         # 发送消息
-        logger.info(f"Sending message: {user_message[:50]}...")
+        logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
-            user_message,
+            message_to_send,
             session_id=str(conversation["_id"])
         )
         logger.info(f"Response received: {response}")
@@ -571,10 +602,63 @@ def chat():
                 "error": error_msg
             }), 500
 
+        # 检测 AI 回复中的改名标记 [RENAME:xxx]
+        import re
+        logger.info(f"[RENAME DEBUG] Raw AI reply: {repr(reply)}")
+        companion_name_changed = None
+        rename_match = re.search(r'\[RENAME:(.{1,20}?)\]', reply)
+        if rename_match:
+            new_companion_name = rename_match.group(1).strip()
+            logger.info(f"[RENAME] Detected rename tag in AI reply: '{new_companion_name}'")
+            if new_companion_name:
+                companion_name_changed = new_companion_name
+                # 从回复中去掉标记
+                reply = re.sub(r'\s*\[RENAME:.{1,20}?\]', '', reply).strip()
+        else:
+            # 备用检测：如果 AI 没有输出 [RENAME] 标记，检查用户消息是否有改名意图
+            # 并且 AI 回复看起来是接受了改名
+            rename_patterns = [
+                # "以后叫你小月吧" "就叫小月吧" "叫你小月好不好" "改叫小月"
+                r'(?:以后|从现在起)?(?:叫你|叫做|改名|名字叫|就叫|改叫|你叫)\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                # "你可以叫小红吗" "能叫小红吗" "可以叫你小红"
+                r'(?:你?可以|能不?能|能)\s*叫\s*(?:你\s*)?[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                # "还是叫回fufu吧" "叫回小蓝吧" "改回小蓝" "换回fufu"
+                r'(?:还是|就)?(?:叫回|改回|换回|交回)\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                # "call you Luna" "name you Luna" "I'll call you Luna"
+                r'(?:call you|name you|rename you to|your name (?:is|will be)|I\'ll call you)\s+["\']?(\w[\w\s]{0,14}?)["\']?(?:\s|$|[.!?,])',
+                # "你的名字就叫甜甜吧" "你的新名字是小月"
+                r'(?:你的?(?:新)?名字(?:就)?(?:是|叫))\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                # "我要叫你小月" "我想叫你小月" "给你取名小月"
+                r'(?:我(?:要|想|来)?叫你|给你(?:取名|起名|改名)(?:叫)?)\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+            ]
+            for pattern in rename_patterns:
+                user_rename_match = re.search(pattern, user_message, re.IGNORECASE)
+                if user_rename_match:
+                    potential_name = user_rename_match.group(1).strip()
+                    # 验证 AI 回复中是否提到了这个名字（大小写不敏感）
+                    if potential_name and potential_name.lower() in reply.lower():
+                        logger.info(f"[RENAME] Fallback detection: user asked rename to '{potential_name}', AI reply contains it")
+                        companion_name_changed = potential_name
+                        break
+
+        if companion_name_changed:
+            # 更新数据库 + 重建 system prompt
+            try:
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {"settings.companion_name": companion_name_changed}}
+                )
+                workspace_manager.update_system_prompt(
+                    user_id, user["name"], companion_name=companion_name_changed
+                )
+                logger.info(f"[RENAME] Companion renamed to '{companion_name_changed}' for user {user_id}")
+            except Exception as e:
+                logger.warning(f"[RENAME] Error updating companion name: {e}")
+
         # 从 full_response 中获取 sources
         sources = full_response.get("data", {}).get("sources", [])
 
-        # 保存 AI 回复
+        # 保存 AI 回复（保存清理后的版本）
         db.add_message_to_conversation(
             conversation["_id"],
             user_id,
@@ -586,12 +670,16 @@ def chat():
         # 更新统计
         db.update_workspace_stats(user_id, message_count_delta=2)
 
-        return jsonify({
+        result = {
             "success": True,
             "reply": reply,
             "sources": sources,
             "conversation_id": str(conversation["_id"])
-        })
+        }
+        if companion_name_changed:
+            result["companionNameChanged"] = companion_name_changed
+
+        return jsonify(result)
 
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -902,9 +990,31 @@ def server_error(e):
 
 # ==================== 启动应用 ====================
 
+def sync_all_system_prompts():
+    """启动时同步所有用户的 system prompt（确保模板更新后生效）"""
+    try:
+        users = list(db.db["users"].find({}))
+        count = 0
+        for user in users:
+            user_id = user["_id"]
+            user_name = user.get("name", "Friend")
+            try:
+                result = workspace_manager.update_system_prompt(user_id, user_name)
+                if result.get("success"):
+                    count += 1
+            except Exception as e:
+                logger.warning(f"Failed to sync system prompt for user {user_id}: {e}")
+        logger.info(f"[Startup] Synced system prompts for {count}/{len(users)} users")
+    except Exception as e:
+        logger.warning(f"[Startup] Failed to sync system prompts: {e}")
+
+
 if __name__ == "__main__":
     # 初始化数据库连接
     db.connect()
+
+    # 同步所有用户的 system prompt（确保模板更新后立即生效）
+    sync_all_system_prompts()
 
     # 启动服务
     port = int(os.getenv("PORT", 5000))

@@ -462,6 +462,88 @@
             object-fit: cover;
             border: 3px solid rgba(255, 255, 255, 0.9);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .companion-avatar:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Companion Avatar Modal */
+        .companion-avatar-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .companion-avatar-modal-overlay.active {
+            opacity: 1; pointer-events: auto;
+        }
+        .companion-avatar-modal {
+            background: white; border-radius: 20px; padding: 28px;
+            width: 90%; max-width: 380px;
+            transform: scale(0.9); transition: transform 0.25s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .companion-avatar-modal-overlay.active .companion-avatar-modal {
+            transform: scale(1);
+        }
+        .companion-avatar-modal h3 {
+            font-size: 1.15rem; font-weight: 600; margin-bottom: 6px; color: #2d3748;
+        }
+        .companion-avatar-modal p {
+            font-size: 0.85rem; color: #718096; margin-bottom: 18px;
+        }
+        .companion-avatar-preview-section {
+            display: flex; align-items: center; gap: 16px; margin-bottom: 18px;
+        }
+        .companion-avatar-preview-img {
+            width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #e2e8f0;
+        }
+        .companion-avatar-upload-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .companion-avatar-upload-btn:hover { opacity: 0.85; }
+        .companion-avatar-presets {
+            margin-bottom: 18px;
+        }
+        .companion-avatar-presets p {
+            font-size: 0.8rem; color: #a0aec0; margin-bottom: 10px;
+        }
+        .companion-avatar-preset-grid {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .companion-avatar-preset-item {
+            width: 52px; height: 52px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: all 0.2s; object-fit: cover;
+        }
+        .companion-avatar-preset-item:hover {
+            transform: scale(1.1);
+        }
+        .companion-avatar-preset-item.selected {
+            border-color: #764ba2; box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.3);
+        }
+        .companion-avatar-modal-btns {
+            display: flex; gap: 10px; justify-content: flex-end;
+        }
+        .companion-avatar-modal-btns button {
+            padding: 8px 20px; border-radius: 10px; border: none;
+            font-size: 0.9rem; cursor: pointer; font-weight: 500;
+        }
+        .companion-avatar-btn-cancel {
+            background: #edf2f7; color: #4a5568;
+        }
+        .companion-avatar-btn-save {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
         }
 
         .companion-info h2 {
@@ -2814,6 +2896,36 @@
         </div>
     </div>
 
+    <!-- Companion 头像修改模态框 -->
+    <div class="companion-avatar-modal-overlay" id="companion-avatar-modal">
+        <div class="companion-avatar-modal">
+            <h3 data-i18n="companion.avatar.title">Change Companion Avatar</h3>
+            <p data-i18n="companion.avatar.subtitle">Upload an image or choose a preset</p>
+            <div class="companion-avatar-preview-section">
+                <img id="companion-avatar-preview" class="companion-avatar-preview-img" src="images/avatar.png" alt="Preview">
+                <label class="companion-avatar-upload-btn" for="companion-avatar-upload">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span data-i18n="settings.upload">Upload</span>
+                </label>
+                <input type="file" id="companion-avatar-upload" accept="image/*" style="display:none;" onchange="handleCompanionAvatarUpload(event)">
+            </div>
+            <div class="companion-avatar-presets">
+                <p data-i18n="companion.avatar.presets">Or choose a style:</p>
+                <div class="companion-avatar-preset-grid" id="companion-avatar-preset-grid">
+                    <!-- JS 动态填充 -->
+                </div>
+            </div>
+            <div class="companion-avatar-modal-btns">
+                <button class="companion-avatar-btn-cancel" onclick="closeCompanionAvatarModal()" data-i18n="rename.cancel">Cancel</button>
+                <button class="companion-avatar-btn-save" onclick="saveCompanionAvatar()" data-i18n="rename.save">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 设置模态框 -->
     <div id="settings-modal" class="modal hidden">
         <div class="modal-overlay" onclick="closeSettingsModal()"></div>
@@ -2981,7 +3093,7 @@
                         <line x1="3" y1="18" x2="21" y2="18"></line>
                     </svg>
                 </button>
-                <img class="companion-avatar" src="images/avatar.png" alt="Companion">
+                <img class="companion-avatar" id="header-companion-avatar" src="images/avatar.png" alt="Companion" onclick="openCompanionAvatarModal()" title="Click to change avatar">
                 <div class="companion-info">
                     <h2 id="companion-name-display" class="companion-name-clickable" onclick="openRenameModal()" title="Click to rename">Abigail</h2>
                     <div class="companion-status">
@@ -3116,6 +3228,9 @@
                 'rename.subtitle': 'Give her a name you like',
                 'rename.cancel': 'Cancel',
                 'rename.save': 'Save',
+                'companion.avatar.title': 'Change Companion Avatar',
+                'companion.avatar.subtitle': 'Upload an image or choose a preset',
+                'companion.avatar.presets': 'Or choose a style:',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -3190,6 +3305,9 @@
                 'rename.subtitle': '取一个你喜欢的昵称吧',
                 'rename.cancel': '取消',
                 'rename.save': '保存',
+                'companion.avatar.title': '修改伴侣头像',
+                'companion.avatar.subtitle': '上传图片或选择一个预设',
+                'companion.avatar.presets': '或选择一个风格：',
             }
         };
 
@@ -3346,6 +3464,8 @@
                 const companionName = state.user.settings?.companion_name || 'Abigail';
                 document.getElementById('companion-name-display').textContent = companionName;
                 updateModelIndicator();
+                // 更新 companion 头像
+                if (typeof updateCompanionAvatars === 'function') updateCompanionAvatars();
             }
         }
 
@@ -4193,7 +4313,7 @@
 
             const avatarSrc = isUser
                 ? (state.user?.avatar_url || 'images/avatar.png')
-                : 'images/avatar.png';
+                : (state.user?.settings?.companion_avatar || 'images/avatar.png');
 
             messageDiv.innerHTML = `
                 <img class="message-avatar" src="${avatarSrc}" alt="Avatar">
@@ -4439,6 +4559,145 @@
 
         // ==================== 用户设置模态框 ====================
         let pendingAvatarData = null; // 临时存储待保存的头像
+
+        // ==================== Companion 头像修改 ====================
+        let pendingCompanionAvatar = null;
+
+        const COMPANION_AVATAR_PRESETS = [
+            { color1: '#667eea', color2: '#764ba2', emoji: '💜' },
+            { color1: '#f093fb', color2: '#f5576c', emoji: '🌸' },
+            { color1: '#4facfe', color2: '#00f2fe', emoji: '💎' },
+            { color1: '#43e97b', color2: '#38f9d7', emoji: '🌿' },
+            { color1: '#fa709a', color2: '#fee140', emoji: '🌅' },
+            { color1: '#a8edea', color2: '#fed6e3', emoji: '🦋' },
+        ];
+
+        function generateCompanionColorAvatar(color1, color2, emoji) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 200, 200);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.arc(100, 100, 100, 0, Math.PI * 2); ctx.fill();
+            ctx.font = '80px serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, 100, 105);
+            return canvas.toDataURL('image/png');
+        }
+
+        function openCompanionAvatarModal() {
+            const modal = document.getElementById('companion-avatar-modal');
+            const preview = document.getElementById('companion-avatar-preview');
+            const currentAvatar = state.user?.settings?.companion_avatar || 'images/avatar.png';
+            preview.src = currentAvatar;
+            pendingCompanionAvatar = null;
+
+            // Fill presets
+            const grid = document.getElementById('companion-avatar-preset-grid');
+            grid.innerHTML = COMPANION_AVATAR_PRESETS.map((p, i) => {
+                const dataUrl = generateCompanionColorAvatar(p.color1, p.color2, p.emoji);
+                return `<img class="companion-avatar-preset-item" src="${dataUrl}" data-index="${i}" onclick="selectCompanionAvatarPreset(this, ${i})" alt="Preset ${i+1}">`;
+            }).join('');
+
+            // Also add the default avatar.png as first option
+            const defaultItem = document.createElement('img');
+            defaultItem.className = 'companion-avatar-preset-item';
+            defaultItem.src = 'images/avatar.png';
+            defaultItem.alt = 'Default';
+            defaultItem.onclick = function() { selectCompanionAvatarPreset(this, -1); };
+            grid.insertBefore(defaultItem, grid.firstChild);
+
+            modal.classList.add('active');
+        }
+
+        function closeCompanionAvatarModal() {
+            document.getElementById('companion-avatar-modal').classList.remove('active');
+            pendingCompanionAvatar = null;
+        }
+
+        function selectCompanionAvatarPreset(el, index) {
+            document.querySelectorAll('.companion-avatar-preset-item').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+
+            if (index === -1) {
+                // Default avatar
+                pendingCompanionAvatar = 'images/avatar.png';
+                document.getElementById('companion-avatar-preview').src = 'images/avatar.png';
+            } else {
+                const p = COMPANION_AVATAR_PRESETS[index];
+                const dataUrl = generateCompanionColorAvatar(p.color1, p.color2, p.emoji);
+                pendingCompanionAvatar = dataUrl;
+                document.getElementById('companion-avatar-preview').src = dataUrl;
+            }
+        }
+
+        function handleCompanionAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+            if (file.size > 2 * 1024 * 1024) { alert('Image must be less than 2MB'); return; }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                document.getElementById('companion-avatar-preview').src = dataUrl;
+                document.querySelectorAll('.companion-avatar-preset-item').forEach(el => el.classList.remove('selected'));
+                pendingCompanionAvatar = dataUrl;
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        async function saveCompanionAvatar() {
+            if (!pendingCompanionAvatar) {
+                closeCompanionAvatarModal();
+                return;
+            }
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ companion_avatar: pendingCompanionAvatar })
+                });
+                if (response.ok) {
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.companion_avatar = pendingCompanionAvatar;
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                    updateCompanionAvatars();
+                    closeCompanionAvatarModal();
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to save avatar');
+                }
+            } catch (err) {
+                console.error('Save companion avatar error:', err);
+                alert('Network error');
+            }
+        }
+
+        function updateCompanionAvatars() {
+            const avatarUrl = state.user?.settings?.companion_avatar || 'images/avatar.png';
+            // Header avatar
+            const headerAvatar = document.getElementById('header-companion-avatar');
+            if (headerAvatar) headerAvatar.src = avatarUrl;
+            // All message avatars for assistant messages
+            document.querySelectorAll('.message.assistant .message-avatar').forEach(img => {
+                img.src = avatarUrl;
+            });
+            // Typing indicator avatar
+            const typingAvatar = document.querySelector('#typing-indicator .message-avatar');
+            if (typingAvatar) typingAvatar.src = avatarUrl;
+        }
+
+        // Close on overlay click
+        document.getElementById('companion-avatar-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeCompanionAvatarModal();
+        });
 
         // ==================== AI 改名 ====================
         function openRenameModal() {
