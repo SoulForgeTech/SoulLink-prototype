@@ -2722,7 +2722,7 @@
         .about-modal-overlay.active { opacity: 1; pointer-events: auto; }
         .about-modal {
             background: white; border-radius: 20px; padding: 30px;
-            width: 90%; max-width: 440px; max-height: 85vh; overflow-y: auto;
+            width: 90%; max-width: 440px;
             transform: scale(0.9); transition: transform 0.25s;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative;
         }
@@ -2741,21 +2741,6 @@
         .about-version { color: #a0aec0; font-size: 0.75rem; margin-top: 2px; }
         .about-description { color: #4a5568; font-size: 0.85rem; line-height: 1.6; margin-bottom: 20px; text-align: center; }
 
-        .about-team-section { margin-bottom: 20px; }
-        .about-team-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-        .about-team-grid { display: flex; flex-direction: column; gap: 10px; }
-        .about-team-member {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px; border-radius: 12px; background: #f7fafc;
-        }
-        .about-team-avatar {
-            width: 40px; height: 40px; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; color: white;
-            font-weight: 600; font-size: 1rem; flex-shrink: 0;
-        }
-        .about-team-name { font-weight: 600; font-size: 0.9rem; color: #2d3748; }
-        .about-team-role { font-size: 0.75rem; color: #a0aec0; }
-
         .about-donate-section { margin-bottom: 20px; }
         .about-donate-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
         .about-donate-text { font-size: 0.8rem; color: #718096; margin-bottom: 12px; }
@@ -2767,10 +2752,14 @@
             cursor: pointer; transition: all 0.2s; text-decoration: none;
         }
         .about-donate-btn:hover { border-color: #667eea; color: #667eea; }
-        .about-donate-btn.wechat:hover { border-color: #07c160; color: #07c160; }
-        .about-donate-qr { text-align: center; margin-top: 12px; padding: 16px; background: #f7fafc; border-radius: 12px; }
-        .about-donate-qr p { font-size: 0.8rem; color: #718096; margin-bottom: 8px; }
-        .about-qr-placeholder { color: #a0aec0; font-size: 0.8rem; padding: 20px; border: 2px dashed #e2e8f0; border-radius: 8px; }
+        .about-donate-btn.active { border-color: #667eea; background: #ebf4ff; color: #667eea; }
+        .about-donate-qr-container {
+            margin-top: 14px; text-align: center; padding: 12px;
+            background: #f7fafc; border-radius: 14px;
+        }
+        .about-donate-qr-img {
+            max-width: 200px; width: 100%; border-radius: 10px;
+        }
 
         .about-divider { height: 1px; background: #e2e8f0; margin: 20px 0; }
 
@@ -2997,7 +2986,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
 
-            <!-- 关于我们 -->
+            <!-- 关于 -->
             <div class="about-section">
                 <div class="about-logo">💫</div>
                 <h2>SoulLink</h2>
@@ -3009,35 +2998,23 @@
                 <p data-i18n="about.description">SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.</p>
             </div>
 
-            <!-- 团队 -->
-            <div class="about-team-section">
-                <h4 data-i18n="about.team">Our Team</h4>
-                <div class="about-team-grid">
-                    <div class="about-team-member">
-                        <div class="about-team-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">J</div>
-                        <div>
-                            <div class="about-team-name">Jingbin Qian</div>
-                            <div class="about-team-role" data-i18n="about.role.founder">Founder & Developer</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- 打赏 -->
             <div class="about-donate-section">
                 <h4 data-i18n="about.support">Support Us</h4>
                 <p class="about-donate-text" data-i18n="about.support.desc">If you enjoy SoulLink, consider buying us a coffee!</p>
                 <div class="about-donate-buttons">
-                    <a href="https://ko-fi.com/soulforgetech" target="_blank" class="about-donate-btn">
-                        <span>☕</span> Ko-fi
-                    </a>
-                    <button class="about-donate-btn wechat" onclick="toggleDonateQR()">
-                        <span>💚</span> <span data-i18n="about.wechat">WeChat Pay</span>
+                    <button class="about-donate-btn" onclick="showDonateQR('zelle')" data-active="false">
+                        <span>💵</span> Zelle
+                    </button>
+                    <button class="about-donate-btn" onclick="showDonateQR('wechat')" data-active="false">
+                        <span>💚</span> <span data-i18n="about.wechat">WeChat</span>
+                    </button>
+                    <button class="about-donate-btn" onclick="showDonateQR('alipay')" data-active="false">
+                        <span>🔵</span> <span data-i18n="about.alipay">Alipay</span>
                     </button>
                 </div>
-                <div class="about-donate-qr hidden" id="donate-qr">
-                    <p data-i18n="about.scan.qr">Scan to donate via WeChat</p>
-                    <div class="about-qr-placeholder" data-i18n="about.qr.placeholder">QR code coming soon</div>
+                <div class="about-donate-qr-container hidden" id="donate-qr-container">
+                    <img id="donate-qr-img" class="about-donate-qr-img" src="" alt="QR Code">
                 </div>
             </div>
 
@@ -3046,7 +3023,6 @@
             <!-- 意见反馈 -->
             <div class="about-feedback-section">
                 <h4 data-i18n="about.feedback">Feedback</h4>
-                <p class="about-feedback-desc" data-i18n="about.feedback.desc">We'd love to hear your thoughts, suggestions, or bug reports!</p>
                 <div class="about-feedback-type">
                     <button class="feedback-type-btn active" data-type="suggestion" onclick="selectFeedbackType(this)">
                         <span>💡</span> <span data-i18n="about.feedback.suggestion">Suggestion</span>
@@ -3058,7 +3034,7 @@
                         <span>💬</span> <span data-i18n="about.feedback.other">Other</span>
                     </button>
                 </div>
-                <textarea id="feedback-text" class="about-feedback-textarea" rows="4" maxlength="1000" data-i18n="about.feedback.placeholder" data-i18n-attr="placeholder" placeholder="Tell us what you think..."></textarea>
+                <textarea id="feedback-text" class="about-feedback-textarea" rows="3" maxlength="1000" data-i18n="about.feedback.placeholder" data-i18n-attr="placeholder" placeholder="Tell us what you think..."></textarea>
                 <div class="about-feedback-footer">
                     <span class="feedback-char-count" id="feedback-char-count">0/1000</span>
                     <button class="about-feedback-submit" onclick="submitFeedback()" data-i18n="about.feedback.submit">Submit Feedback</button>
@@ -3069,10 +3045,8 @@
             </div>
 
             <div class="about-footer">
-                <p>© 2025 SoulForge Tech. All rights reserved.</p>
-                <div class="about-links">
-                    <a href="mailto:contact@soulforgetech.com">📧 contact@soulforgetech.com</a>
-                </div>
+                <p>© 2025 SoulForge Tech</p>
+                <a href="mailto:contact@soulforgetech.com">contact@soulforgetech.com</a>
             </div>
         </div>
     </div>
@@ -3416,9 +3390,8 @@
                 'about.role.founder': 'Founder & Developer',
                 'about.support': 'Support Us',
                 'about.support.desc': 'If you enjoy SoulLink, consider buying us a coffee!',
-                'about.wechat': 'WeChat Pay',
-                'about.scan.qr': 'Scan to donate via WeChat',
-                'about.qr.placeholder': 'QR code coming soon',
+                'about.wechat': 'WeChat',
+                'about.alipay': 'Alipay',
                 'about.feedback': 'Feedback',
                 'about.feedback.desc': "We'd love to hear your thoughts, suggestions, or bug reports!",
                 'about.feedback.suggestion': 'Suggestion',
@@ -3511,9 +3484,8 @@
                 'about.role.founder': '创始人 & 开发者',
                 'about.support': '支持我们',
                 'about.support.desc': '如果你喜欢 SoulLink，可以请我们喝杯咖啡！',
-                'about.wechat': '微信打赏',
-                'about.scan.qr': '扫码打赏',
-                'about.qr.placeholder': '二维码即将上线',
+                'about.wechat': '微信',
+                'about.alipay': '支付宝',
                 'about.feedback': '意见反馈',
                 'about.feedback.desc': '我们非常期待听到你的想法、建议或问题反馈！',
                 'about.feedback.suggestion': '建议',
@@ -4887,8 +4859,27 @@
             document.getElementById('feedback-char-count').textContent = `${this.value.length}/1000`;
         });
 
-        function toggleDonateQR() {
-            document.getElementById('donate-qr').classList.toggle('hidden');
+        function showDonateQR(type) {
+            const container = document.getElementById('donate-qr-container');
+            const img = document.getElementById('donate-qr-img');
+            const qrMap = {
+                zelle: 'paytous/zelle.jpg',
+                wechat: 'paytous/wechat.jpg',
+                alipay: 'paytous/alipay.jpg'
+            };
+            // Toggle buttons
+            document.querySelectorAll('.about-donate-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = event.currentTarget;
+
+            if (img.dataset.current === type && !container.classList.contains('hidden')) {
+                container.classList.add('hidden');
+                img.dataset.current = '';
+                return;
+            }
+            activeBtn.classList.add('active');
+            img.src = qrMap[type];
+            img.dataset.current = type;
+            container.classList.remove('hidden');
         }
 
         async function submitFeedback() {
