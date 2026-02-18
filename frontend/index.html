@@ -4481,8 +4481,27 @@
 
                     closeRenameModal();
 
-                    // 改名后自动开始新对话，让 AI 用新名字
-                    await createNewConversation();
+                    // 静默通知 AI 名字已更改（不显示在聊天里）
+                    const lang = state.language || 'en';
+                    const silentMsg = lang === 'zh-CN'
+                        ? `[系统通知：用户已将你的名字改为「${newName}」，从现在起你叫${newName}，请用新名字回应]`
+                        : `[System notice: The user has renamed you to "${newName}". From now on your name is ${newName}. Please respond with your new name.]`;
+                    try {
+                        await fetch(`${CONFIG.API_BASE_URL}/api/chat`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${state.token}`
+                            },
+                            body: JSON.stringify({
+                                message: silentMsg,
+                                conversation_id: state.currentConversationId,
+                                silent: true
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('Silent rename notification failed:', e);
+                    }
                 } else {
                     const err = await res.json();
                     alert(err.error || 'Failed to update name');
