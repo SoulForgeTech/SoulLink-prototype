@@ -64,6 +64,17 @@ def home():
     })
 
 
+@app.route("/admin")
+def admin_panel():
+    """管理员面板"""
+    admin_html_path = os.path.join(os.path.dirname(__file__), "admin_panel.html")
+    try:
+        with open(admin_html_path, "r", encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
+    except FileNotFoundError:
+        return "Admin panel not found", 404
+
+
 @app.route("/health")
 def health():
     """详细健康检查"""
