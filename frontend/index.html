@@ -3073,12 +3073,12 @@
                 'settings.title': 'Profile Settings',
                 'settings.upload': 'Upload',
                 'settings.color': 'Or choose a color:',
-                'settings.nickname': 'Nickname (How Abigail calls you)',
+                'settings.nickname': 'Nickname (How {companion} calls you)',
                 'settings.nickname.placeholder': 'Your nickname',
                 'settings.email': 'Email',
                 'settings.email.hint': 'Email cannot be changed',
                 'settings.model': 'AI Model',
-                'settings.model.hint': 'Choose the AI model that powers Abigail',
+                'settings.model.hint': 'Choose the AI model that powers {companion}',
                 'settings.cancel': 'Cancel',
                 'settings.save': 'Save Changes',
                 'sidebar.newchat': 'New Chat',
@@ -3147,12 +3147,12 @@
                 'settings.title': '个人设置',
                 'settings.upload': '上传',
                 'settings.color': '或选择一个颜色：',
-                'settings.nickname': '昵称（Abigail怎么称呼你）',
+                'settings.nickname': '昵称（{companion}怎么称呼你）',
                 'settings.nickname.placeholder': '你的昵称',
                 'settings.email': '邮箱',
                 'settings.email.hint': '邮箱不能修改',
                 'settings.model': 'AI 模型',
-                'settings.model.hint': '选择驱动 Abigail 的AI模型',
+                'settings.model.hint': '选择驱动 {companion} 的AI模型',
                 'settings.cancel': '取消',
                 'settings.save': '保存修改',
                 'sidebar.newchat': '新对话',
@@ -3195,7 +3195,11 @@
 
         function t(key) {
             const lang = state.language || 'en';
-            return TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+            let text = TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en']?.[key] || key;
+            // 动态替换 AI 昵称
+            const cname = state.user?.settings?.companion_name || 'Abigail';
+            text = text.replace(/\{companion\}/g, cname);
+            return text;
         }
 
         function applyLanguage() {
@@ -4320,6 +4324,7 @@
                         state.user.settings.companion_name = data.companionNameChanged;
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
                         document.getElementById('companion-name-display').textContent = data.companionNameChanged;
+                        applyLanguage(); // 同步更新设置页面等处的名字
                     }
 
                     // 更新本地消息记录
@@ -4471,6 +4476,7 @@
 
                     // 更新 UI
                     document.getElementById('companion-name-display').textContent = newName;
+                    applyLanguage(); // 刷新所有含 {companion} 的文字
 
                     closeRenameModal();
                 } else {
