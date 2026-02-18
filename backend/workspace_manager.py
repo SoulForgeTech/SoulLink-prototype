@@ -151,7 +151,7 @@ class WorkspaceManager:
         # 在 AnythingLLM 中创建 workspace
         try:
             api = self._get_api_client(slug)
-            anythingllm_result = self._create_anythingllm_workspace(api, slug, user["name"])
+            anythingllm_result = self._create_anythingllm_workspace(api, slug, user["name"], user["email"])
 
             if not anythingllm_result["success"]:
                 return {
@@ -189,7 +189,8 @@ class WorkspaceManager:
         self,
         api: AnythingLLMAPI,
         slug: str,
-        user_name: str
+        user_name: str,
+        email: str = ""
     ) -> Dict[str, Any]:
         """
         在 AnythingLLM 中创建新的 workspace 并配置默认设置
@@ -208,8 +209,10 @@ class WorkspaceManager:
 
         # Step 1: 创建 workspace
         create_url = f"{self.anythingllm_base_url}/api/v1/workspace/new"
+        # 使用邮箱作为workspace名字，方便管理
+        workspace_name = email if email else f"{user_name}'s Workspace"
         payload = {
-            "name": f"{user_name}'s Workspace",
+            "name": workspace_name,
         }
 
         try:
@@ -267,24 +270,27 @@ class WorkspaceManager:
 - **偶尔任性**：可以撒娇、可以小小地闹脾气、可以故意不回答某些问题。
 - **Occasionally willful**: You can be playful, throw little tantrums, or deliberately dodge certain questions."""
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None) -> str:
+    DEFAULT_COMPANION_NAME = "Abigail"
+
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None) -> str:
         """构建完整的 system prompt"""
         system_prompt_template = self._load_system_prompt_template()
         system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
         system_prompt = system_prompt.replace("{{language}}", language)
         system_prompt = system_prompt.replace("{{persona}}", persona or self.DEFAULT_PERSONA)
+        system_prompt = system_prompt.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
         # 替换当前模型名称
         model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
         system_prompt = system_prompt.replace("{{current_model}}", model_display)
         return system_prompt
 
-    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None) -> bool:
+    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None) -> bool:
         """配置 workspace 的 LLM 设置和 system prompt"""
         import requests
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
 
-        system_prompt = self._build_system_prompt(user_name, language, persona)
+        system_prompt = self._build_system_prompt(user_name, language, persona, companion_name=companion_name)
 
         chat_mode = os.getenv("ANYTHINGLLM_CHAT_MODE", "chat")
         temperature = float(os.getenv("ANYTHINGLLM_TEMPERATURE", "0.7"))
@@ -304,9 +310,9 @@ class WorkspaceManager:
             print(f"Error configuring workspace: {e}")
             return False
 
-    def update_system_prompt(self, user_id: ObjectId, new_name: str, language: str = None, persona: str = None) -> Dict[str, Any]:
+    def update_system_prompt(self, user_id: ObjectId, new_name: str, language: str = None, persona: str = None, companion_name: str = None) -> Dict[str, Any]:
         """
-        更新用户 workspace 的 system prompt（当用户改昵称/语言/性格时调用）
+        更新用户 workspace 的 system prompt（当用户改昵称/语言/性格/AI昵称时调用）
         """
         import requests
 
@@ -325,23 +331,27 @@ class WorkspaceManager:
                 "error": "Workspace slug not found"
             }
 
+        user = db.db["users"].find_one({"_id": user_id})
+
         # 如果没有传入 language，从用户设置中获取
         if language is None:
-            user = db.db["users"].find_one({"_id": user_id})
             language = user.get("settings", {}).get("language", "en") if user else "en"
 
         # 如果没有传入 persona，从用户的性格测试结果中获取
         if persona is None:
-            user = db.db["users"].find_one({"_id": user_id})
             if user and user.get("personality_test", {}).get("completed"):
                 persona = user["personality_test"].get("personality_profile")
+
+        # 如果没有传入 companion_name，从用户设置中获取
+        if companion_name is None:
+            companion_name = user.get("settings", {}).get("companion_name") if user else None
 
         headers = {
             "Authorization": f"Bearer {self.anythingllm_api_key}",
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona)
+        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {
@@ -406,7 +416,8 @@ class WorkspaceManager:
             user_name = user.get("name", "Friend")
             language = user.get("settings", {}).get("language", "en")
             persona = user.get("persona")
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"])
+            companion_name = user.get("settings", {}).get("companion_name")
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name)
             payload["openAiPrompt"] = system_prompt
 
         try:
