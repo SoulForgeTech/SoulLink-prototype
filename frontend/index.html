@@ -2832,6 +2832,15 @@
             color: #38a169; font-size: 0.85rem; margin-top: 10px;
         }
 
+        .about-survey-section { margin-bottom: 20px; }
+        .about-survey-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .about-survey-text { font-size: 0.8rem; color: #718096; margin-bottom: 12px; }
+        .about-survey-img {
+            width: 100%; border-radius: 12px; cursor: pointer;
+            transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .about-survey-img:hover { transform: scale(1.02); }
+
         .about-footer { text-align: center; color: #a0aec0; font-size: 0.75rem; margin-top: 10px; }
         .about-footer p { margin: 0 0 6px; }
         .about-links a { color: #667eea; text-decoration: none; font-size: 0.75rem; }
@@ -3212,6 +3221,15 @@
                 <div class="feedback-success hidden" id="feedback-success">
                     <span>✅</span> <span data-i18n="about.feedback.thanks">Thank you for your feedback!</span>
                 </div>
+            </div>
+
+            <div class="about-divider"></div>
+
+            <!-- 调查问卷 -->
+            <div class="about-survey-section">
+                <h4 data-i18n="about.survey">Survey</h4>
+                <p class="about-survey-text" data-i18n="about.survey.desc">Help us improve — take our quick 4-5 min survey!</p>
+                <img src="images/survey.png" alt="Survey QR Code" class="about-survey-img" onclick="window.open(this.src, '_blank')">
             </div>
 
             <div class="about-footer">
@@ -3599,6 +3617,8 @@
                 'about.feedback.placeholder': 'Tell us what you think...',
                 'about.feedback.submit': 'Submit Feedback',
                 'about.feedback.thanks': 'Thank you for your feedback!',
+                'about.survey': 'Survey',
+                'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -3709,6 +3729,8 @@
                 'about.feedback.placeholder': '说说你的想法...',
                 'about.feedback.submit': '提交反馈',
                 'about.feedback.thanks': '感谢你的反馈！',
+                'about.survey': '调查问卷',
+                'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
             }
         };
 
