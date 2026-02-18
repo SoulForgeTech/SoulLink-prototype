@@ -471,6 +471,117 @@
             text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
         }
 
+        .companion-name-clickable {
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .companion-name-clickable:hover {
+            color: var(--primary-color);
+        }
+        .companion-name-clickable:hover::after {
+            content: '✏️';
+            font-size: 0.7rem;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* 改名弹窗 */
+        .rename-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s;
+        }
+        .rename-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .rename-modal {
+            background: rgba(40, 30, 60, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            width: 360px;
+            max-width: 90vw;
+            transform: scale(0.9);
+            transition: transform 0.25s;
+        }
+        .rename-modal-overlay.active .rename-modal {
+            transform: scale(1);
+        }
+        .rename-modal h3 {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 6px;
+        }
+        .rename-modal p {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+        .rename-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .rename-input:focus {
+            border-color: var(--primary-light);
+        }
+        .rename-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .rename-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .rename-btn-cancel {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rename-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .rename-btn-save {
+            flex: 1;
+            padding: 10px;
+            background: linear-gradient(135deg, #9c6aff, #7c3aed);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rename-btn-save:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
         .companion-status {
             font-size: 0.9rem;
             color: #4a5568;
@@ -2688,6 +2799,21 @@
         </div>
     </div>
 
+    <!-- AI改名弹窗 -->
+    <div class="rename-modal-overlay" id="rename-modal">
+        <div class="rename-modal">
+            <h3 data-i18n="rename.title">Rename your companion</h3>
+            <p data-i18n="rename.subtitle">Give her a name you like</p>
+            <input type="text" class="rename-input" id="rename-input"
+                   maxlength="20" placeholder="Abigail"
+                   onkeydown="if(event.key==='Enter')saveCompanionName()">
+            <div class="rename-btns">
+                <button class="rename-btn-cancel" onclick="closeRenameModal()" data-i18n="rename.cancel">Cancel</button>
+                <button class="rename-btn-save" onclick="saveCompanionName()" data-i18n="rename.save">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 设置模态框 -->
     <div id="settings-modal" class="modal hidden">
         <div class="modal-overlay" onclick="closeSettingsModal()"></div>
@@ -2857,7 +2983,7 @@
                 </button>
                 <img class="companion-avatar" src="images/avatar.png" alt="Companion">
                 <div class="companion-info">
-                    <h2>Abigail</h2>
+                    <h2 id="companion-name-display" class="companion-name-clickable" onclick="openRenameModal()" title="Click to rename">Abigail</h2>
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
@@ -2986,6 +3112,10 @@
                 'tarot.results.title': 'Your Soul Cards',
                 'tarot.start.chat': 'Start Chatting →',
                 'tarot.profile.title': 'Your Companion\'s Personality',
+                'rename.title': 'Rename your companion',
+                'rename.subtitle': 'Give her a name you like',
+                'rename.cancel': 'Cancel',
+                'rename.save': 'Save',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -3056,6 +3186,10 @@
                 'tarot.results.title': '你的灵魂之牌',
                 'tarot.start.chat': '开始聊天 →',
                 'tarot.profile.title': '你的伴侣性格',
+                'rename.title': '给她起个名字',
+                'rename.subtitle': '取一个你喜欢的昵称吧',
+                'rename.cancel': '取消',
+                'rename.save': '保存',
             }
         };
 
@@ -3204,6 +3338,9 @@
                 document.getElementById('user-name').textContent = state.user.name;
                 document.getElementById('user-email').textContent = state.user.email;
                 document.getElementById('user-avatar').src = state.user.avatar_url || 'images/avatar.png';
+                // 显示AI昵称
+                const companionName = state.user.settings?.companion_name || 'Abigail';
+                document.getElementById('companion-name-display').textContent = companionName;
                 updateModelIndicator();
             }
         }
@@ -4288,6 +4425,60 @@
 
         // ==================== 用户设置模态框 ====================
         let pendingAvatarData = null; // 临时存储待保存的头像
+
+        // ==================== AI 改名 ====================
+        function openRenameModal() {
+            const modal = document.getElementById('rename-modal');
+            const input = document.getElementById('rename-input');
+            const currentName = state.user?.settings?.companion_name || 'Abigail';
+            input.value = currentName;
+            modal.classList.add('active');
+            setTimeout(() => input.select(), 100);
+        }
+
+        function closeRenameModal() {
+            document.getElementById('rename-modal').classList.remove('active');
+        }
+
+        async function saveCompanionName() {
+            const input = document.getElementById('rename-input');
+            const newName = input.value.trim();
+            if (!newName || newName.length > 20) return;
+
+            try {
+                const res = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: JSON.stringify({ companion_name: newName })
+                });
+
+                if (res.ok) {
+                    // 更新本地状态
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.companion_name = newName;
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+
+                    // 更新 UI
+                    document.getElementById('companion-name-display').textContent = newName;
+
+                    closeRenameModal();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to update name');
+                }
+            } catch (e) {
+                console.error('Error saving companion name:', e);
+                alert('Network error');
+            }
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('rename-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeRenameModal();
+        });
 
         function openSettingsModal() {
             const modal = document.getElementById('settings-modal');
