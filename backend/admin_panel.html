@@ -6,130 +6,88 @@
     <title>SoulLink Admin Panel</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0f172a; color: #e2e8f0; min-height: 100vh;
-        }
-        .header {
-            background: linear-gradient(135deg, #1e1b4b, #312e81);
-            padding: 20px 32px; border-bottom: 1px solid #334155;
-            display: flex; align-items: center; justify-content: space-between;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 20px 32px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
         .header h1 { font-size: 1.4rem; font-weight: 700; }
         .header h1 span { color: #a78bfa; }
         .header-right { display: flex; align-items: center; gap: 12px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
         .status-text { font-size: 0.8rem; color: #94a3b8; }
 
-        .auth-gate {
-            max-width: 400px; margin: 80px auto; padding: 32px;
-            background: #1e293b; border-radius: 16px; border: 1px solid #334155;
-        }
+        .auth-gate { max-width: 400px; margin: 80px auto; padding: 32px; background: #1e293b; border-radius: 16px; border: 1px solid #334155; }
         .auth-gate h2 { margin-bottom: 16px; font-size: 1.1rem; }
-        .auth-input {
-            width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155;
-            border-radius: 8px; color: #e2e8f0; font-size: 0.9rem; margin-bottom: 12px;
-        }
+        .auth-input { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 0.9rem; margin-bottom: 12px; }
         .auth-input:focus { outline: none; border-color: #7c3aed; }
-        .auth-btn {
-            width: 100%; padding: 10px; background: #7c3aed; color: white;
-            border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
-            cursor: pointer; transition: background 0.2s;
-        }
+        .auth-btn { width: 100%; padding: 10px; background: #7c3aed; color: white; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
         .auth-btn:hover { background: #6d28d9; }
 
         .container { max-width: 960px; margin: 0 auto; padding: 24px; }
 
-        /* Stats Cards */
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-            margin-bottom: 28px;
-        }
-        .stat-card {
-            background: #1e293b; border-radius: 12px; padding: 20px;
-            border: 1px solid #334155;
-        }
+        /* Global Token Bar */
+        .token-bar { background: #1e293b; border-radius: 12px; padding: 16px 20px; border: 1px solid #334155; margin-bottom: 20px; }
+        .token-bar-title { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .token-bar-row { display: flex; gap: 8px; }
+        .token-input { flex: 1; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 0.8rem; font-family: 'SF Mono', 'Fira Code', monospace; }
+        .token-input:focus { outline: none; border-color: #7c3aed; }
+        .token-status { font-size: 0.75rem; margin-top: 6px; }
+        .token-status.valid { color: #34d399; }
+        .token-status.invalid { color: #f87171; }
+        .token-status.none { color: #94a3b8; }
+        .token-verify-btn { padding: 8px 16px; background: #334155; color: #e2e8f0; border: none; border-radius: 6px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
+        .token-verify-btn:hover { background: #475569; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stat-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
         .stat-card .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
         .stat-card .value { font-size: 2rem; font-weight: 700; color: #a78bfa; margin-top: 4px; }
 
-        /* API Section */
+        /* Section */
         .section { margin-bottom: 24px; }
-        .section-title {
-            font-size: 0.85rem; color: #94a3b8; text-transform: uppercase;
-            letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px;
-            border-bottom: 1px solid #1e293b;
-        }
+        .section-title { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
 
-        .api-card {
-            background: #1e293b; border-radius: 12px; padding: 20px;
-            border: 1px solid #334155; margin-bottom: 12px;
-            transition: border-color 0.2s;
-        }
+        /* API Card */
+        .api-card { background: #1e293b; border-radius: 12px; padding: 16px 20px; border: 1px solid #334155; margin-bottom: 10px; }
         .api-card:hover { border-color: #475569; }
-        .api-card-header {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        .api-card-left { display: flex; align-items: center; gap: 10px; }
-        .method-badge {
-            padding: 3px 10px; border-radius: 6px; font-size: 0.7rem;
-            font-weight: 700; letter-spacing: 0.5px;
-        }
+        .api-card-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .api-card-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .method-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; flex-shrink: 0; }
         .method-GET { background: #064e3b; color: #34d399; }
         .method-POST { background: #1e1b4b; color: #a78bfa; }
         .method-PUT { background: #78350f; color: #fbbf24; }
         .method-DELETE { background: #7f1d1d; color: #f87171; }
         .api-path { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem; color: #e2e8f0; }
-        .api-desc { font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px; }
+        .api-desc { font-size: 0.78rem; color: #64748b; margin-left: 10px; }
+        .auth-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #78350f; color: #fbbf24; margin-left: 8px; flex-shrink: 0; }
+        .auth-tag.admin { background: #7f1d1d; color: #f87171; }
+        .auth-tag.none { background: #064e3b; color: #34d399; }
+        .toggle-icon { color: #475569; font-size: 1.2rem; transition: transform 0.2s; flex-shrink: 0; margin-left: 8px; }
+        .api-card.open .toggle-icon { transform: rotate(180deg); }
 
-        .api-card-body { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155; }
+        .api-card-body { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid #334155; }
         .api-card.open .api-card-body { display: block; }
 
-        .param-group { margin-bottom: 12px; }
-        .param-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
-        .param-input {
-            width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #334155;
-            border-radius: 6px; color: #e2e8f0; font-size: 0.85rem;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-        }
+        .param-group { margin-bottom: 10px; }
+        .param-label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 4px; }
+        .param-input { width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; font-size: 0.82rem; font-family: 'SF Mono', 'Fira Code', monospace; }
         .param-input:focus { outline: none; border-color: #7c3aed; }
-        textarea.param-input { min-height: 80px; resize: vertical; }
+        textarea.param-input { min-height: 70px; resize: vertical; }
+        select.param-input { cursor: pointer; }
 
-        .send-btn {
-            padding: 8px 20px; background: #7c3aed; color: white; border: none;
-            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-            cursor: pointer; transition: all 0.2s;
-        }
+        .btn-row { display: flex; gap: 8px; align-items: center; }
+        .send-btn { padding: 8px 20px; background: #7c3aed; color: white; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
         .send-btn:hover { background: #6d28d9; }
         .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .send-btn.loading { background: #4c1d95; }
 
-        .response-box {
-            margin-top: 12px; background: #0f172a; border-radius: 8px;
-            padding: 14px; font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.8rem; line-height: 1.5; overflow-x: auto;
-            max-height: 400px; overflow-y: auto; display: none;
-            border: 1px solid #334155;
-        }
+        .response-box { margin-top: 12px; background: #0f172a; border-radius: 8px; padding: 14px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; line-height: 1.5; overflow-x: auto; max-height: 400px; overflow-y: auto; display: none; border: 1px solid #334155; }
         .response-box.visible { display: block; }
-        .response-box .status { margin-bottom: 8px; font-weight: 600; }
-        .response-box .status.ok { color: #34d399; }
-        .response-box .status.err { color: #f87171; }
+        .response-box .res-status { margin-bottom: 8px; font-weight: 600; }
+        .response-box .res-status.ok { color: #34d399; }
+        .response-box .res-status.err { color: #f87171; }
         .response-box pre { white-space: pre-wrap; word-break: break-all; color: #cbd5e1; }
 
-        .toggle-btn {
-            background: none; border: 1px solid #475569; color: #94a3b8;
-            padding: 4px 12px; border-radius: 6px; font-size: 0.75rem;
-            cursor: pointer; transition: all 0.2s;
-        }
-        .toggle-btn:hover { border-color: #7c3aed; color: #a78bfa; }
-
         .hidden { display: none !important; }
-
-        @media (max-width: 640px) {
-            .stats-grid { grid-template-columns: 1fr; }
-            .container { padding: 16px; }
-        }
+        @media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr; } .container { padding: 16px; } .api-desc { display: none; } }
     </style>
 </head>
 <body>
@@ -151,363 +109,157 @@
     <!-- Main Content -->
     <div id="main-content" class="container hidden">
 
+        <!-- Global JWT Token -->
+        <div class="token-bar">
+            <div class="token-bar-title">🔑 User JWT Token <span style="color:#64748b;font-weight:400">(for authenticated endpoints)</span></div>
+            <div class="token-bar-row">
+                <input class="token-input" id="global-token" placeholder="Paste a user JWT token here to test authenticated APIs...">
+                <button class="token-verify-btn" onclick="verifyToken()">Verify</button>
+            </div>
+            <div class="token-status none" id="token-status">No token set — authenticated endpoints will return 401</div>
+        </div>
+
         <!-- Stats -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">Users</div>
-                <div class="value" id="stat-users">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Workspaces</div>
-                <div class="value" id="stat-workspaces">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Feedbacks</div>
-                <div class="value" id="stat-feedbacks">-</div>
-            </div>
+            <div class="stat-card"><div class="label">Users</div><div class="value" id="stat-users">-</div></div>
+            <div class="stat-card"><div class="label">Workspaces</div><div class="value" id="stat-workspaces">-</div></div>
+            <div class="stat-card"><div class="label">Feedbacks</div><div class="value" id="stat-feedbacks">-</div></div>
         </div>
 
         <!-- Admin APIs -->
         <div class="section">
             <div class="section-title">🛠 Admin Operations</div>
-
-            <div class="api-card" id="card-sync-all">
-                <div class="api-card-header" onclick="toggleCard('card-sync-all')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST">POST</span>
-                        <span class="api-path">/api/admin/sync-all</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">一键同步所有用户的 System Prompt + 知识库文档</div>
-                <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('POST', '/api/admin/sync-all', null, this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-sync-all"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-sync-prompts">
-                <div class="api-card-header" onclick="toggleCard('card-sync-prompts')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST">POST</span>
-                        <span class="api-path">/api/admin/sync-prompts</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">只同步 System Prompt（保留用户性格、语言、AI昵称）</div>
-                <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('POST', '/api/admin/sync-prompts', null, this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-sync-prompts"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-sync-docs">
-                <div class="api-card-header" onclick="toggleCard('card-sync-docs')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST">POST</span>
-                        <span class="api-path">/api/admin/sync-documents</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">增量同步知识库文档（只添加缺失文档，不删除）</div>
-                <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('POST', '/api/admin/sync-documents', null, this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-sync-docs"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-stats">
-                <div class="api-card-header" onclick="toggleCard('card-stats')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-GET">GET</span>
-                        <span class="api-path">/api/admin/stats</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">获取系统统计数据</div>
-                <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('GET', '/api/admin/stats', null, this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-stats"></div>
-                </div>
-            </div>
+            <div class="api-card" id="c-sync-all"><div class="api-card-header" onclick="toggle('c-sync-all')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/admin/sync-all</span><span class="api-desc">一键同步 Prompt + 知识库</span><span class="auth-tag admin">ADMIN</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('POST','/api/admin/sync-all',null,this,'admin')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-sync-p"><div class="api-card-header" onclick="toggle('c-sync-p')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/admin/sync-prompts</span><span class="api-desc">同步 System Prompt</span><span class="auth-tag admin">ADMIN</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('POST','/api/admin/sync-prompts',null,this,'admin')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-sync-d"><div class="api-card-header" onclick="toggle('c-sync-d')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/admin/sync-documents</span><span class="api-desc">增量同步知识库文档</span><span class="auth-tag admin">ADMIN</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('POST','/api/admin/sync-documents',null,this,'admin')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-stats"><div class="api-card-header" onclick="toggle('c-stats')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/admin/stats</span><span class="api-desc">系统统计</span><span class="auth-tag admin">ADMIN</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/admin/stats',null,this,'admin')">Execute</button><div class="response-box"></div></div></div>
         </div>
 
-        <!-- Public APIs -->
+        <!-- No Auth APIs -->
         <div class="section">
-            <div class="section-title">📡 Public API Endpoints</div>
+            <div class="section-title">🌐 Public (No Auth)</div>
+            <div class="api-card" id="c-health"><div class="api-card-header" onclick="toggle('c-health')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/health</span><span class="api-desc">健康检查</span><span class="auth-tag none">PUBLIC</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/health',null,this,'none')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-root"><div class="api-card-header" onclick="toggle('c-root')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/</span><span class="api-desc">服务状态</span><span class="auth-tag none">PUBLIC</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/',null,this,'none')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-gurl"><div class="api-card-header" onclick="toggle('c-gurl')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/auth/google/url</span><span class="api-desc">Google OAuth URL</span><span class="auth-tag none">PUBLIC</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/auth/google/url',null,this,'none')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-register"><div class="api-card-header" onclick="toggle('c-register')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/auth/register</span><span class="api-desc">邮箱注册</span><span class="auth-tag none">PUBLIC</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><div class="param-group"><div class="param-label">Body (JSON)</div><textarea class="param-input" id="body-register">{"email":"test@test.com","password":"123456","name":"Test"}</textarea></div><button class="send-btn" onclick="fireBody('POST','/api/auth/register','body-register',this,'none')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-login"><div class="api-card-header" onclick="toggle('c-login')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/auth/login</span><span class="api-desc">邮箱登录</span><span class="auth-tag none">PUBLIC</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><div class="param-group"><div class="param-label">Body (JSON)</div><textarea class="param-input" id="body-login">{"email":"test@test.com","password":"123456"}</textarea></div><button class="send-btn" onclick="fireBody('POST','/api/auth/login','body-login',this,'none')">Execute</button><div class="response-box"></div></div></div>
+        </div>
 
-            <div class="api-card" id="card-health">
-                <div class="api-card-header" onclick="toggleCard('card-health')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-GET">GET</span>
-                        <span class="api-path">/health</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">服务健康检查</div>
-                <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('GET', '/health', null, this, false)">🚀 Execute</button>
-                    <div class="response-box" id="resp-health"></div>
-                </div>
-            </div>
+        <!-- Authenticated APIs -->
+        <div class="section">
+            <div class="section-title">🔒 Authenticated (Requires JWT Token)</div>
+            <div class="api-card" id="c-verify"><div class="api-card-header" onclick="toggle('c-verify')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/auth/verify</span><span class="api-desc">验证 Token</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/auth/verify',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-models"><div class="api-card-header" onclick="toggle('c-models')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/models</span><span class="api-desc">AI 模型列表</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/models',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-profile"><div class="api-card-header" onclick="toggle('c-profile')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/user/profile</span><span class="api-desc">用户资料</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/user/profile',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-workspace"><div class="api-card-header" onclick="toggle('c-workspace')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/workspace</span><span class="api-desc">工作空间信息</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/workspace',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-convs"><div class="api-card-header" onclick="toggle('c-convs')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/conversations</span><span class="api-desc">会话列表</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/conversations',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-ptest"><div class="api-card-header" onclick="toggle('c-ptest')"><div class="api-card-left"><span class="method-badge method-GET">GET</span><span class="api-path">/api/personality-test/status</span><span class="api-desc">性格测试状态</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><button class="send-btn" onclick="fire('GET','/api/personality-test/status',null,this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-chat"><div class="api-card-header" onclick="toggle('c-chat')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/chat</span><span class="api-desc">发送聊天消息</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><div class="param-group"><div class="param-label">Body (JSON)</div><textarea class="param-input" id="body-chat">{"message":"hello"}</textarea></div><button class="send-btn" onclick="fireBody('POST','/api/chat','body-chat',this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-feedback"><div class="api-card-header" onclick="toggle('c-feedback')"><div class="api-card-left"><span class="method-badge method-POST">POST</span><span class="api-path">/api/feedback</span><span class="api-desc">提交反馈</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><div class="param-group"><div class="param-label">Body (JSON)</div><textarea class="param-input" id="body-feedback">{"type":"suggestion","content":"Great app!"}</textarea></div><button class="send-btn" onclick="fireBody('POST','/api/feedback','body-feedback',this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+            <div class="api-card" id="c-settings"><div class="api-card-header" onclick="toggle('c-settings')"><div class="api-card-left"><span class="method-badge method-PUT">PUT</span><span class="api-path">/api/user/settings</span><span class="api-desc">更新用户设置</span></div><span class="toggle-icon">▾</span></div><div class="api-card-body"><div class="param-group"><div class="param-label">Body (JSON)</div><textarea class="param-input" id="body-settings">{"language":"zh-CN"}</textarea></div><button class="send-btn" onclick="fireBody('PUT','/api/user/settings','body-settings',this,'jwt')">Execute</button><div class="response-box"></div></div></div>
+        </div>
 
-            <div class="api-card" id="card-models">
-                <div class="api-card-header" onclick="toggleCard('card-models')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-GET">GET</span>
-                        <span class="api-path">/api/models</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">获取可用 AI 模型列表</div>
+        <!-- Custom Request -->
+        <div class="section">
+            <div class="section-title">🧪 Custom Request</div>
+            <div class="api-card" id="c-custom">
+                <div class="api-card-header" onclick="toggle('c-custom')"><div class="api-card-left"><span class="method-badge method-POST" id="custom-badge">POST</span><span class="api-path">自定义请求</span></div><span class="toggle-icon">▾</span></div>
                 <div class="api-card-body">
-                    <button class="send-btn" onclick="sendRequest('GET', '/api/models', null, this, false)">🚀 Execute</button>
-                    <div class="response-box" id="resp-models"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-chat">
-                <div class="api-card-header" onclick="toggleCard('card-chat')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST">POST</span>
-                        <span class="api-path">/api/chat</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">发送聊天消息（需要用户 Token）</div>
-                <div class="api-card-body">
-                    <div class="param-group">
-                        <div class="param-label">Authorization Token</div>
-                        <input class="param-input" id="chat-token" placeholder="Bearer eyJ...">
-                    </div>
-                    <div class="param-group">
-                        <div class="param-label">Message</div>
-                        <input class="param-input" id="chat-message" placeholder="hello">
-                    </div>
-                    <button class="send-btn" onclick="sendChat(this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-chat"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-feedback">
-                <div class="api-card-header" onclick="toggleCard('card-feedback')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST">POST</span>
-                        <span class="api-path">/api/feedback</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">提交用户反馈（需要用户 Token）</div>
-                <div class="api-card-body">
-                    <div class="param-group">
-                        <div class="param-label">Authorization Token</div>
-                        <input class="param-input" id="feedback-token" placeholder="Bearer eyJ...">
-                    </div>
-                    <div class="param-group">
-                        <div class="param-label">Body (JSON)</div>
-                        <textarea class="param-input" id="feedback-body">{"type": "suggestion", "content": "test feedback"}</textarea>
-                    </div>
-                    <button class="send-btn" onclick="sendCustom('POST', '/api/feedback', 'feedback-token', 'feedback-body', this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-feedback"></div>
-                </div>
-            </div>
-
-            <div class="api-card" id="card-custom">
-                <div class="api-card-header" onclick="toggleCard('card-custom')">
-                    <div class="api-card-left">
-                        <span class="method-badge method-POST" id="custom-method-badge">POST</span>
-                        <span class="api-path">Custom Request</span>
-                    </div>
-                    <button class="toggle-btn">Test</button>
-                </div>
-                <div class="api-desc">自定义 API 请求</div>
-                <div class="api-card-body">
-                    <div class="param-group">
-                        <div class="param-label">Method</div>
-                        <select class="param-input" id="custom-method" onchange="document.getElementById('custom-method-badge').textContent=this.value;document.getElementById('custom-method-badge').className='method-badge method-'+this.value">
-                            <option>GET</option><option selected>POST</option><option>PUT</option><option>DELETE</option>
-                        </select>
-                    </div>
-                    <div class="param-group">
-                        <div class="param-label">Path</div>
-                        <input class="param-input" id="custom-path" placeholder="/api/...">
-                    </div>
-                    <div class="param-group">
-                        <div class="param-label">Authorization Token (optional)</div>
-                        <input class="param-input" id="custom-token" placeholder="Bearer eyJ...">
-                    </div>
-                    <div class="param-group">
-                        <div class="param-label">Body JSON (optional)</div>
-                        <textarea class="param-input" id="custom-body" placeholder='{"key": "value"}'></textarea>
-                    </div>
-                    <button class="send-btn" onclick="sendCustomRequest(this)">🚀 Execute</button>
-                    <div class="response-box" id="resp-custom"></div>
+                    <div class="param-group"><div class="param-label">Method</div><select class="param-input" id="custom-method" onchange="document.getElementById('custom-badge').textContent=this.value;document.getElementById('custom-badge').className='method-badge method-'+this.value"><option>GET</option><option selected>POST</option><option>PUT</option><option>DELETE</option></select></div>
+                    <div class="param-group"><div class="param-label">Path</div><input class="param-input" id="custom-path" placeholder="/api/..."></div>
+                    <div class="param-group"><div class="param-label">Auth Mode</div><select class="param-input" id="custom-auth"><option value="admin">Admin Secret</option><option value="jwt">JWT Token</option><option value="both">Both</option><option value="none">None</option></select></div>
+                    <div class="param-group"><div class="param-label">Body (JSON, optional)</div><textarea class="param-input" id="custom-body" placeholder='{"key":"value"}'></textarea></div>
+                    <button class="send-btn" onclick="fireCustom(this)">Execute</button>
+                    <div class="response-box"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const BASE = window.location.origin;
+        const B = window.location.origin;
         let adminSecret = '';
+
+        function getToken() { return document.getElementById('global-token').value.trim(); }
 
         function authenticate() {
             adminSecret = document.getElementById('admin-secret').value;
             if (!adminSecret) return;
-            // Verify by calling stats
-            fetch(BASE + '/api/admin/stats', {
-                headers: { 'X-Admin-Secret': adminSecret }
-            }).then(r => {
-                if (r.ok) {
-                    document.getElementById('auth-gate').classList.add('hidden');
-                    document.getElementById('main-content').classList.remove('hidden');
-                    loadStats();
-                    checkHealth();
-                } else {
-                    alert('Invalid admin secret');
-                }
-            }).catch(() => alert('Connection failed'));
+            fetch(B+'/api/admin/stats',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>{
+                if(r.ok){document.getElementById('auth-gate').classList.add('hidden');document.getElementById('main-content').classList.remove('hidden');loadStats();checkHealth()}
+                else alert('Invalid admin secret')
+            }).catch(()=>alert('Connection failed'));
         }
 
         function loadStats() {
-            fetch(BASE + '/api/admin/stats', {
-                headers: { 'X-Admin-Secret': adminSecret }
-            }).then(r => r.json()).then(data => {
-                document.getElementById('stat-users').textContent = data.users || 0;
-                document.getElementById('stat-workspaces').textContent = data.workspaces || 0;
-                document.getElementById('stat-feedbacks').textContent = data.feedbacks || 0;
+            fetch(B+'/api/admin/stats',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>r.json()).then(d=>{
+                document.getElementById('stat-users').textContent=d.users||0;
+                document.getElementById('stat-workspaces').textContent=d.workspaces||0;
+                document.getElementById('stat-feedbacks').textContent=d.feedbacks||0;
             });
         }
 
         function checkHealth() {
-            fetch(BASE + '/health').then(r => r.json()).then(data => {
-                document.getElementById('status-dot').style.background = '#22c55e';
-                document.getElementById('status-text').textContent = 'Online';
-            }).catch(() => {
-                document.getElementById('status-dot').style.background = '#f87171';
-                document.getElementById('status-text').textContent = 'Offline';
+            fetch(B+'/health').then(r=>r.json()).then(()=>{
+                document.getElementById('status-dot').style.background='#22c55e';
+                document.getElementById('status-text').textContent='Online';
+            }).catch(()=>{
+                document.getElementById('status-dot').style.background='#f87171';
+                document.getElementById('status-text').textContent='Offline';
             });
         }
 
-        function toggleCard(id) {
-            document.getElementById(id).classList.toggle('open');
+        function verifyToken() {
+            const t = getToken();
+            const el = document.getElementById('token-status');
+            if(!t){el.className='token-status none';el.textContent='No token set';return}
+            fetch(B+'/api/auth/verify',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json().then(d=>({ok:r.ok,d}))).then(({ok,d})=>{
+                if(ok){el.className='token-status valid';el.textContent='✓ Valid — User: '+(d.user?.name||d.user?.email||'unknown')}
+                else{el.className='token-status invalid';el.textContent='✗ Invalid — '+(d.error||'token rejected')}
+            }).catch(()=>{el.className='token-status invalid';el.textContent='✗ Connection error'});
         }
 
-        async function sendRequest(method, path, body, btn, useAdmin = true) {
-            const respId = 'resp-' + path.split('/').pop();
-            const respBox = btn.parentElement.querySelector('.response-box');
-            btn.disabled = true; btn.classList.add('loading'); btn.textContent = '⏳ Loading...';
-            respBox.classList.add('visible');
-            respBox.innerHTML = '<div class="status">Sending...</div>';
+        function toggle(id){document.getElementById(id).classList.toggle('open')}
 
+        function buildHeaders(authMode) {
+            const h = {'Content-Type':'application/json'};
+            if(authMode==='admin') h['X-Admin-Secret']=adminSecret;
+            if(authMode==='jwt'){const t=getToken();if(t)h['Authorization']='Bearer '+t}
+            if(authMode==='both'){h['X-Admin-Secret']=adminSecret;const t=getToken();if(t)h['Authorization']='Bearer '+t}
+            return h;
+        }
+
+        async function fire(method, path, body, btn, authMode) {
+            const box = btn.parentElement.querySelector('.response-box');
+            btn.disabled=true; btn.textContent='⏳ Loading...'; box.classList.add('visible');
+            box.innerHTML='<div class="res-status">Sending...</div>';
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (useAdmin) headers['X-Admin-Secret'] = adminSecret;
-
-                const opts = { method, headers };
-                if (body && method !== 'GET') opts.body = JSON.stringify(body);
-
-                const start = Date.now();
-                const resp = await fetch(BASE + path, opts);
-                const ms = Date.now() - start;
-                const data = await resp.json();
-
-                const statusClass = resp.ok ? 'ok' : 'err';
-                respBox.innerHTML = `<div class="status ${statusClass}">HTTP ${resp.status} — ${ms}ms</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
-
-                if (path.includes('stats') || path.includes('sync')) loadStats();
-            } catch (e) {
-                respBox.innerHTML = `<div class="status err">Error: ${e.message}</div>`;
-            }
-            btn.disabled = false; btn.classList.remove('loading'); btn.textContent = '🚀 Execute';
+                const opts = {method, headers:buildHeaders(authMode)};
+                if(body && method!=='GET') opts.body=JSON.stringify(body);
+                const t0=Date.now(); const r=await fetch(B+path,opts); const ms=Date.now()-t0;
+                let data; try{data=await r.json()}catch{data=await r.text()}
+                const cls=r.ok?'ok':'err';
+                box.innerHTML=`<div class="res-status ${cls}">HTTP ${r.status} — ${ms}ms</div><pre>${typeof data==='string'?data:JSON.stringify(data,null,2)}</pre>`;
+                if(path.includes('sync')||path.includes('stats'))loadStats();
+            } catch(e) { box.innerHTML=`<div class="res-status err">Error: ${e.message}</div>` }
+            btn.disabled=false; btn.textContent='Execute';
         }
 
-        async function sendChat(btn) {
-            const token = document.getElementById('chat-token').value;
-            const message = document.getElementById('chat-message').value;
-            const respBox = document.getElementById('resp-chat');
-            if (!message) { alert('Enter a message'); return; }
-
-            btn.disabled = true; btn.classList.add('loading'); btn.textContent = '⏳ Loading...';
-            respBox.classList.add('visible');
-            respBox.innerHTML = '<div class="status">Sending...</div>';
-
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = token.startsWith('Bearer') ? token : 'Bearer ' + token;
-
-                const start = Date.now();
-                const resp = await fetch(BASE + '/api/chat', {
-                    method: 'POST', headers,
-                    body: JSON.stringify({ message })
-                });
-                const ms = Date.now() - start;
-                const data = await resp.json();
-                const statusClass = resp.ok ? 'ok' : 'err';
-                respBox.innerHTML = `<div class="status ${statusClass}">HTTP ${resp.status} — ${ms}ms</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
-            } catch (e) {
-                respBox.innerHTML = `<div class="status err">Error: ${e.message}</div>`;
-            }
-            btn.disabled = false; btn.classList.remove('loading'); btn.textContent = '🚀 Execute';
-        }
-
-        async function sendCustom(method, path, tokenId, bodyId, btn) {
-            const token = document.getElementById(tokenId).value;
+        async function fireBody(method, path, bodyId, btn, authMode) {
             const bodyStr = document.getElementById(bodyId).value;
-            const respBox = btn.parentElement.querySelector('.response-box');
-
-            btn.disabled = true; btn.classList.add('loading'); btn.textContent = '⏳ Loading...';
-            respBox.classList.add('visible');
-
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = token.startsWith('Bearer') ? token : 'Bearer ' + token;
-
-                const start = Date.now();
-                const resp = await fetch(BASE + path, {
-                    method, headers,
-                    body: bodyStr ? bodyStr : undefined
-                });
-                const ms = Date.now() - start;
-                const data = await resp.json();
-                const statusClass = resp.ok ? 'ok' : 'err';
-                respBox.innerHTML = `<div class="status ${statusClass}">HTTP ${resp.status} — ${ms}ms</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
-            } catch (e) {
-                respBox.innerHTML = `<div class="status err">Error: ${e.message}</div>`;
-            }
-            btn.disabled = false; btn.classList.remove('loading'); btn.textContent = '🚀 Execute';
+            let body; try{body=JSON.parse(bodyStr)}catch{alert('Invalid JSON');return}
+            await fire(method, path, body, btn, authMode);
         }
 
-        async function sendCustomRequest(btn) {
+        async function fireCustom(btn) {
             const method = document.getElementById('custom-method').value;
             const path = document.getElementById('custom-path').value;
-            const token = document.getElementById('custom-token').value;
-            const bodyStr = document.getElementById('custom-body').value;
-            const respBox = document.getElementById('resp-custom');
-
-            if (!path) { alert('Enter an API path'); return; }
-
-            btn.disabled = true; btn.classList.add('loading'); btn.textContent = '⏳ Loading...';
-            respBox.classList.add('visible');
-
-            try {
-                const headers = { 'Content-Type': 'application/json', 'X-Admin-Secret': adminSecret };
-                if (token) headers['Authorization'] = token.startsWith('Bearer') ? token : 'Bearer ' + token;
-
-                const opts = { method, headers };
-                if (bodyStr && method !== 'GET') opts.body = bodyStr;
-
-                const start = Date.now();
-                const resp = await fetch(BASE + path, opts);
-                const ms = Date.now() - start;
-                let data;
-                try { data = await resp.json(); } catch { data = await resp.text(); }
-                const statusClass = resp.ok ? 'ok' : 'err';
-                respBox.innerHTML = `<div class="status ${statusClass}">HTTP ${resp.status} — ${ms}ms</div><pre>${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}</pre>`;
-            } catch (e) {
-                respBox.innerHTML = `<div class="status err">Error: ${e.message}</div>`;
-            }
-            btn.disabled = false; btn.classList.remove('loading'); btn.textContent = '🚀 Execute';
+            const authMode = document.getElementById('custom-auth').value;
+            const bodyStr = document.getElementById('custom-body').value.trim();
+            if(!path){alert('Enter a path');return}
+            let body = null;
+            if(bodyStr && method!=='GET'){try{body=JSON.parse(bodyStr)}catch{alert('Invalid JSON');return}}
+            await fire(method, path, body, btn, authMode);
         }
     </script>
 </body>
