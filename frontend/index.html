@@ -4314,6 +4314,14 @@
                     // 添加 AI 回复（使用打字机效果）
                     addMessageToUI(data.reply, false, true);
 
+                    // 检测 AI 是否接受了改名
+                    if (data.companionNameChanged) {
+                        if (!state.user.settings) state.user.settings = {};
+                        state.user.settings.companion_name = data.companionNameChanged;
+                        localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                        document.getElementById('companion-name-display').textContent = data.companionNameChanged;
+                    }
+
                     // 更新本地消息记录
                     state.messages.push(
                         { role: 'user', content: message },
