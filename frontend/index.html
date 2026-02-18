@@ -2837,6 +2837,79 @@
         .about-links a { color: #667eea; text-decoration: none; font-size: 0.75rem; }
         .about-links a:hover { text-decoration: underline; }
 
+        /* ==================== 版本日志模态框 ==================== */
+        .changelog-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); display: flex;
+            align-items: center; justify-content: center;
+            z-index: 10000; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .changelog-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .changelog-modal {
+            background: white; border-radius: 20px;
+            width: 90%; max-width: 440px; max-height: 80vh;
+            transform: scale(0.9); transition: transform 0.25s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative;
+            display: flex; flex-direction: column;
+        }
+        .changelog-modal-overlay.active .changelog-modal { transform: scale(1); }
+        .changelog-header {
+            padding: 24px 30px 16px; flex-shrink: 0; position: relative;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .changelog-header h2 {
+            font-size: 1.3rem; font-weight: 700; color: #2d3748; margin: 0;
+        }
+        .changelog-header p {
+            font-size: 0.8rem; color: #a0aec0; margin: 4px 0 0;
+        }
+        .changelog-close {
+            position: absolute; top: 16px; right: 16px; background: none;
+            border: none; cursor: pointer; color: #a0aec0; padding: 4px;
+            border-radius: 6px; transition: all 0.2s;
+        }
+        .changelog-close:hover { background: #f7fafc; color: #4a5568; }
+        .changelog-body {
+            padding: 20px 30px 24px; overflow-y: auto; flex: 1;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .changelog-body::-webkit-scrollbar { display: none; }
+        .changelog-version {
+            margin-bottom: 20px;
+        }
+        .changelog-version-tag {
+            display: inline-flex; align-items: center; gap: 8px;
+            margin-bottom: 8px;
+        }
+        .changelog-version-tag span.ver {
+            background: linear-gradient(135deg, #7c3aed, #a78bfa);
+            color: white; padding: 3px 10px; border-radius: 12px;
+            font-size: 0.78rem; font-weight: 600;
+        }
+        .changelog-version-tag span.date {
+            color: #a0aec0; font-size: 0.75rem;
+        }
+        .changelog-list {
+            list-style: none; padding: 0; margin: 0;
+        }
+        .changelog-list li {
+            position: relative; padding: 4px 0 4px 20px;
+            font-size: 0.82rem; color: #4a5568; line-height: 1.6;
+        }
+        .changelog-list li::before {
+            content: ''; position: absolute; left: 4px; top: 12px;
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #a78bfa;
+        }
+        .changelog-badge {
+            display: inline-block; padding: 1px 6px; border-radius: 4px;
+            font-size: 0.7rem; font-weight: 600; margin-right: 4px;
+        }
+        .badge-feat { background: #e0f2fe; color: #0284c7; }
+        .badge-fix { background: #fef3c7; color: #d97706; }
+        .badge-ui { background: #f3e8ff; color: #7c3aed; }
+
         .hidden { display: none !important; }
 
         .sidebar-bottom-links {
@@ -3013,6 +3086,66 @@
         </div>
     </div>
 
+    <!-- 版本日志模态框 -->
+    <div class="changelog-modal-overlay" id="changelog-modal">
+        <div class="changelog-modal">
+            <div class="changelog-header">
+                <button class="changelog-close" onclick="closeChangelogModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <h2 data-i18n="changelog.title">Changelog</h2>
+                <p>SoulLink Release Notes</p>
+            </div>
+            <div class="changelog-body">
+
+                <!-- v1.2.0 -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v1.2.0</span>
+                        <span class="date">2026-02-17</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v120.1">About & Feedback page with donation support (Zelle / WeChat / Alipay)</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v120.2">Custom companion avatar — click to upload your own image</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v120.3">Smart companion rename — rename via chat conversation</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v120.4">Personality test now has close button</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v120.5">Sidebar layout & spacing improvements</span></li>
+                    </ul>
+                </div>
+
+                <!-- v1.1.0 -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v1.1.0</span>
+                        <span class="date">2026-02-15</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v110.1">AI model selection — switch between GPT-4o & Gemini</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v110.2">Email verification with 6-digit code</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v110.3">Comprehensive mobile responsive layout</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v110.4">Language toggle on login page</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v110.5">Model switch stability improvements</span></li>
+                    </ul>
+                </div>
+
+                <!-- v1.0.0 -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v1.0.0</span>
+                        <span class="date">2026-02-04</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v100.1">Personality test & tarot card feature</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v100.2">Google OAuth login</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v100.3">Real-time AI chat with personalized companion</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v100.4">Bilingual support (English / 中文)</span></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- About & Feedback 模态框 -->
     <div class="about-modal-overlay" id="about-modal">
         <div class="about-modal">
@@ -3023,7 +3156,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v1.0.0</p>
+                    <p class="about-version">v1.2.0</p>
                 </div>
             </div>
 
@@ -3261,6 +3394,7 @@
 
             <div class="sidebar-bottom-links">
                 <button class="sidebar-test-link" onclick="startPersonalityTest()" data-i18n="sidebar.test">Personality Test</button>
+                <button class="sidebar-test-link" onclick="openChangelogModal()" data-i18n="sidebar.changelog">Changelog</button>
                 <button class="sidebar-test-link" onclick="openAboutModal()" data-i18n="sidebar.about">About & Feedback</button>
             </div>
 
@@ -3433,6 +3567,22 @@
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
                 'sidebar.about': 'About & Feedback',
+                'sidebar.changelog': 'Changelog',
+                'changelog.title': 'Changelog',
+                'changelog.v120.1': 'About & Feedback page with donation support (Zelle / WeChat / Alipay)',
+                'changelog.v120.2': 'Custom companion avatar — click to upload your own image',
+                'changelog.v120.3': 'Smart companion rename — rename via chat conversation',
+                'changelog.v120.4': 'Personality test now has close button',
+                'changelog.v120.5': 'Sidebar layout & spacing improvements',
+                'changelog.v110.1': 'AI model selection — switch between GPT-4o & Gemini',
+                'changelog.v110.2': 'Email verification with 6-digit code',
+                'changelog.v110.3': 'Comprehensive mobile responsive layout',
+                'changelog.v110.4': 'Language toggle on login page',
+                'changelog.v110.5': 'Model switch stability improvements',
+                'changelog.v100.1': 'Personality test & tarot card feature',
+                'changelog.v100.2': 'Google OAuth login',
+                'changelog.v100.3': 'Real-time AI chat with personalized companion',
+                'changelog.v100.4': 'Bilingual support (English / 中文)',
                 'about.tagline': 'Your AI Soul Companion',
                 'about.description': 'SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.',
                 'about.team': 'Our Team',
@@ -3527,6 +3677,22 @@
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
                 'sidebar.about': '关于与反馈',
+                'sidebar.changelog': '版本日志',
+                'changelog.title': '版本日志',
+                'changelog.v120.1': '关于与反馈页面，支持打赏（Zelle / 微信 / 支付宝）',
+                'changelog.v120.2': '自定义AI头像 — 点击上传你喜欢的图片',
+                'changelog.v120.3': '智能改名 — 聊天中直接给AI起新名字',
+                'changelog.v120.4': '性格测试新增关闭按钮',
+                'changelog.v120.5': '侧边栏布局优化',
+                'changelog.v110.1': 'AI模型选择 — GPT-4o 与 Gemini 自由切换',
+                'changelog.v110.2': '邮箱验证码注册',
+                'changelog.v110.3': '全面适配移动端',
+                'changelog.v110.4': '登录页语言切换',
+                'changelog.v110.5': '模型切换稳定性优化',
+                'changelog.v100.1': '性格测试与塔罗牌功能',
+                'changelog.v100.2': 'Google 账号登录',
+                'changelog.v100.3': 'AI实时聊天，个性化陪伴',
+                'changelog.v100.4': '中英双语支持',
                 'about.tagline': '你的AI灵魂伴侣',
                 'about.description': 'SoulLink 是一个AI伴侣平台，通过个性化对话创造有意义的连接。由 SoulForge 团队用心打造。',
                 'about.team': '我们的团队',
@@ -4881,6 +5047,18 @@
         // Close on overlay click
         document.getElementById('companion-avatar-modal')?.addEventListener('click', function(e) {
             if (e.target === this) closeCompanionAvatarModal();
+        });
+
+        // ==================== 版本日志 ====================
+        function openChangelogModal() {
+            document.getElementById('changelog-modal').classList.add('active');
+            closeMobileSidebar();
+        }
+        function closeChangelogModal() {
+            document.getElementById('changelog-modal').classList.remove('active');
+        }
+        document.getElementById('changelog-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeChangelogModal();
         });
 
         // ==================== About & Feedback ====================
