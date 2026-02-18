@@ -1857,6 +1857,12 @@
             border-radius: 10px;
             margin-left: 6px;
             font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .model-indicator:hover {
+            background: rgba(124, 58, 237, 0.22);
         }
 
         /* 头像设置区域 */
@@ -2829,7 +2835,7 @@
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
-                        <span class="model-indicator" id="model-indicator">Gemini 2.5 Flash</span>
+                        <span class="model-indicator" id="model-indicator" onclick="openSettingsModal()">Gemini 2.5 Flash</span>
                     </div>
                 </div>
             </header>
