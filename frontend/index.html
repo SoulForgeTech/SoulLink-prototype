@@ -2711,6 +2711,110 @@
         }
 
         /* 侧边栏测试链接 */
+        /* ==================== About Modal ==================== */
+        .about-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); display: flex;
+            align-items: center; justify-content: center;
+            z-index: 10000; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .about-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .about-modal {
+            background: white; border-radius: 20px; padding: 30px;
+            width: 90%; max-width: 440px; max-height: 85vh; overflow-y: auto;
+            transform: scale(0.9); transition: transform 0.25s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative;
+        }
+        .about-modal-overlay.active .about-modal { transform: scale(1); }
+        .about-modal-close {
+            position: absolute; top: 16px; right: 16px; background: none;
+            border: none; cursor: pointer; color: #a0aec0; padding: 4px;
+            border-radius: 6px; transition: all 0.2s;
+        }
+        .about-modal-close:hover { background: #f7fafc; color: #4a5568; }
+
+        .about-section { text-align: center; margin-bottom: 20px; }
+        .about-logo { font-size: 2.5rem; margin-bottom: 4px; }
+        .about-section h2 { font-size: 1.5rem; font-weight: 700; color: #2d3748; margin: 0; }
+        .about-tagline { color: #718096; font-size: 0.9rem; margin: 4px 0 0; }
+        .about-version { color: #a0aec0; font-size: 0.75rem; margin-top: 2px; }
+        .about-description { color: #4a5568; font-size: 0.85rem; line-height: 1.6; margin-bottom: 20px; text-align: center; }
+
+        .about-team-section { margin-bottom: 20px; }
+        .about-team-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .about-team-grid { display: flex; flex-direction: column; gap: 10px; }
+        .about-team-member {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px; border-radius: 12px; background: #f7fafc;
+        }
+        .about-team-avatar {
+            width: 40px; height: 40px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; color: white;
+            font-weight: 600; font-size: 1rem; flex-shrink: 0;
+        }
+        .about-team-name { font-weight: 600; font-size: 0.9rem; color: #2d3748; }
+        .about-team-role { font-size: 0.75rem; color: #a0aec0; }
+
+        .about-donate-section { margin-bottom: 20px; }
+        .about-donate-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .about-donate-text { font-size: 0.8rem; color: #718096; margin-bottom: 12px; }
+        .about-donate-buttons { display: flex; gap: 10px; }
+        .about-donate-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 10px; border: 2px solid #e2e8f0;
+            background: white; color: #4a5568; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; text-decoration: none;
+        }
+        .about-donate-btn:hover { border-color: #667eea; color: #667eea; }
+        .about-donate-btn.wechat:hover { border-color: #07c160; color: #07c160; }
+        .about-donate-qr { text-align: center; margin-top: 12px; padding: 16px; background: #f7fafc; border-radius: 12px; }
+        .about-donate-qr p { font-size: 0.8rem; color: #718096; margin-bottom: 8px; }
+        .about-qr-placeholder { color: #a0aec0; font-size: 0.8rem; padding: 20px; border: 2px dashed #e2e8f0; border-radius: 8px; }
+
+        .about-divider { height: 1px; background: #e2e8f0; margin: 20px 0; }
+
+        .about-feedback-section { margin-bottom: 20px; }
+        .about-feedback-section h4 { font-size: 0.85rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .about-feedback-desc { font-size: 0.8rem; color: #718096; margin-bottom: 12px; }
+        .about-feedback-type { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .feedback-type-btn {
+            padding: 6px 14px; border-radius: 20px; border: 2px solid #e2e8f0;
+            background: white; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 4px; color: #718096;
+        }
+        .feedback-type-btn:hover { border-color: #cbd5e0; }
+        .feedback-type-btn.active { border-color: #667eea; background: #ebf4ff; color: #667eea; }
+        .about-feedback-textarea {
+            width: 100%; border: 2px solid #e2e8f0; border-radius: 12px;
+            padding: 12px; font-size: 0.85rem; resize: vertical; font-family: inherit;
+            transition: border-color 0.2s; color: #2d3748; box-sizing: border-box;
+            min-height: 80px;
+        }
+        .about-feedback-textarea:focus { outline: none; border-color: #667eea; }
+        .about-feedback-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .feedback-char-count { font-size: 0.75rem; color: #a0aec0; }
+        .about-feedback-submit {
+            padding: 8px 20px; border-radius: 10px; border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .about-feedback-submit:hover { opacity: 0.85; }
+        .about-feedback-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .feedback-success {
+            display: flex; align-items: center; gap: 8px; justify-content: center;
+            padding: 12px; background: #f0fff4; border-radius: 10px;
+            color: #38a169; font-size: 0.85rem; margin-top: 10px;
+        }
+
+        .about-footer { text-align: center; color: #a0aec0; font-size: 0.75rem; margin-top: 10px; }
+        .about-footer p { margin: 0 0 6px; }
+        .about-links a { color: #667eea; text-decoration: none; font-size: 0.75rem; }
+        .about-links a:hover { text-decoration: underline; }
+
+        .hidden { display: none !important; }
+
         .sidebar-test-link {
             display: flex;
             align-items: center;
@@ -2886,6 +2990,93 @@
         </div>
     </div>
 
+    <!-- About & Feedback 模态框 -->
+    <div class="about-modal-overlay" id="about-modal">
+        <div class="about-modal">
+            <button class="about-modal-close" onclick="closeAboutModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <!-- 关于我们 -->
+            <div class="about-section">
+                <div class="about-logo">💫</div>
+                <h2>SoulLink</h2>
+                <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
+                <p class="about-version">v1.0.0</p>
+            </div>
+
+            <div class="about-description">
+                <p data-i18n="about.description">SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.</p>
+            </div>
+
+            <!-- 团队 -->
+            <div class="about-team-section">
+                <h4 data-i18n="about.team">Our Team</h4>
+                <div class="about-team-grid">
+                    <div class="about-team-member">
+                        <div class="about-team-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">J</div>
+                        <div>
+                            <div class="about-team-name">Jingbin Qian</div>
+                            <div class="about-team-role" data-i18n="about.role.founder">Founder & Developer</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 打赏 -->
+            <div class="about-donate-section">
+                <h4 data-i18n="about.support">Support Us</h4>
+                <p class="about-donate-text" data-i18n="about.support.desc">If you enjoy SoulLink, consider buying us a coffee!</p>
+                <div class="about-donate-buttons">
+                    <a href="https://ko-fi.com/soulforgetech" target="_blank" class="about-donate-btn">
+                        <span>☕</span> Ko-fi
+                    </a>
+                    <button class="about-donate-btn wechat" onclick="toggleDonateQR()">
+                        <span>💚</span> <span data-i18n="about.wechat">WeChat Pay</span>
+                    </button>
+                </div>
+                <div class="about-donate-qr hidden" id="donate-qr">
+                    <p data-i18n="about.scan.qr">Scan to donate via WeChat</p>
+                    <div class="about-qr-placeholder" data-i18n="about.qr.placeholder">QR code coming soon</div>
+                </div>
+            </div>
+
+            <div class="about-divider"></div>
+
+            <!-- 意见反馈 -->
+            <div class="about-feedback-section">
+                <h4 data-i18n="about.feedback">Feedback</h4>
+                <p class="about-feedback-desc" data-i18n="about.feedback.desc">We'd love to hear your thoughts, suggestions, or bug reports!</p>
+                <div class="about-feedback-type">
+                    <button class="feedback-type-btn active" data-type="suggestion" onclick="selectFeedbackType(this)">
+                        <span>💡</span> <span data-i18n="about.feedback.suggestion">Suggestion</span>
+                    </button>
+                    <button class="feedback-type-btn" data-type="bug" onclick="selectFeedbackType(this)">
+                        <span>🐛</span> <span data-i18n="about.feedback.bug">Bug Report</span>
+                    </button>
+                    <button class="feedback-type-btn" data-type="other" onclick="selectFeedbackType(this)">
+                        <span>💬</span> <span data-i18n="about.feedback.other">Other</span>
+                    </button>
+                </div>
+                <textarea id="feedback-text" class="about-feedback-textarea" rows="4" maxlength="1000" data-i18n="about.feedback.placeholder" data-i18n-attr="placeholder" placeholder="Tell us what you think..."></textarea>
+                <div class="about-feedback-footer">
+                    <span class="feedback-char-count" id="feedback-char-count">0/1000</span>
+                    <button class="about-feedback-submit" onclick="submitFeedback()" data-i18n="about.feedback.submit">Submit Feedback</button>
+                </div>
+                <div class="feedback-success hidden" id="feedback-success">
+                    <span>✅</span> <span data-i18n="about.feedback.thanks">Thank you for your feedback!</span>
+                </div>
+            </div>
+
+            <div class="about-footer">
+                <p>© 2025 SoulForge Tech. All rights reserved.</p>
+                <div class="about-links">
+                    <a href="mailto:contact@soulforgetech.com">📧 contact@soulforgetech.com</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Companion 头像修改模态框 -->
     <div class="companion-avatar-modal-overlay" id="companion-avatar-modal">
         <div class="companion-avatar-modal">
@@ -3048,6 +3239,7 @@
             </div>
 
             <button class="sidebar-test-link" onclick="startPersonalityTest()" data-i18n="sidebar.test">🔮 Personality Test</button>
+            <button class="sidebar-test-link" onclick="openAboutModal()" data-i18n="sidebar.about">💡 About & Feedback</button>
 
             <div class="user-section">
                 <div class="user-avatar-wrapper" onclick="openSettingsModal()">
@@ -3217,6 +3409,24 @@
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
+                'sidebar.about': '💡 About & Feedback',
+                'about.tagline': 'Your AI Soul Companion',
+                'about.description': 'SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.',
+                'about.team': 'Our Team',
+                'about.role.founder': 'Founder & Developer',
+                'about.support': 'Support Us',
+                'about.support.desc': 'If you enjoy SoulLink, consider buying us a coffee!',
+                'about.wechat': 'WeChat Pay',
+                'about.scan.qr': 'Scan to donate via WeChat',
+                'about.qr.placeholder': 'QR code coming soon',
+                'about.feedback': 'Feedback',
+                'about.feedback.desc': "We'd love to hear your thoughts, suggestions, or bug reports!",
+                'about.feedback.suggestion': 'Suggestion',
+                'about.feedback.bug': 'Bug Report',
+                'about.feedback.other': 'Other',
+                'about.feedback.placeholder': 'Tell us what you think...',
+                'about.feedback.submit': 'Submit Feedback',
+                'about.feedback.thanks': 'Thank you for your feedback!',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -3294,6 +3504,24 @@
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
+                'sidebar.about': '💡 关于与反馈',
+                'about.tagline': '你的AI灵魂伴侣',
+                'about.description': 'SoulLink 是一个AI伴侣平台，通过个性化对话创造有意义的连接。由 SoulForge 团队用心打造。',
+                'about.team': '我们的团队',
+                'about.role.founder': '创始人 & 开发者',
+                'about.support': '支持我们',
+                'about.support.desc': '如果你喜欢 SoulLink，可以请我们喝杯咖啡！',
+                'about.wechat': '微信打赏',
+                'about.scan.qr': '扫码打赏',
+                'about.qr.placeholder': '二维码即将上线',
+                'about.feedback': '意见反馈',
+                'about.feedback.desc': '我们非常期待听到你的想法、建议或问题反馈！',
+                'about.feedback.suggestion': '建议',
+                'about.feedback.bug': 'Bug 反馈',
+                'about.feedback.other': '其他',
+                'about.feedback.placeholder': '说说你的想法...',
+                'about.feedback.submit': '提交反馈',
+                'about.feedback.thanks': '感谢你的反馈！',
             }
         };
 
@@ -4633,6 +4861,76 @@
         document.getElementById('companion-avatar-modal')?.addEventListener('click', function(e) {
             if (e.target === this) closeCompanionAvatarModal();
         });
+
+        // ==================== About & Feedback ====================
+        let selectedFeedbackType = 'suggestion';
+
+        function openAboutModal() {
+            document.getElementById('about-modal').classList.add('active');
+            closeMobileSidebar();
+        }
+        function closeAboutModal() {
+            document.getElementById('about-modal').classList.remove('active');
+        }
+        document.getElementById('about-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeAboutModal();
+        });
+
+        function selectFeedbackType(btn) {
+            document.querySelectorAll('.feedback-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedFeedbackType = btn.dataset.type;
+        }
+
+        // Character counter
+        document.getElementById('feedback-text')?.addEventListener('input', function() {
+            document.getElementById('feedback-char-count').textContent = `${this.value.length}/1000`;
+        });
+
+        function toggleDonateQR() {
+            document.getElementById('donate-qr').classList.toggle('hidden');
+        }
+
+        async function submitFeedback() {
+            const text = document.getElementById('feedback-text').value.trim();
+            if (!text) { alert(state.language === 'zh-CN' ? '请输入反馈内容' : 'Please enter your feedback'); return; }
+
+            const btn = document.querySelector('.about-feedback-submit');
+            btn.disabled = true;
+            btn.textContent = state.language === 'zh-CN' ? '提交中...' : 'Submitting...';
+
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/feedback`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: selectedFeedbackType,
+                        content: text
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('feedback-text').value = '';
+                    document.getElementById('feedback-char-count').textContent = '0/1000';
+                    document.getElementById('feedback-success').classList.remove('hidden');
+                    setTimeout(() => {
+                        document.getElementById('feedback-success').classList.add('hidden');
+                    }, 3000);
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to submit feedback');
+                }
+            } catch (err) {
+                console.error('Feedback submit error:', err);
+                alert('Network error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = state.language === 'zh-CN' ? '提交反馈' : 'Submit Feedback';
+            }
+        }
 
         // ==================== AI 改名 ====================
         function openRenameModal() {

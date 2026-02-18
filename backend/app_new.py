@@ -450,6 +450,51 @@ def update_settings():
     return jsonify({"success": True})
 
 
+# ==================== Feedback 接口 ====================
+
+@app.route("/api/feedback", methods=["POST"])
+@login_required
+def submit_feedback():
+    """提交用户反馈"""
+    user_id = get_current_user_id()
+    user = get_current_user()
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    content = data.get("content", "").strip()
+    feedback_type = data.get("type", "other")
+
+    if not content:
+        return jsonify({"error": "Feedback content is required"}), 400
+
+    if len(content) > 1000:
+        return jsonify({"error": "Feedback must be 1000 characters or less"}), 400
+
+    if feedback_type not in ["suggestion", "bug", "other"]:
+        feedback_type = "other"
+
+    from datetime import datetime
+    feedback_doc = {
+        "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "user_name": user.get("name", ""),
+        "type": feedback_type,
+        "content": content,
+        "created_at": datetime.utcnow(),
+        "status": "new"
+    }
+
+    try:
+        db.db["feedbacks"].insert_one(feedback_doc)
+        logger.info(f"Feedback submitted by {user.get('email')}: [{feedback_type}] {content[:50]}...")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Failed to save feedback: {e}")
+        return jsonify({"error": "Failed to save feedback"}), 500
+
+
 # ==================== Workspace 接口 ====================
 
 @app.route("/api/workspace", methods=["GET"])
