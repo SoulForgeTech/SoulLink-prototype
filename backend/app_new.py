@@ -1033,33 +1033,80 @@ def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
 
 
-# ==================== 启动应用 ====================
+# ==================== 管理员 API ====================
 
-def sync_all_system_prompts():
-    """启动时同步所有用户的 system prompt（确保模板更新后生效）"""
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "soullink-admin-2026")
+
+def require_admin(f):
+    """管理员接口鉴权装饰器"""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.headers.get("X-Admin-Secret", "")
+        if auth != ADMIN_SECRET:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/api/admin/sync-all", methods=["POST"])
+@require_admin
+def admin_sync_all():
+    """一键同步所有用户的 system prompt + 知识库文档"""
     try:
-        users = list(db.db["users"].find({}))
-        count = 0
-        for user in users:
-            user_id = user["_id"]
-            user_name = user.get("name", "Friend")
-            try:
-                result = workspace_manager.update_system_prompt(user_id, user_name)
-                if result.get("success"):
-                    count += 1
-            except Exception as e:
-                logger.warning(f"Failed to sync system prompt for user {user_id}: {e}")
-        logger.info(f"[Startup] Synced system prompts for {count}/{len(users)} users")
+        result = workspace_manager.sync_all()
+        return jsonify(result)
     except Exception as e:
-        logger.warning(f"[Startup] Failed to sync system prompts: {e}")
+        logger.error(f"Admin sync-all failed: {e}")
+        return jsonify({"error": str(e)}), 500
 
+
+@app.route("/api/admin/sync-prompts", methods=["POST"])
+@require_admin
+def admin_sync_prompts():
+    """只同步所有用户的 system prompt"""
+    try:
+        result = workspace_manager.sync_all_system_prompts()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Admin sync-prompts failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/sync-documents", methods=["POST"])
+@require_admin
+def admin_sync_documents():
+    """只同步所有用户的知识库文档"""
+    try:
+        result = workspace_manager.sync_documents_for_all_users()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Admin sync-documents failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/stats", methods=["GET"])
+@require_admin
+def admin_stats():
+    """获取系统统计信息"""
+    try:
+        user_count = db.db["users"].count_documents({})
+        workspace_count = db.db["workspaces"].count_documents({})
+        feedback_count = db.db["feedbacks"].count_documents({})
+        return jsonify({
+            "users": user_count,
+            "workspaces": workspace_count,
+            "feedbacks": feedback_count
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==================== 启动应用 ====================
 
 if __name__ == "__main__":
     # 初始化数据库连接
     db.connect()
-
-    # 同步所有用户的 system prompt（确保模板更新后立即生效）
-    sync_all_system_prompts()
 
     # 启动服务
     port = int(os.getenv("PORT", 5000))

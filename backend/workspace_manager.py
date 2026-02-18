@@ -587,5 +587,152 @@ class WorkspaceManager:
             }
 
 
+    # ==================== 管理员同步功能 ====================
+
+    def sync_documents_for_all_users(self) -> Dict[str, Any]:
+        """
+        从模板 workspace 同步知识库文档到所有用户的 workspace
+        - 读取模板 workspace 的文档列表
+        - 遍历所有用户 workspace，补全缺失的文档
+        - 不会删除用户已有的文档，只增量添加
+        """
+        import requests
+
+        template_slug = os.getenv("ANYTHINGLLM_TEMPLATE_WORKSPACE", "soullink_test")
+        headers = {
+            "Authorization": f"Bearer {self.anythingllm_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        # Step 1: 获取模板 workspace 的文档列表
+        try:
+            template_url = f"{self.anythingllm_base_url}/api/v1/workspace/{template_slug}"
+            resp = requests.get(template_url, headers=headers)
+            if resp.status_code != 200:
+                return {"success": False, "error": f"Failed to get template workspace: HTTP {resp.status_code}"}
+
+            workspace_data = resp.json().get("workspace", {})
+            if isinstance(workspace_data, list):
+                workspace_data = workspace_data[0] if workspace_data else {}
+
+            template_docs = workspace_data.get("documents", [])
+            template_doc_paths = set()
+            for doc in template_docs:
+                if isinstance(doc, dict):
+                    doc_path = doc.get("docpath") or doc.get("name")
+                    if doc_path:
+                        template_doc_paths.add(doc_path)
+                elif isinstance(doc, str):
+                    template_doc_paths.add(doc)
+
+            if not template_doc_paths:
+                return {"success": True, "message": "No documents in template workspace", "synced": 0, "total": 0}
+
+        except Exception as e:
+            return {"success": False, "error": f"Failed to read template: {str(e)}"}
+
+        # Step 2: 遍历所有用户 workspace，增量同步文档
+        workspaces = list(db.db["workspaces"].find({}))
+        synced = 0
+        skipped = 0
+        errors = []
+
+        for ws in workspaces:
+            slug = ws.get("slug")
+            if not slug or slug == template_slug:
+                continue
+
+            try:
+                # 获取用户 workspace 的当前文档
+                ws_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}"
+                ws_resp = requests.get(ws_url, headers=headers)
+                if ws_resp.status_code != 200:
+                    errors.append(f"{slug}: HTTP {ws_resp.status_code}")
+                    continue
+
+                ws_data = ws_resp.json().get("workspace", {})
+                if isinstance(ws_data, list):
+                    ws_data = ws_data[0] if ws_data else {}
+
+                existing_docs = set()
+                for doc in ws_data.get("documents", []):
+                    if isinstance(doc, dict):
+                        doc_path = doc.get("docpath") or doc.get("name")
+                        if doc_path:
+                            existing_docs.add(doc_path)
+                    elif isinstance(doc, str):
+                        existing_docs.add(doc)
+
+                # 找出缺失的文档
+                missing_docs = list(template_doc_paths - existing_docs)
+
+                if not missing_docs:
+                    skipped += 1
+                    continue
+
+                # 增量添加缺失的文档
+                update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update-embeddings"
+                payload = {"adds": missing_docs, "deletes": []}
+                add_resp = requests.post(update_url, headers=headers, json=payload)
+
+                if add_resp.status_code == 200:
+                    synced += 1
+                else:
+                    errors.append(f"{slug}: add docs failed HTTP {add_resp.status_code}")
+
+            except Exception as e:
+                errors.append(f"{slug}: {str(e)}")
+
+        return {
+            "success": True,
+            "template_docs": len(template_doc_paths),
+            "total_workspaces": len(workspaces) - 1,  # 排除模板
+            "synced": synced,
+            "skipped_up_to_date": skipped,
+            "errors": errors
+        }
+
+    def sync_all_system_prompts(self) -> Dict[str, Any]:
+        """
+        同步所有用户的 system prompt（用最新模板重新构建）
+        保留用户已有的：性格数据、语言、companion名字等
+        """
+        users = list(db.db["users"].find({}))
+        synced = 0
+        errors = []
+
+        for user in users:
+            user_id = user["_id"]
+            user_name = user.get("name", "Friend")
+            try:
+                result = self.update_system_prompt(user_id, user_name)
+                if result.get("success"):
+                    synced += 1
+                else:
+                    errors.append(f"{user_name}: {result.get('error', 'unknown')}")
+            except Exception as e:
+                errors.append(f"{user_name}: {str(e)}")
+
+        return {
+            "success": True,
+            "total_users": len(users),
+            "synced": synced,
+            "errors": errors
+        }
+
+    def sync_all(self) -> Dict[str, Any]:
+        """
+        一键全量同步：system prompt + 知识库文档
+        """
+        prompt_result = self.sync_all_system_prompts()
+        doc_result = self.sync_documents_for_all_users()
+
+        return {
+            "success": True,
+            "system_prompts": prompt_result,
+            "documents": doc_result
+        }
+
+
 # 全局 workspace 管理器实例
 workspace_manager = WorkspaceManager()
