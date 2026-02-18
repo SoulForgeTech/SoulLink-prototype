@@ -4325,6 +4325,7 @@
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
                         document.getElementById('companion-name-display').textContent = data.companionNameChanged;
                         applyLanguage(); // 同步更新设置页面等处的名字
+                        // 不需要开新对话，AI 在当前对话已经接受了新名字
                     }
 
                     // 更新本地消息记录
@@ -4479,6 +4480,9 @@
                     applyLanguage(); // 刷新所有含 {companion} 的文字
 
                     closeRenameModal();
+
+                    // 改名后自动开始新对话，让 AI 用新名字
+                    await createNewConversation();
                 } else {
                     const err = await res.json();
                     alert(err.error || 'Failed to update name');
