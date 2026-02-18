@@ -105,6 +105,31 @@
             background: rgba(255, 255, 255, 0.5);
         }
 
+        .login-lang-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.85);
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: 0.3px;
+        }
+        .login-lang-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fff;
+        }
+
+        .login-container {
+            position: relative;
+        }
+
         .login-logo {
             font-size: 3rem;
             margin-bottom: 10px;
@@ -2550,6 +2575,7 @@
     <!-- Login Page -->
     <div id="login-page">
         <div class="login-container">
+            <button class="login-lang-toggle" id="login-lang-toggle" onclick="toggleLanguage()">中文</button>
             <div class="login-logo">💫</div>
             <h1 class="login-title">SoulLink</h1>
             <p class="login-subtitle" data-i18n="login.subtitle">Your AI Companion, Always Here</p>
@@ -3053,6 +3079,10 @@
             const langBtn = document.getElementById('lang-toggle');
             if (langBtn) {
                 langBtn.textContent = state.language === 'zh-CN' ? 'EN' : '中文';
+            }
+            const loginLangBtn = document.getElementById('login-lang-toggle');
+            if (loginLangBtn) {
+                loginLangBtn.textContent = state.language === 'zh-CN' ? 'EN' : '中文';
             }
         }
 
