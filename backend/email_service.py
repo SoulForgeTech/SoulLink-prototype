@@ -1,17 +1,14 @@
 """
-Email service module - sends emails via Amazon SES SMTP
+Email service module - sends emails via Resend API
 """
 import os
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 
-SES_SMTP_HOST = os.getenv("SES_SMTP_HOST", "email-smtp.us-east-2.amazonaws.com")
-SES_SMTP_PORT = int(os.getenv("SES_SMTP_PORT", "587"))
-SES_SMTP_USERNAME = os.getenv("SES_SMTP_USERNAME", "")
-SES_SMTP_PASSWORD = os.getenv("SES_SMTP_PASSWORD", "")
-SES_FROM_EMAIL = os.getenv("SES_FROM_EMAIL", "noreply@soulforgetech.com")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@soulforgetech.com")
+
+resend.api_key = RESEND_API_KEY
 
 
 def send_verification_email(to_email: str, code: str, user_name: str = "") -> bool:
@@ -40,20 +37,13 @@ def send_verification_email(to_email: str, code: str, user_name: str = "") -> bo
     </div>
     """
 
-    text_body = f"Hi {user_name or 'there'},\n\nYour SoulLink verification code is: {code}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, you can ignore this email."
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"SoulLink <{SES_FROM_EMAIL}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
-
     try:
-        with smtplib.SMTP(SES_SMTP_HOST, SES_SMTP_PORT, timeout=10) as server:
-            server.starttls()
-            server.login(SES_SMTP_USERNAME, SES_SMTP_PASSWORD)
-            server.sendmail(SES_FROM_EMAIL, to_email, msg.as_string())
+        resend.Emails.send({
+            "from": f"SoulLink <{FROM_EMAIL}>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+        })
         logging.info(f"Verification email sent to {to_email}")
         return True
     except Exception as e:
