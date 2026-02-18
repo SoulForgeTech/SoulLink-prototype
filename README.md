@@ -4,6 +4,15 @@
 
 SoulLink is an AI companion platform that creates meaningful connections through personalized conversations, personality-driven interactions, and a unique tarot-based personality system.
 
+## Live Demo
+
+| | URL |
+|--|-----|
+| **Frontend** | https://prototype.soulforgetech.com |
+| **API** | https://api.soulforgetech.com |
+| **Admin Panel** | https://api.soulforgetech.com/admin |
+| **Health Check** | https://api.soulforgetech.com/health |
+
 ## Features
 
 **AI Chat**
