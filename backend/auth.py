@@ -67,7 +67,8 @@ GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
 # JWT 配置
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 24 * 7  # 7 天
+JWT_EXPIRATION_HOURS = 24  # 1 天（配合 refresh token 使用）
+REFRESH_TOKEN_DAYS = 90    # refresh token 有效期 90 天
 
 
 class GoogleOAuth:
@@ -232,13 +233,60 @@ def get_current_user_id() -> Optional[ObjectId]:
     return getattr(request, "current_user_id", None)
 
 
+# ==================== Refresh Token（持久登录） ====================
+
+def create_refresh_token(user_id: ObjectId, user_agent: str = "") -> str:
+    """创建并存储 refresh token 到 MongoDB"""
+    token = secrets.token_urlsafe(64)
+    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_DAYS)
+
+    db.db["refresh_tokens"].insert_one({
+        "user_id": user_id,
+        "token": token,
+        "expires_at": expires_at,
+        "user_agent": user_agent,
+        "created_at": datetime.utcnow(),
+        "last_used_at": datetime.utcnow(),
+    })
+    return token
+
+
+def validate_refresh_token(token: str) -> Optional[Dict]:
+    """验证 refresh token，有效则返回文档，并更新 last_used_at"""
+    doc = db.db["refresh_tokens"].find_one({
+        "token": token,
+        "expires_at": {"$gt": datetime.utcnow()}
+    })
+    if not doc:
+        return None
+
+    # 更新最后使用时间
+    db.db["refresh_tokens"].update_one(
+        {"_id": doc["_id"]},
+        {"$set": {"last_used_at": datetime.utcnow()}}
+    )
+    return doc
+
+
+def revoke_refresh_token(token: str) -> bool:
+    """吊销单个 refresh token（登出用）"""
+    result = db.db["refresh_tokens"].delete_one({"token": token})
+    return result.deleted_count > 0
+
+
+def revoke_all_user_tokens(user_id: ObjectId) -> int:
+    """吊销用户所有 refresh token（改密码/安全重置用）"""
+    result = db.db["refresh_tokens"].delete_many({"user_id": user_id})
+    return result.deleted_count
+
+
 # ==================== 用户登录/注册流程 ====================
 
-def handle_google_login(google_user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_google_login(google_user_info: Dict[str, Any], user_agent: str = "") -> Dict[str, Any]:
     """
     处理 Google 登录
     如果用户存在则登录，不存在则注册
-    返回 JWT token 和用户信息
+    返回 JWT token + refresh token 和用户信息
     """
     google_id = google_user_info.get("id")
     email = google_user_info.get("email")
@@ -275,11 +323,13 @@ def handle_google_login(google_user_info: Dict[str, Any]) -> Dict[str, Any]:
             )
             is_new_user = True
 
-    # 生成 JWT token
+    # 生成 JWT token + refresh token
     token = JWTAuth.create_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(user["_id"], user_agent)
 
     return {
         "token": token,
+        "refresh_token": refresh_token,
         "user": {
             "id": str(user["_id"]),
             "email": user["email"],
@@ -370,10 +420,10 @@ def handle_email_register(email: str, password: str, name: Optional[str] = None)
     }
 
 
-def handle_email_login(email: str, password: str) -> Dict[str, Any]:
+def handle_email_login(email: str, password: str, user_agent: str = "") -> Dict[str, Any]:
     """
     处理邮箱登录
-    返回 JWT token 和用户信息，或错误信息
+    返回 JWT token + refresh token 和用户信息，或错误信息
     """
     # 查找用户
     user = db.get_user_by_email(email)
@@ -420,12 +470,14 @@ def handle_email_login(email: str, password: str) -> Dict[str, Any]:
     # 更新登录时间
     db.update_user_login(user["_id"])
 
-    # 生成 JWT token
+    # 生成 JWT token + refresh token
     token = JWTAuth.create_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(user["_id"], user_agent)
 
     return {
         "success": True,
         "token": token,
+        "refresh_token": refresh_token,
         "user": {
             "id": str(user["_id"]),
             "email": user["email"],
@@ -441,8 +493,8 @@ def handle_email_login(email: str, password: str) -> Dict[str, Any]:
 
 # ==================== 邮箱验证 ====================
 
-def handle_verify_email(email: str, code: str) -> Dict[str, Any]:
-    """验证邮箱验证码，成功后发放 JWT token"""
+def handle_verify_email(email: str, code: str, user_agent: str = "") -> Dict[str, Any]:
+    """验证邮箱验证码，成功后发放 JWT token + refresh token"""
     user = db.get_user_by_email(email)
     if not user:
         return {"success": False, "error": "User not found"}
@@ -474,12 +526,14 @@ def handle_verify_email(email: str, code: str) -> Dict[str, Any]:
         }}
     )
 
-    # 发放 JWT token
+    # 发放 JWT token + refresh token
     token = JWTAuth.create_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(user["_id"], user_agent)
 
     return {
         "success": True,
         "token": token,
+        "refresh_token": refresh_token,
         "user": {
             "id": str(user["_id"]),
             "email": user["email"],

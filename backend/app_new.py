@@ -26,7 +26,10 @@ from auth import (
     handle_email_register,
     handle_email_login,
     handle_verify_email,
-    handle_resend_code
+    handle_resend_code,
+    validate_refresh_token,
+    revoke_refresh_token,
+    create_refresh_token,
 )
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
@@ -167,11 +170,12 @@ def google_callback():
         return jsonify({"error": "Missing code, id_token, or credential"}), 400
 
     # 处理登录/注册
-    result = handle_google_login(user_info)
+    result = handle_google_login(user_info, request.headers.get("User-Agent", ""))
 
     return jsonify({
         "success": True,
         "token": result["token"],
+        "refresh_token": result.get("refresh_token"),
         "user": result["user"],
         "is_new_user": result["is_new_user"]
     })
@@ -205,12 +209,45 @@ def get_available_models():
 
 
 @app.route("/api/auth/logout", methods=["POST"])
-@login_required
 def logout():
-    """登出（客户端应删除 token）"""
-    # JWT 是无状态的，服务端不需要做什么
-    # 如果需要，可以将 token 加入黑名单（需要额外的存储）
+    """登出 — 吊销 refresh token（不要求 JWT 有效，因为可能已过期）"""
+    data = request.get_json() or {}
+    refresh_token = data.get("refresh_token")
+    if refresh_token:
+        revoke_refresh_token(refresh_token)
     return jsonify({"success": True, "message": "Logged out"})
+
+
+@app.route("/api/auth/refresh", methods=["POST"])
+def refresh_auth_token():
+    """用 refresh token 换取新的 JWT access token"""
+    data = request.get_json()
+    if not data or "refresh_token" not in data:
+        return jsonify({"error": "Missing refresh_token"}), 400
+
+    token_doc = validate_refresh_token(data["refresh_token"])
+    if not token_doc:
+        return jsonify({"error": "Invalid or expired refresh token"}), 401
+
+    user = db.get_user_by_id(token_doc["user_id"])
+    if not user:
+        return jsonify({"error": "User not found"}), 401
+
+    # 签发新 JWT
+    new_token = JWTAuth.create_token(str(user["_id"]), user["email"])
+
+    return jsonify({
+        "success": True,
+        "token": new_token,
+        "user": {
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "name": user["name"],
+            "avatar_url": user.get("avatar_url"),
+            "workspace_slug": user.get("workspace_slug"),
+            "settings": user.get("settings", {})
+        }
+    })
 
 
 # ==================== 邮箱认证接口 ====================
@@ -252,7 +289,7 @@ def login():
     if not email or not password:
         return jsonify({"success": False, "error": "Email and password are required"}), 400
 
-    result = handle_email_login(email, password)
+    result = handle_email_login(email, password, request.headers.get("User-Agent", ""))
 
     if result.get("success"):
         return jsonify(result)
@@ -279,7 +316,7 @@ def verify_email():
     if len(code) != 6 or not code.isdigit():
         return jsonify({"success": False, "error": "Invalid code format"}), 400
 
-    result = handle_verify_email(email, code)
+    result = handle_verify_email(email, code, request.headers.get("User-Agent", ""))
 
     if result.get("success"):
         return jsonify(result)

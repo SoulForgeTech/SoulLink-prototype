@@ -4197,11 +4197,10 @@
             applyLanguage();
             // Sync to server if logged in
             if (state.token) {
-                fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${state.token}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ language: state.language })
                 }).catch(err => console.warn('Failed to sync language:', err));
@@ -4211,6 +4210,7 @@
         // ==================== 状态管理 ====================
         let state = {
             token: localStorage.getItem('soullink_token'),
+            refreshToken: localStorage.getItem('soullink_refresh_token'),
             user: JSON.parse(localStorage.getItem('soullink_user') || 'null'),
             language: localStorage.getItem('soullink_language') || (navigator.language.startsWith('zh') ? 'zh-CN' : 'en'),
             currentConversationId: null,
@@ -4363,8 +4363,10 @@
                     state.messages = [];
 
                     state.token = data.token;
+                    state.refreshToken = data.refresh_token;
                     state.user = data.user;
                     localStorage.setItem('soullink_token', data.token);
+                    if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                     localStorage.setItem('soullink_user', JSON.stringify(data.user));
 
                     showApp();
@@ -4446,8 +4448,10 @@
                         state.conversations = [];
                         state.messages = [];
                         state.token = data.token;
+                        state.refreshToken = data.refresh_token;
                         state.user = data.user;
                         localStorage.setItem('soullink_token', data.token);
+                        if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                         localStorage.setItem('soullink_user', JSON.stringify(data.user));
                         showApp();
                         document.getElementById('conversations-list').innerHTML = '';
@@ -4562,8 +4566,10 @@
                     state.messages = [];
 
                     state.token = data.token;
+                    state.refreshToken = data.refresh_token;
                     state.user = data.user;
                     localStorage.setItem('soullink_token', data.token);
+                    if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                     localStorage.setItem('soullink_user', JSON.stringify(data.user));
 
                     // 恢复 UI 元素显示状态
@@ -4647,6 +4653,53 @@
         }
 
         // ==================== 认证相关 ====================
+
+        // 用 refresh token 换取新 JWT（内部使用）
+        async function _tryRefreshToken() {
+            if (!state.refreshToken) return false;
+            try {
+                const resp = await fetch(`${CONFIG.API_BASE_URL}/api/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: state.refreshToken })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    state.token = data.token;
+                    state.user = data.user;
+                    localStorage.setItem('soullink_token', data.token);
+                    localStorage.setItem('soullink_user', JSON.stringify(data.user));
+                    return true;
+                }
+            } catch (e) {
+                console.error('Refresh token failed:', e);
+            }
+            return false;
+        }
+
+        // 带自动刷新的 fetch 封装 — 替代所有 authenticated API 调用
+        async function authFetch(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            if (state.token) {
+                options.headers['Authorization'] = `Bearer ${state.token}`;
+            }
+
+            let response = await fetch(url, options);
+
+            // 401 且有 refresh token → 尝试刷新后重试
+            if (response.status === 401 && state.refreshToken) {
+                const refreshed = await _tryRefreshToken();
+                if (refreshed) {
+                    options.headers['Authorization'] = `Bearer ${state.token}`;
+                    response = await fetch(url, options);
+                } else {
+                    // refresh 也失败 → 强制登出
+                    logout();
+                }
+            }
+            return response;
+        }
+
         async function verifyToken() {
             try {
                 const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/verify`, {
@@ -4661,6 +4714,12 @@
                     localStorage.setItem('soullink_user', JSON.stringify(data.user));
                     return true;
                 }
+
+                // JWT 过期 → 尝试用 refresh token 续期
+                if (response.status === 401 && state.refreshToken) {
+                    return await _tryRefreshToken();
+                }
+
                 return false;
             } catch (error) {
                 console.error('Token verification failed:', error);
@@ -4725,8 +4784,10 @@
                     state.messages = [];
 
                     state.token = data.token;
+                    state.refreshToken = data.refresh_token;
                     state.user = data.user;
                     localStorage.setItem('soullink_token', data.token);
+                    if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                     localStorage.setItem('soullink_user', JSON.stringify(data.user));
 
                     showApp();
@@ -4773,8 +4834,10 @@
                     state.messages = [];
 
                     state.token = data.token;
+                    state.refreshToken = data.refresh_token;
                     state.user = data.user;
                     localStorage.setItem('soullink_token', data.token);
+                    if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                     localStorage.setItem('soullink_user', JSON.stringify(data.user));
 
                     showApp();
@@ -4800,13 +4863,24 @@
         }
 
         function logout() {
+            // 通知服务端吊销 refresh token（fire and forget）
+            if (state.refreshToken) {
+                fetch(`${CONFIG.API_BASE_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: state.refreshToken })
+                }).catch(() => {});
+            }
+
             state.token = null;
+            state.refreshToken = null;
             state.user = null;
             state.currentConversationId = null;
             state.conversations = [];
             state.messages = [];
 
             localStorage.removeItem('soullink_token');
+            localStorage.removeItem('soullink_refresh_token');
             localStorage.removeItem('soullink_user');
 
             // 清空UI显示
@@ -4839,10 +4913,8 @@
                 updateLoadingProgress(20, 'Setting up AI knowledge base...');
 
                 // 调用 workspace 接口触发创建
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/workspace`, {
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`
-                    }
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/workspace`, {
+                    headers: {}
                 });
 
                 clearInterval(progressInterval);
@@ -4877,10 +4949,8 @@
         // ==================== 对话管理 ====================
         async function loadConversations() {
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`
-                    }
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
+                    headers: {}
                 });
 
                 if (response.ok) {
@@ -4936,10 +5006,8 @@
 
             // 加载对话消息
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`
-                    }
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
+                    headers: {}
                 });
 
                 if (response.ok) {
@@ -4955,10 +5023,9 @@
         async function createNewConversation() {
             closeMobileSidebar();
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ title: 'New Chat' })
@@ -5011,10 +5078,9 @@
             if (!newTitle) newTitle = 'New Chat';
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ title: newTitle })
@@ -5039,11 +5105,9 @@
             }
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`
-                    }
+                    headers: {}
                 });
 
                 if (response.ok) {
@@ -5087,10 +5151,9 @@
             const title = generateSimpleTitle();
 
             try {
-                await fetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
+                await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ title: title })
@@ -5240,10 +5303,9 @@
             showTyping();
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/chat`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/chat`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -5436,10 +5498,9 @@
                 return;
             }
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ companion_avatar: pendingCompanionAvatar })
@@ -5548,10 +5609,9 @@
             btn.textContent = state.language === 'zh-CN' ? '提交中...' : 'Submitting...';
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/feedback`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/feedback`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -5600,11 +5660,11 @@
             if (!newName || newName.length > 20) return;
 
             try {
-                const res = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                const res = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${state.token}`
+                        'Content-Type': 'application/json'
+
                     },
                     body: JSON.stringify({ companion_name: newName })
                 });
@@ -5627,11 +5687,10 @@
                         ? `[系统通知：用户已将你的名字改为「${newName}」，从现在起你叫${newName}，请用新名字回应]`
                         : `[System notice: The user has renamed you to "${newName}". From now on your name is ${newName}. Please respond with your new name.]`;
                     try {
-                        await fetch(`${CONFIG.API_BASE_URL}/api/chat`, {
+                        await authFetch(`${CONFIG.API_BASE_URL}/api/chat`, {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${state.token}`
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 message: silentMsg,
@@ -5840,10 +5899,9 @@
             try {
                 // 1. 保存头像/昵称变化
                 if (updates.name || updates.avatar_url) {
-                    const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/profile`, {
+                    const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/profile`, {
                         method: 'PUT',
                         headers: {
-                            'Authorization': `Bearer ${state.token}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(updates)
@@ -5870,10 +5928,9 @@
                 }
 
                 if (Object.keys(settingsPayload).length > 0) {
-                    const settingsResponse = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    const settingsResponse = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                         method: 'PUT',
                         headers: {
-                            'Authorization': `Bearer ${state.token}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(settingsPayload)
@@ -5932,8 +5989,8 @@
         async function checkPersonalityTestStatus() {
             if (!state.token) return;
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/status`, {
-                    headers: { 'Authorization': `Bearer ${state.token}` }
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/personality-test/status`, {
+                    headers: {  }
                 });
                 const data = await response.json();
                 if (!data.completed) {
@@ -5975,8 +6032,8 @@
 
             // Fetch questions
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/questions?lang=${state.language || 'en'}`, {
-                    headers: { 'Authorization': `Bearer ${state.token}` }
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/personality-test/questions?lang=${state.language || 'en'}`, {
+                    headers: {  }
                 });
                 const data = await response.json();
                 personalityTestState.questions = data.questions;
@@ -6065,10 +6122,9 @@
             showLoading(t('loading.workspace'));
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/personality-test/submit`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/personality-test/submit`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -6280,10 +6336,9 @@
             showLoading(state.language === 'zh-CN' ? '正在设置...' : 'Setting up...');
             try {
                 const gender = state.selectedGender;
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -6420,10 +6475,9 @@
 
             // Persist to backend (fire-and-forget)
             if (state.token) {
-                fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${state.token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ chat_background: bgId })

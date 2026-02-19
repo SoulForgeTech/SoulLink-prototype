@@ -106,6 +106,36 @@ class ConversationModel:
         ]
 
 
+class RefreshTokenModel:
+    """Refresh Token 数据模型 — 用于持久登录（Trust Device）"""
+
+    collection_name = "refresh_tokens"
+
+    @staticmethod
+    def create_refresh_token(
+        user_id: ObjectId,
+        token: str,
+        expires_at: datetime,
+        user_agent: str = "",
+    ) -> Dict[str, Any]:
+        return {
+            "user_id": user_id,
+            "token": token,
+            "expires_at": expires_at,
+            "user_agent": user_agent,
+            "created_at": datetime.utcnow(),
+            "last_used_at": datetime.utcnow(),
+        }
+
+    @staticmethod
+    def get_indexes() -> List[Dict]:
+        return [
+            {"keys": [("token", 1)], "unique": True},
+            {"keys": [("user_id", 1)]},
+            {"keys": [("expires_at", 1)], "expireAfterSeconds": 0},  # MongoDB TTL 自动清理过期 token
+        ]
+
+
 class WorkspaceModel:
     """Workspace 配置数据模型"""
 
@@ -148,7 +178,7 @@ class WorkspaceModel:
 # 集合初始化辅助函数
 def get_all_models():
     """返回所有模型类"""
-    return [UserModel, ConversationModel, WorkspaceModel]
+    return [UserModel, ConversationModel, RefreshTokenModel, WorkspaceModel]
 
 
 def init_indexes(db):
