@@ -3654,17 +3654,17 @@
                         <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers Abigail</div>
                     </div>
                     <div class="form-group">
-                        <label>Companion Style / 伴侣风格</label>
+                        <label data-i18n="settings.companion.style">Companion Style</label>
                         <div class="settings-style-selector">
                             <div class="settings-gender-row">
-                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">👩 她 / Her</button>
-                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">👨 他 / Him</button>
+                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">👩 <span data-i18n="companion.gender.her">Her</span></button>
+                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">👨 <span data-i18n="companion.gender.him">Him</span></button>
                             </div>
                             <div class="settings-subtype-row" id="settings-subtype-row">
                                 <!-- 由 JS 动态填充 -->
                             </div>
                         </div>
-                        <div class="form-hint">Changes will update your companion's personality / 更改将更新伴侣的性格风格</div>
+                        <div class="form-hint" data-i18n="settings.companion.hint">Changes will update your companion's personality</div>
                     </div>
                 </div>
             </div>
@@ -3721,11 +3721,11 @@
             <div class="gender-cards">
                 <div class="gender-card" onclick="selectGender('female')">
                     <div class="gender-icon">👩</div>
-                    <h3>她 / Her</h3>
+                    <h3 data-i18n="companion.gender.her">Her</h3>
                 </div>
                 <div class="gender-card" onclick="selectGender('male')">
                     <div class="gender-icon">👨</div>
-                    <h3>他 / Him</h3>
+                    <h3 data-i18n="companion.gender.him">Him</h3>
                 </div>
             </div>
         </div>
@@ -3971,6 +3971,10 @@
                 'rename.subtitle': 'Give her a name you like',
                 'rename.cancel': 'Cancel',
                 'rename.save': 'Save',
+                'companion.gender.her': 'Her',
+                'companion.gender.him': 'Him',
+                'settings.companion.style': 'Companion Style',
+                'settings.companion.hint': 'Changes will update your companion\'s personality',
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
@@ -4087,6 +4091,10 @@
                 'rename.subtitle': '取一个你喜欢的昵称吧',
                 'rename.cancel': '取消',
                 'rename.save': '保存',
+                'companion.gender.her': '她',
+                'companion.gender.him': '他',
+                'settings.companion.style': '伴侣风格',
+                'settings.companion.hint': '更改将更新伴侣的性格风格',
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
