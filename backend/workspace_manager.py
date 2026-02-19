@@ -296,13 +296,16 @@ class WorkspaceManager:
         "female_cool": "Serena", "female_sweet": "Luna",
     }
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female") -> str:
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None) -> str:
         """构建完整的 system prompt"""
         system_prompt_template = self._load_system_prompt_template(companion_gender)
 
         # 先插入 persona（因为 persona 中可能包含 {{user_name}} 占位符）
         default_persona = self.DEFAULT_PERSONA_MALE if companion_gender == "male" else self.DEFAULT_PERSONA
         system_prompt = system_prompt_template.replace("{{persona}}", persona or default_persona)
+
+        # 插入记忆文本（如果有）
+        system_prompt = system_prompt.replace("{{memory}}", memory or "")
 
         # 再替换所有占位符（包括模板中的和 persona 中的）
         system_prompt = system_prompt.replace("{{user_name}}", user_name)
@@ -378,12 +381,21 @@ class WorkspaceManager:
         # 获取伴侣性别
         companion_gender = user.get("settings", {}).get("companion_gender", "female") if user else "female"
 
+        # 获取用户记忆文本
+        memory_text = ""
+        try:
+            from memory_engine import build_memory_text
+            user_memory = user.get("memory", {}) if user else {}
+            memory_text = build_memory_text(user_memory)
+        except Exception as e:
+            print(f"[MEMORY] Failed to build memory text: {e}")
+
         headers = {
             "Authorization": f"Bearer {self.anythingllm_api_key}",
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name, companion_gender=companion_gender)
+        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {

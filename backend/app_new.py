@@ -448,16 +448,20 @@ def update_settings():
 
     # 如果伴侣风格改变了，重新生成 persona 并更新 system prompt
     if "companion_subtype" in data or "companion_gender" in data:
+        logger.info(f"[STYLE] Companion style changed! data={data}")
         try:
             from personality_engine import generate_personality_profile, COMPANION_SUBTYPES
-            user = get_current_user()
+            # 从数据库重新读取最新用户数据（不用缓存的 request.current_user）
+            user = db.db["users"].find_one({"_id": user_id})
             subtype = data.get("companion_subtype") or user.get("settings", {}).get("companion_subtype", "female_gentle")
             gender = data.get("companion_gender") or user.get("settings", {}).get("companion_gender", "female")
             language = user.get("settings", {}).get("language", "en")
+            logger.info(f"[STYLE] subtype={subtype}, gender={gender}, language={language}")
 
             pt = user.get("personality_test", {})
             if pt.get("completed"):
                 # 重新生成 persona
+                logger.info(f"[STYLE] Regenerating persona for subtype={subtype}")
                 new_profile = generate_personality_profile(
                     pt["dimensions"], pt["tarot_cards"], language, subtype
                 )
@@ -465,6 +469,9 @@ def update_settings():
                     {"_id": user_id},
                     {"$set": {"personality_test.personality_profile": new_profile}}
                 )
+                logger.info(f"[STYLE] New persona saved, length={len(new_profile)}")
+            else:
+                logger.info(f"[STYLE] No personality test completed, skipping persona regen")
 
             # 如果用户使用的是默认名字，自动切换到新子类型的默认名字
             all_defaults = [s["default_name"] for s in COMPANION_SUBTYPES.values()]
@@ -474,9 +481,12 @@ def update_settings():
                 db.db["users"].update_one(
                     {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
                 )
+                logger.info(f"[STYLE] Auto-renamed companion: {current_name} -> {new_default}")
 
             # 更新 system prompt
-            workspace_manager.update_system_prompt(user_id, user["name"])
+            logger.info(f"[STYLE] Updating system prompt for user {user['name']}")
+            result = workspace_manager.update_system_prompt(user_id, user["name"])
+            logger.info(f"[STYLE] update_system_prompt result: {result}")
         except Exception as e:
             logger.warning(f"Error updating companion style: {e}")
             import traceback
@@ -781,6 +791,20 @@ def chat():
         }
         if companion_name_changed:
             result["companionNameChanged"] = companion_name_changed
+
+        # 异步提取记忆（不阻塞响应）
+        import threading
+        def _async_memory_extraction(uid, umsg, areply):
+            try:
+                from memory_engine import process_memory
+                process_memory(uid, umsg, areply)
+            except Exception as e:
+                logger.warning(f"[MEMORY] Async extraction error: {e}")
+        threading.Thread(
+            target=_async_memory_extraction,
+            args=(user_id, user_message, reply),
+            daemon=True
+        ).start()
 
         return jsonify(result)
 
