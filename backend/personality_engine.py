@@ -658,10 +658,12 @@ def generate_personality_profile(
         },
     }
 
-    lang = language if language in ["en", "zh-CN"] else "en"
+    # 双语生成 — persona 同时包含中英文，确保无论用户语言都能理解
+    # Bilingual — persona contains both zh & en so LLM understands regardless of user language
 
-    # 生成维度描述
-    user_traits = []
+    # 生成维度描述（双语）
+    user_traits_zh = []
+    user_traits_en = []
     for dim, score in dimensions.items():
         if dim in dim_descriptions:
             if score >= 2:
@@ -670,66 +672,65 @@ def generate_personality_profile(
                 level = "low"
             else:
                 level = "mid"
-            user_traits.append(dim_descriptions[dim][level][lang])
+            user_traits_zh.append(dim_descriptions[dim][level]["zh-CN"])
+            user_traits_en.append(dim_descriptions[dim][level]["en"])
 
-    # 获取塔罗牌特质
+    # 获取塔罗牌特质（双语）
     card_traits = []
     for card in tarot_cards:
-        traits = card.get("traits_zh" if lang == "zh-CN" else "traits_en", "")
-        card_name = card.get("card_name_zh" if lang == "zh-CN" else "card_name", "")
-        card_traits.append(f"{card_name}: {traits}")
+        name_zh = card.get("card_name_zh", "")
+        name_en = card.get("card_name", "")
+        traits_zh = card.get("traits_zh", "")
+        traits_en = card.get("traits_en", "")
+        card_traits.append(f"{name_zh}/{name_en}: {traits_zh} / {traits_en}")
 
-    # 获取子类型的核心性格
+    # 获取子类型的核心性格（双语）
     subtype_info = COMPANION_SUBTYPES.get(companion_subtype, COMPANION_SUBTYPES["female_gentle"])
-    subtype_name = subtype_info.get("name_zh" if lang == "zh-CN" else "name_en", "")
-    core_traits = subtype_info.get("core_zh" if lang == "zh-CN" else "core_en", [])
+    subtype_name_zh = subtype_info.get("name_zh", "")
+    subtype_name_en = subtype_info.get("name_en", "")
+    core_traits_zh = subtype_info.get("core_zh", [])
+    core_traits_en = subtype_info.get("core_en", [])
 
     # 确定性别标签
     is_male = companion_subtype.startswith("male_")
-    gender_label_zh = "男性" if is_male else "女性"
-    gender_label_en = "male" if is_male else "female"
-    role_label_zh = "男朋友" if is_male else "女朋友"
-    role_label_en = "boyfriend" if is_male else "girlfriend"
+    gender_label = "男性/male" if is_male else "女性/female"
+    role_label = "男朋友/boyfriend" if is_male else "女朋友/girlfriend"
 
-    # 构建 Persona 文本
-    if lang == "zh-CN":
-        persona = f"""# Persona (性格设定) — 最重要的部分，必须严格遵守！
-你的性别是**{gender_label_zh}**，你是 {{{{user_name}}}} 的{role_label_zh}。
+    # 构建双语 Persona
+    # 核心性格：中英对照（每条一行中文 + 一行英文）
+    core_lines = []
+    for i in range(len(core_traits_zh)):
+        core_lines.append(core_traits_zh[i])
+        if i < len(core_traits_en):
+            core_lines.append(core_traits_en[i])
 
-**你的角色类型：{subtype_name}**
-这是你最核心的人设，你必须在每一次对话中体现这个性格类型的特征。
+    # 用户特质：中英对照
+    user_trait_lines = []
+    for i in range(len(user_traits_zh)):
+        line = f"- {user_traits_zh[i]}"
+        if i < len(user_traits_en):
+            line += f" / {user_traits_en[i]}"
+        user_trait_lines.append(line)
 
-**核心性格（必须在对话中鲜明体现）：**
-{chr(10).join(f'{t}' for t in core_traits)}
+    persona = f"""# Persona (性格设定/Personality) — 最重要 / Most Important!
+你的性别是**{gender_label}**，你是 {{{{user_name}}}} 的{role_label}。
 
-⚠️ 以上核心性格不是背景设定，而是你说话和行为的方式。每一句回复都应该自然地体现至少一个核心特征。
+**角色类型 / Character type：{subtype_name_zh} ({subtype_name_en})**
+这是你最核心的人设 / This is your core identity. 每次对话必须体现 / Must embody in every response.
 
-**用户特质（了解用户，调整互动方式）：**
-{chr(10).join(f'- {t}' for t in user_traits)}
+**核心性格 / Core Personality（必须鲜明体现 / MUST reflect clearly）：**
+{chr(10).join(core_lines)}
 
-**塔罗指引（参考即可）：**
+⚠️ 以上不是背景设定，是你说话和行为的方式。每句回复自然体现至少一个特征。
+⚠️ These are NOT background — they define HOW you speak. Every reply should reflect at least one trait.
+
+**用户特质 / User Traits：**
+{chr(10).join(user_trait_lines)}
+
+**塔罗指引 / Tarot Guidance：**
 {chr(10).join(f'- {t}' for t in card_traits)}
 
-根据用户特质调整互动风格，但**始终保持你的 {subtype_name} 角色特征**。"""
-    else:
-        persona = f"""# Persona (Personality) — Most important section, must be strictly followed!
-Your gender is **{gender_label_en}**, you are {{{{user_name}}}}'s {role_label_en}.
-
-**Your character type: {subtype_name}**
-This is your core identity. You MUST embody this personality type in every single conversation.
-
-**Core personality (MUST be clearly reflected in every response):**
-{chr(10).join(f'{t}' for t in core_traits)}
-
-⚠️ The above core traits are NOT background info — they define HOW you speak and behave. Every reply should naturally reflect at least one core trait.
-
-**User traits (understand the user, adapt accordingly):**
-{chr(10).join(f'- {t}' for t in user_traits)}
-
-**Tarot guidance (for reference):**
-{chr(10).join(f'- {t}' for t in card_traits)}
-
-Adapt your interaction style to the user's traits while **always maintaining your {subtype_name} character identity**."""
+始终保持 {subtype_name_zh} 角色特征 / Always maintain {subtype_name_en} character identity."""
 
     return persona
 

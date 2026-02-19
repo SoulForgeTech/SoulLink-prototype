@@ -1108,6 +1108,21 @@
                 font-size: 1.05rem;
             }
 
+            .bg-picker-btn {
+                padding: 6px;
+            }
+
+            .bg-picker-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .bg-picker-panel {
+                width: 260px;
+                right: 4px;
+                top: 64px;
+            }
+
             .companion-status {
                 font-size: 0.8rem;
             }
@@ -2781,6 +2796,144 @@
             font-weight: 600;
         }
 
+        /* ===== Background Picker ===== */
+        .bg-picker-btn {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .bg-picker-btn:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: scale(1.05);
+        }
+
+        .bg-picker-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .bg-picker-panel {
+            position: fixed;
+            right: 8px;
+            top: 80px;
+            width: 280px;
+            max-height: 70vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            overflow: hidden;
+            transform: translateX(110%);
+            transition: transform 0.3s ease-out;
+        }
+
+        .bg-picker-panel.open {
+            transform: translateX(0);
+        }
+
+        .bg-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .bg-picker-header button {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #999;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .bg-picker-header button:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #333;
+        }
+
+        .bg-thumb-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px;
+            max-height: calc(70vh - 50px);
+            overflow-y: auto;
+        }
+
+        .bg-thumb-grid::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .bg-thumb-grid::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+        }
+
+        .bg-thumb-item {
+            position: relative;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 3/2;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .bg-thumb-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .bg-thumb-item.active {
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+        }
+
+        .bg-thumb-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .bg-thumb-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 2px 4px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 9px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bg-thumb-item.active .bg-thumb-label {
+            background: rgba(124, 58, 237, 0.8);
+        }
+
         @media (max-width: 480px) {
             .gender-cards { flex-direction: column; align-items: center; }
             .gender-card { width: 180px; padding: 30px 20px; }
@@ -3659,7 +3812,25 @@
                         <span class="model-indicator" id="model-indicator" onclick="openSettingsModal()">Gemini 2.5 Flash</span>
                     </div>
                 </div>
+                <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                </button>
             </header>
+
+            <!-- 背景选择面板 -->
+            <div class="bg-picker-panel" id="bg-picker-panel">
+                <div class="bg-picker-header">
+                    <span>背景 / Background</span>
+                    <button onclick="toggleBgPicker()">✕</button>
+                </div>
+                <div class="bg-thumb-grid" id="bg-thumb-grid">
+                    <!-- JS 动态生成 -->
+                </div>
+            </div>
 
             <!-- 消息区域 -->
             <div class="messages-container" id="messages-container">
@@ -4080,6 +4251,8 @@
             document.getElementById('login-page').classList.add('hidden');
             document.getElementById('app').classList.add('active');
             updateUserInfo();
+            // Load saved background
+            if (typeof loadBackground === 'function') loadBackground();
         }
 
         function updateUserInfo() {
@@ -6136,6 +6309,118 @@
             // 更简洁的方式：直接重新渲染
             renderSettingsSubtypes(settingsSelectedGender);
         }
+
+        // ===== Background Picker =====
+        const BACKGROUNDS = [
+            { id: 'default', file: 'bg.png', path: 'images/bg.png', thumb: 'images/Background/thumbnails/bg.jpg', label: 'Default' },
+            { id: 'bg01', file: 'aditya-anjagi-KZSDCocsOEE-unsplash.jpg', thumb: 'images/Background/thumbnails/aditya-anjagi-KZSDCocsOEE-unsplash.jpg' },
+            { id: 'bg02', file: 'alex-mesmer-6h6O17NjZ_I-unsplash.jpg', thumb: 'images/Background/thumbnails/alex-mesmer-6h6O17NjZ_I-unsplash.jpg' },
+            { id: 'bg03', file: 'ali-kazal-Vn7nOtD9DmQ-unsplash.jpg', thumb: 'images/Background/thumbnails/ali-kazal-Vn7nOtD9DmQ-unsplash.jpg' },
+            { id: 'bg04', file: 'filiz-elaerts-J_C3_JpJMms-unsplash.jpg', thumb: 'images/Background/thumbnails/filiz-elaerts-J_C3_JpJMms-unsplash.jpg' },
+            { id: 'bg05', file: 'florian-schindler-EYj2rSMGnU0-unsplash.jpg', thumb: 'images/Background/thumbnails/florian-schindler-EYj2rSMGnU0-unsplash.jpg' },
+            { id: 'bg06', file: 'liana-s-RBLc00d72yo-unsplash.jpg', thumb: 'images/Background/thumbnails/liana-s-RBLc00d72yo-unsplash.jpg' },
+            { id: 'bg07', file: 'marek-piwnicki-pE9RxXqGbd4-unsplash.jpg', thumb: 'images/Background/thumbnails/marek-piwnicki-pE9RxXqGbd4-unsplash.jpg' },
+            { id: 'bg08', file: 'matt-liu-FT7J1SONJA8-unsplash.jpg', thumb: 'images/Background/thumbnails/matt-liu-FT7J1SONJA8-unsplash.jpg' },
+            { id: 'bg09', file: 'mike-hindle-By65zuM4fAc-unsplash.jpg', thumb: 'images/Background/thumbnails/mike-hindle-By65zuM4fAc-unsplash.jpg' },
+            { id: 'bg10', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg' },
+            { id: 'bg11', file: 'pascal-debrunner-8xkImX3so8U-unsplash.jpg', thumb: 'images/Background/thumbnails/pascal-debrunner-8xkImX3so8U-unsplash.jpg' },
+            { id: 'bg12', file: 'pexels-nolan-lee-109304063-10259638.jpg', thumb: 'images/Background/thumbnails/pexels-nolan-lee-109304063-10259638.jpg' },
+            { id: 'bg13', file: 'pexels-pauldeetman-2695679.jpg', thumb: 'images/Background/thumbnails/pexels-pauldeetman-2695679.jpg' },
+            { id: 'bg14', file: 'pic-kaca-unsplash.jpg', thumb: 'images/Background/thumbnails/pic-kaca-unsplash.jpg' },
+            { id: 'bg15', file: 'robert-clark-XKaHnkxBc1w-unsplash.jpg', thumb: 'images/Background/thumbnails/robert-clark-XKaHnkxBc1w-unsplash.jpg' },
+            { id: 'bg16', file: 'shubham-dhage-TXTmUUGuvpQ-unsplash.jpg', thumb: 'images/Background/thumbnails/shubham-dhage-TXTmUUGuvpQ-unsplash.jpg' },
+            { id: 'bg17', file: 'tobias-reich-CI8UPpze-V4-unsplash.jpg', thumb: 'images/Background/thumbnails/tobias-reich-CI8UPpze-V4-unsplash.jpg' },
+        ];
+
+        let bgPickerRendered = false;
+
+        function toggleBgPicker() {
+            const panel = document.getElementById('bg-picker-panel');
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) {
+                panel.classList.remove('open');
+            } else {
+                if (!bgPickerRendered) {
+                    renderBgGrid();
+                    bgPickerRendered = true;
+                }
+                panel.classList.add('open');
+            }
+        }
+
+        function renderBgGrid() {
+            const grid = document.getElementById('bg-thumb-grid');
+            const currentBg = state.user?.settings?.chat_background || 'default';
+
+            grid.innerHTML = BACKGROUNDS.map(bg => {
+                const isActive = (currentBg === bg.id) || (currentBg === 'default' && bg.id === 'default');
+                const label = bg.label || '';
+                return `
+                    <div class="bg-thumb-item${isActive ? ' active' : ''}" data-bg-id="${bg.id}" onclick="selectBackground('${bg.id}')">
+                        <img src="${bg.thumb}" alt="${bg.id}" loading="lazy">
+                        ${label ? `<div class="bg-thumb-label">${label}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectBackground(bgId) {
+            const bg = BACKGROUNDS.find(b => b.id === bgId);
+            if (!bg) return;
+
+            const app = document.getElementById('app');
+
+            // Update background image
+            if (bgId === 'default') {
+                app.style.backgroundImage = "url('images/bg.png')";
+            } else {
+                app.style.backgroundImage = `url('images/Background/${bg.file}')`;
+            }
+
+            // Update active state in grid
+            document.querySelectorAll('.bg-thumb-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.bgId === bgId);
+            });
+
+            // Save to state
+            if (!state.user.settings) state.user.settings = {};
+            state.user.settings.chat_background = bgId;
+            localStorage.setItem('soullink_user', JSON.stringify(state.user));
+
+            // Persist to backend (fire-and-forget)
+            if (state.token) {
+                fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ chat_background: bgId })
+                }).catch(err => console.error('Save background error:', err));
+            }
+        }
+
+        function loadBackground() {
+            const bgId = state.user?.settings?.chat_background;
+            if (!bgId || bgId === 'default') return; // CSS default is bg.png
+
+            const bg = BACKGROUNDS.find(b => b.id === bgId);
+            if (bg) {
+                const app = document.getElementById('app');
+                app.style.backgroundImage = `url('images/Background/${bg.file}')`;
+            }
+        }
+
+        // Close bg picker when clicking outside
+        document.addEventListener('click', function(e) {
+            const panel = document.getElementById('bg-picker-panel');
+            const btn = document.querySelector('.bg-picker-btn');
+            if (panel && panel.classList.contains('open')) {
+                if (!panel.contains(e.target) && !btn.contains(e.target)) {
+                    panel.classList.remove('open');
+                }
+            }
+        });
     </script>
 </body>
 </html>

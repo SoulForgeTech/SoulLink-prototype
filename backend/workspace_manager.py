@@ -397,9 +397,10 @@ class WorkspaceManager:
             if response.status_code == 200:
                 return {"success": True}
             else:
+                error_detail = response.text[:300] if response.text else "empty"
                 return {
                     "success": False,
-                    "error": f"HTTP {response.status_code}: {response.text}"
+                    "error": f"HTTP {response.status_code}: slug={slug} detail={error_detail}"
                 }
         except Exception as e:
             print(f"Error updating system prompt: {e}")
