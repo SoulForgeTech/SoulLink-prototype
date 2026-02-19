@@ -4680,8 +4680,27 @@
         // 带自动刷新的 fetch 封装 — 替代所有 authenticated API 调用
         async function authFetch(url, options = {}) {
             if (!options.headers) options.headers = {};
+
+            // 同步检查：如果 localStorage 中 token 已被清除但内存中还有，主动刷新
+            const storedToken = localStorage.getItem('soullink_token');
+            if (!storedToken && state.token) {
+                // token 被外部清除（如手动删除、其他 tab 登出），尝试用 refresh token 续期
+                state.token = null;
+            }
+
             if (state.token) {
                 options.headers['Authorization'] = `Bearer ${state.token}`;
+            }
+
+            // 如果没有 token，直接尝试 refresh 而不是发一个必然 401 的请求
+            if (!state.token && state.refreshToken) {
+                const refreshed = await _tryRefreshToken();
+                if (refreshed) {
+                    options.headers['Authorization'] = `Bearer ${state.token}`;
+                } else {
+                    logout();
+                    return new Response(JSON.stringify({error: 'Session expired'}), {status: 401});
+                }
             }
 
             let response = await fetch(url, options);
