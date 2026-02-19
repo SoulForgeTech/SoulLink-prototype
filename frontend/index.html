@@ -2626,6 +2626,153 @@
             box-shadow: 0 6px 24px rgba(124, 58, 237, 0.4);
         }
 
+        /* ===== 伴侣风格选择页面 ===== */
+        .style-selection-container {
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 600px;
+            width: 100%;
+            z-index: 1;
+        }
+        .style-selection-title {
+            font-size: 24px;
+            color: #e2d5f3;
+            margin-bottom: 8px;
+        }
+        .style-selection-subtitle {
+            font-size: 15px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 36px;
+        }
+        .gender-cards {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .gender-card {
+            width: 200px;
+            padding: 40px 24px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        .gender-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(124,58,237,0.5);
+            box-shadow: 0 8px 32px rgba(124,58,237,0.2);
+            background: rgba(124,58,237,0.1);
+        }
+        .gender-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+        }
+        .gender-card h3 {
+            font-size: 18px;
+            color: #e2d5f3;
+            margin: 0;
+        }
+        .subtype-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+        .subtype-card {
+            padding: 28px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        .subtype-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(124,58,237,0.5);
+            box-shadow: 0 6px 24px rgba(124,58,237,0.2);
+            background: rgba(124,58,237,0.1);
+        }
+        .subtype-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        .subtype-card h3 {
+            font-size: 15px;
+            color: #e2d5f3;
+            margin: 0 0 6px 0;
+        }
+        .subtype-card p {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* 设置中的伴侣风格选择器 */
+        .settings-style-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .settings-gender-row {
+            display: flex;
+            gap: 8px;
+        }
+        .gender-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .gender-btn:hover {
+            border-color: rgba(124,58,237,0.4);
+        }
+        .gender-btn.active {
+            background: rgba(124,58,237,0.2);
+            border-color: #7c3aed;
+            color: white;
+        }
+        .settings-subtype-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .subtype-btn {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .subtype-btn:hover {
+            border-color: rgba(124,58,237,0.4);
+        }
+        .subtype-btn.active {
+            background: rgba(124,58,237,0.2);
+            border-color: #7c3aed;
+            color: white;
+        }
+
+        @media (max-width: 480px) {
+            .gender-cards { flex-direction: column; align-items: center; }
+            .gender-card { width: 180px; padding: 30px 20px; }
+            .subtype-cards { grid-template-columns: 1fr; max-width: 280px; }
+        }
+
         /* 性格测试关闭按钮 */
         .personality-close-btn {
             position: fixed;
@@ -3322,6 +3469,19 @@
                         </div>
                         <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers Abigail</div>
                     </div>
+                    <div class="form-group">
+                        <label>Companion Style / 伴侣风格</label>
+                        <div class="settings-style-selector">
+                            <div class="settings-gender-row">
+                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">👩 她 / Her</button>
+                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">👨 他 / Him</button>
+                            </div>
+                            <div class="settings-subtype-row" id="settings-subtype-row">
+                                <!-- 由 JS 动态填充 -->
+                            </div>
+                        </div>
+                        <div class="form-hint">Changes will update your companion's personality / 更改将更新伴侣的性格风格</div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -3365,7 +3525,35 @@
             <h2 class="results-title" id="results-title"></h2>
             <div class="results-cards-row" id="results-cards-row"></div>
             <div class="results-profile" id="results-profile"></div>
-            <button class="start-chat-btn" onclick="finishPersonalityTest()"></button>
+            <button class="start-chat-btn" onclick="showGenderSelection()"></button>
+        </div>
+    </div>
+
+    <!-- 伴侣风格选择 - 第1步：性别 -->
+    <div id="gender-selection-page" class="personality-page">
+        <div class="style-selection-container">
+            <h2 class="style-selection-title" id="gender-selection-title">选择你的伴侣类型</h2>
+            <p class="style-selection-subtitle" id="gender-selection-subtitle">你希望你的灵魂伴侣是...？</p>
+            <div class="gender-cards">
+                <div class="gender-card" onclick="selectGender('female')">
+                    <div class="gender-icon">👩</div>
+                    <h3>她 / Her</h3>
+                </div>
+                <div class="gender-card" onclick="selectGender('male')">
+                    <div class="gender-icon">👨</div>
+                    <h3>他 / Him</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 伴侣风格选择 - 第2步：子类型 -->
+    <div id="subtype-selection-page" class="personality-page">
+        <div class="style-selection-container">
+            <h2 class="style-selection-title" id="subtype-title">选择她的性格</h2>
+            <div class="subtype-cards" id="subtype-cards">
+                <!-- 由 JS 动态填充 -->
+            </div>
         </div>
     </div>
 
@@ -5264,6 +5452,11 @@
 
             // 渲染模型选择器
             renderModelSelector();
+
+            // 初始化伴侣风格选择器
+            settingsSelectedGender = state.user?.settings?.companion_gender || 'female';
+            settingsSelectedSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
+            toggleSettingsGender(settingsSelectedGender);
         }
 
         function closeSettingsModal() {
@@ -5412,6 +5605,13 @@
             const modelChanged = selectedModel && selectedModel !== currentModel;
             if (modelChanged) hasChanges = true;
 
+            // 检测伴侣风格变化
+            const currentGender = state.user?.settings?.companion_gender || 'female';
+            const currentSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
+            const styleChanged = (settingsSelectedGender && settingsSelectedGender !== currentGender) ||
+                                 (settingsSelectedSubtype && settingsSelectedSubtype !== currentSubtype);
+            if (styleChanged) hasChanges = true;
+
             if (!hasChanges) {
                 closeSettingsModal();
                 return;
@@ -5441,25 +5641,43 @@
                     }
                 }
 
-                // 2. 保存模型变化
-                if (modelChanged) {
-                    const modelResponse = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                // 2. 保存模型变化 + 伴侣风格变化
+                const settingsPayload = {};
+                if (modelChanged) settingsPayload.model = selectedModel;
+                if (styleChanged) {
+                    settingsPayload.companion_gender = settingsSelectedGender;
+                    settingsPayload.companion_subtype = settingsSelectedSubtype;
+                }
+
+                if (Object.keys(settingsPayload).length > 0) {
+                    const settingsResponse = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                         method: 'PUT',
                         headers: {
                             'Authorization': `Bearer ${state.token}`,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ model: selectedModel })
+                        body: JSON.stringify(settingsPayload)
                     });
 
-                    if (modelResponse.ok) {
+                    if (settingsResponse.ok) {
                         if (!state.user.settings) state.user.settings = {};
-                        state.user.settings.model = selectedModel;
+                        if (modelChanged) {
+                            state.user.settings.model = selectedModel;
+                            updateModelIndicator();
+                        }
+                        if (styleChanged) {
+                            state.user.settings.companion_gender = settingsSelectedGender;
+                            state.user.settings.companion_subtype = settingsSelectedSubtype;
+                            // 从API响应获取可能更新的companion_name
+                            const respData = await settingsResponse.clone().json().catch(() => null);
+                            if (respData && respData.companion_name) {
+                                state.user.settings.companion_name = respData.companion_name;
+                            }
+                        }
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
-                        updateModelIndicator();
                     } else {
-                        const errData = await modelResponse.json();
-                        alert(errData.error || 'Failed to change model');
+                        const errData = await settingsResponse.json();
+                        alert(errData.error || 'Failed to save settings');
                         return;
                     }
                 }
@@ -5784,6 +6002,123 @@
             document.getElementById('tarot-results-page').classList.remove('active');
             // Already in app view, just ensure it's visible
             showApp();
+        }
+
+        // ==================== 伴侣风格选择 ====================
+
+        const SUBTYPES = {
+            female: [
+                { id: 'female_gentle', icon: '🌸', name_zh: '温柔姐姐', name_en: 'Gentle Big Sis', desc_zh: '温柔体贴、包容成熟', desc_en: 'Warm, caring, mature' },
+                { id: 'female_cute', icon: '🎀', name_zh: '元气少女', name_en: 'Energetic Girl', desc_zh: '活泼可爱、爱撒娇', desc_en: 'Lively, cute, playful' },
+                { id: 'female_cool', icon: '💎', name_zh: '知性御姐', name_en: 'Cool Beauty', desc_zh: '独立知性、有主见', desc_en: 'Independent, intellectual' },
+                { id: 'female_sweet', icon: '🐶', name_zh: '甜美小奶狗', name_en: 'Sweet Puppy', desc_zh: '黏人甜蜜、容易害羞', desc_en: 'Clingy, sweet, shy' },
+            ],
+            male: [
+                { id: 'male_ceo', icon: '🏢', name_zh: '霸道总裁', name_en: 'Tsundere CEO', desc_zh: '冷酷外表、内心温柔', desc_en: 'Cool exterior, warm inside' },
+                { id: 'male_warm', icon: '📚', name_zh: '温柔学长', name_en: 'Gentle Scholar', desc_zh: '温柔知性、耐心倾听', desc_en: 'Gentle, intellectual, patient' },
+                { id: 'male_sunshine', icon: '☀️', name_zh: '阳光少年', name_en: 'Sunshine Boy', desc_zh: '开朗活泼、正能量', desc_en: 'Cheerful, energetic, positive' },
+                { id: 'male_guardian', icon: '🛡️', name_zh: '忠犬男友', name_en: 'Loyal Guardian', desc_zh: '默默守护、安全感', desc_en: 'Silent protector, reliable' },
+            ],
+        };
+
+        function showGenderSelection() {
+            document.getElementById('tarot-results-page').classList.remove('active');
+            const page = document.getElementById('gender-selection-page');
+            page.classList.add('active');
+            const isZh = state.language === 'zh-CN';
+            document.getElementById('gender-selection-title').textContent = isZh ? '选择你的伴侣类型' : 'Choose Companion Type';
+            document.getElementById('gender-selection-subtitle').textContent = isZh ? '你希望你的灵魂伴侣是...？' : 'You want your soulmate to be...?';
+        }
+
+        function selectGender(gender) {
+            state.selectedGender = gender;
+            document.getElementById('gender-selection-page').classList.remove('active');
+            showSubtypeSelection(gender);
+        }
+
+        function showSubtypeSelection(gender) {
+            const page = document.getElementById('subtype-selection-page');
+            page.classList.add('active');
+            const isZh = state.language === 'zh-CN';
+            document.getElementById('subtype-title').textContent =
+                gender === 'female'
+                    ? (isZh ? '选择她的性格' : "Choose Her Personality")
+                    : (isZh ? '选择他的性格' : "Choose His Personality");
+
+            const container = document.getElementById('subtype-cards');
+            const subtypes = SUBTYPES[gender];
+            container.innerHTML = subtypes.map(s => `
+                <div class="subtype-card" onclick="selectSubtype('${s.id}')">
+                    <div class="subtype-icon">${s.icon}</div>
+                    <h3>${isZh ? s.name_zh : s.name_en}</h3>
+                    <p>${isZh ? s.desc_zh : s.desc_en}</p>
+                </div>
+            `).join('');
+        }
+
+        async function selectSubtype(subtypeId) {
+            showLoading(state.language === 'zh-CN' ? '正在设置...' : 'Setting up...');
+            try {
+                const gender = state.selectedGender;
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        companion_gender: gender,
+                        companion_subtype: subtypeId
+                    })
+                });
+                hideLoading();
+                if (response.ok) {
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.companion_gender = gender;
+                    state.user.settings.companion_subtype = subtypeId;
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                }
+            } catch (err) {
+                hideLoading();
+                console.error('Style selection error:', err);
+            }
+            document.getElementById('subtype-selection-page').classList.remove('active');
+            showApp();
+        }
+
+        // ==================== 设置页伴侣风格 ====================
+
+        let settingsSelectedGender = null;
+        let settingsSelectedSubtype = null;
+
+        function toggleSettingsGender(gender) {
+            settingsSelectedGender = gender;
+            document.querySelectorAll('.settings-style-selector .gender-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`.settings-style-selector .gender-btn[data-gender="${gender}"]`);
+            if (btn) btn.classList.add('active');
+            renderSettingsSubtypes(gender);
+        }
+
+        function renderSettingsSubtypes(gender) {
+            const row = document.getElementById('settings-subtype-row');
+            if (!row) return;
+            const subtypes = SUBTYPES[gender];
+            const isZh = state.language === 'zh-CN';
+            row.innerHTML = subtypes.map(s => `
+                <button class="subtype-btn${s.id === settingsSelectedSubtype ? ' active' : ''}"
+                        onclick="selectSettingsSubtype('${s.id}')">
+                    ${s.icon} ${isZh ? s.name_zh : s.name_en}
+                </button>
+            `).join('');
+        }
+
+        function selectSettingsSubtype(subtypeId) {
+            settingsSelectedSubtype = subtypeId;
+            document.querySelectorAll('#settings-subtype-row .subtype-btn').forEach(b => {
+                b.classList.toggle('active', b.textContent.includes(subtypeId.split('_').pop()) || false);
+            });
+            // 更简洁的方式：直接重新渲染
+            renderSettingsSubtypes(settingsSelectedGender);
         }
     </script>
 </body>

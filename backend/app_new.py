@@ -403,7 +403,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
@@ -430,13 +430,60 @@ def update_settings():
         if avatar_val.startswith("data:") and len(avatar_val) > 500000:
             return jsonify({"error": "Avatar image too large (max 500KB)"}), 400
 
+    # 验证 companion_gender 值
+    if "companion_gender" in data:
+        if data["companion_gender"] not in ("male", "female"):
+            return jsonify({"error": "companion_gender must be 'male' or 'female'"}), 400
+
+    # 验证 companion_subtype 值
+    if "companion_subtype" in data:
+        from personality_engine import COMPANION_SUBTYPES
+        if data["companion_subtype"] not in COMPANION_SUBTYPES:
+            return jsonify({"error": "Invalid companion_subtype"}), 400
+
     db.db["users"].update_one(
         {"_id": user_id},
         {"$set": updates}
     )
 
+    # 如果伴侣风格改变了，重新生成 persona 并更新 system prompt
+    if "companion_subtype" in data or "companion_gender" in data:
+        try:
+            from personality_engine import generate_personality_profile, COMPANION_SUBTYPES
+            user = get_current_user()
+            subtype = data.get("companion_subtype") or user.get("settings", {}).get("companion_subtype", "female_gentle")
+            gender = data.get("companion_gender") or user.get("settings", {}).get("companion_gender", "female")
+            language = user.get("settings", {}).get("language", "en")
+
+            pt = user.get("personality_test", {})
+            if pt.get("completed"):
+                # 重新生成 persona
+                new_profile = generate_personality_profile(
+                    pt["dimensions"], pt["tarot_cards"], language, subtype
+                )
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {"personality_test.personality_profile": new_profile}}
+                )
+
+            # 如果用户使用的是默认名字，自动切换到新子类型的默认名字
+            all_defaults = [s["default_name"] for s in COMPANION_SUBTYPES.values()]
+            current_name = user.get("settings", {}).get("companion_name", "Abigail")
+            if current_name in all_defaults or not current_name:
+                new_default = COMPANION_SUBTYPES.get(subtype, {}).get("default_name", "Abigail")
+                db.db["users"].update_one(
+                    {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
+                )
+
+            # 更新 system prompt
+            workspace_manager.update_system_prompt(user_id, user["name"])
+        except Exception as e:
+            logger.warning(f"Error updating companion style: {e}")
+            import traceback
+            traceback.print_exc()
+
     # 如果语言或AI昵称改变了，同步更新 system prompt
-    if "language" in data or "companion_name" in data:
+    elif "language" in data or "companion_name" in data:
         try:
             user = get_current_user()
             workspace_manager.update_system_prompt(
@@ -1104,13 +1151,87 @@ def admin_stats():
         user_count = db.db["users"].count_documents({})
         workspace_count = db.db["workspaces"].count_documents({})
         feedback_count = db.db["feedbacks"].count_documents({})
+        waitlist_count = db.db["waitlist"].count_documents({})
+        contact_count = db.db["contacts"].count_documents({})
         return jsonify({
             "users": user_count,
             "workspaces": workspace_count,
-            "feedbacks": feedback_count
+            "feedbacks": feedback_count,
+            "waitlist": waitlist_count,
+            "contacts": contact_count
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ==================== Waitlist & Contact (公开接口) ====================
+
+@app.route("/api/waitlist", methods=["POST"])
+def join_waitlist():
+    """加入等待列表（无需登录）"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email is required"}), 400
+
+    try:
+        # 检查是否已存在
+        existing = db.db["waitlist"].find_one({"email": email})
+        if existing:
+            return jsonify({"success": True, "message": "Already on waitlist"})
+
+        from datetime import datetime
+        waitlist_doc = {
+            "email": email,
+            "source": data.get("source", "website"),
+            "created_at": datetime.utcnow(),
+            "status": "pending"
+        }
+        db.db["waitlist"].insert_one(waitlist_doc)
+        logger.info(f"Waitlist signup: {email}")
+        return jsonify({"success": True, "message": "Added to waitlist"})
+    except Exception as e:
+        logger.error(f"Waitlist signup failed: {e}")
+        return jsonify({"error": "Server error"}), 500
+
+
+@app.route("/api/contact", methods=["POST"])
+def submit_contact():
+    """提交联系表单（无需登录）"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    message = (data.get("message") or "").strip()
+
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email is required"}), 400
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
+    if len(message) > 2000:
+        return jsonify({"error": "Message must be 2000 characters or less"}), 400
+
+    try:
+        from datetime import datetime
+        contact_doc = {
+            "name": name,
+            "email": email,
+            "message": message,
+            "source": data.get("source", "website"),
+            "created_at": datetime.utcnow(),
+            "status": "new"
+        }
+        db.db["contacts"].insert_one(contact_doc)
+        logger.info(f"Contact form from {email}: {message[:50]}...")
+        return jsonify({"success": True, "message": "Message sent"})
+    except Exception as e:
+        logger.error(f"Contact form failed: {e}")
+        return jsonify({"error": "Server error"}), 500
 
 
 # ==================== 启动应用 ====================

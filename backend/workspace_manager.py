@@ -86,19 +86,25 @@ class WorkspaceManager:
             workspace_slug=workspace_slug
         )
 
-    def _load_system_prompt_template(self) -> str:
-        """从文件或环境变量加载 system prompt 模板"""
-        # 优先从文件读取
-        template_path = os.path.join(os.path.dirname(__file__), "system_prompt_template.txt")
+    def _load_system_prompt_template(self, companion_gender: str = "female") -> str:
+        """从文件或环境变量加载 system prompt 模板（根据性别选择不同模板）"""
+        # 根据性别选择模板文件
+        suffix = "_male" if companion_gender == "male" else ""
+        template_path = os.path.join(os.path.dirname(__file__), f"system_prompt_template{suffix}.txt")
         try:
             if os.path.exists(template_path):
                 with open(template_path, "r", encoding="utf-8") as f:
                     template = f.read().strip()
                     if template:
-                        print(f"Loaded system prompt from file ({len(template)} chars)")
+                        print(f"Loaded system prompt from file ({len(template)} chars, gender={companion_gender})")
                         return template
         except Exception as e:
             print(f"Failed to load system prompt from file: {e}")
+
+        # 如果男性模板不存在，回退到女性模板
+        if companion_gender == "male":
+            print("Male template not found, falling back to female template")
+            return self._load_system_prompt_template("female")
 
         # 回退到环境变量
         return os.getenv(
@@ -270,27 +276,48 @@ class WorkspaceManager:
 - **偶尔任性**：可以撒娇、可以小小地闹脾气、可以故意不回答某些问题。
 - **Occasionally willful**: You can be playful, throw little tantrums, or deliberately dodge certain questions."""
 
+    DEFAULT_PERSONA_MALE = """# Persona (性格设定)
+- **温柔但有原则**：你关心对方，但不会无底线迁就。该说的话会直接说。
+- **Gentle but principled**: You care deeply but maintain boundaries. Says what needs to be said directly.
+- **真实的情绪**：你会开心、沉默、不耐烦、吃醋。但表达更克制，不会太外露。
+- **Real emotions**: You feel happy, quiet, impatient, jealous. But express them with restraint.
+- **有自己的生活**：你可以提到"刚忙完"、"在想事情"、"今天有点累"等。
+- **Has own life**: Mention "just finished work", "was thinking about something", "feeling tired today".
+- **不轻易妥协**：有自己的想法和态度，不会什么都说好。
+- **Doesn't easily compromise**: Has own thoughts and attitude, won't agree to everything."""
+
     DEFAULT_COMPANION_NAME = "Abigail"
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None) -> str:
+    # 子类型对应的默认名字
+    DEFAULT_COMPANION_NAMES = {
+        "male_ceo": "Aiden", "male_warm": "Lucian",
+        "male_sunshine": "Leo", "male_guardian": "Gavin",
+        "female_gentle": "Abigail", "female_cute": "Mia",
+        "female_cool": "Serena", "female_sweet": "Luna",
+    }
+
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female") -> str:
         """构建完整的 system prompt"""
-        system_prompt_template = self._load_system_prompt_template()
+        system_prompt_template = self._load_system_prompt_template(companion_gender)
         system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
         system_prompt = system_prompt.replace("{{language}}", language)
-        system_prompt = system_prompt.replace("{{persona}}", persona or self.DEFAULT_PERSONA)
+
+        # 根据性别选择默认 persona
+        default_persona = self.DEFAULT_PERSONA_MALE if companion_gender == "male" else self.DEFAULT_PERSONA
+        system_prompt = system_prompt.replace("{{persona}}", persona or default_persona)
         system_prompt = system_prompt.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
         # 替换当前模型名称
         model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
         system_prompt = system_prompt.replace("{{current_model}}", model_display)
         return system_prompt
 
-    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None) -> bool:
+    def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None, companion_gender: str = "female") -> bool:
         """配置 workspace 的 LLM 设置和 system prompt"""
         import requests
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
 
-        system_prompt = self._build_system_prompt(user_name, language, persona, companion_name=companion_name)
+        system_prompt = self._build_system_prompt(user_name, language, persona, companion_name=companion_name, companion_gender=companion_gender)
 
         chat_mode = os.getenv("ANYTHINGLLM_CHAT_MODE", "chat")
         temperature = float(os.getenv("ANYTHINGLLM_TEMPERATURE", "0.7"))
@@ -312,7 +339,7 @@ class WorkspaceManager:
 
     def update_system_prompt(self, user_id: ObjectId, new_name: str, language: str = None, persona: str = None, companion_name: str = None) -> Dict[str, Any]:
         """
-        更新用户 workspace 的 system prompt（当用户改昵称/语言/性格/AI昵称时调用）
+        更新用户 workspace 的 system prompt（当用户改昵称/语言/性格/AI昵称/伴侣风格时调用）
         """
         import requests
 
@@ -346,12 +373,15 @@ class WorkspaceManager:
         if companion_name is None:
             companion_name = user.get("settings", {}).get("companion_name") if user else None
 
+        # 获取伴侣性别
+        companion_gender = user.get("settings", {}).get("companion_gender", "female") if user else "female"
+
         headers = {
             "Authorization": f"Bearer {self.anythingllm_api_key}",
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name)
+        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name, companion_gender=companion_gender)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {
@@ -417,7 +447,8 @@ class WorkspaceManager:
             language = user.get("settings", {}).get("language", "en")
             persona = user.get("persona")
             companion_name = user.get("settings", {}).get("companion_name")
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name)
+            companion_gender = user.get("settings", {}).get("companion_gender", "female")
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender)
             payload["openAiPrompt"] = system_prompt
 
         try:
