@@ -4254,7 +4254,7 @@
                 const isValid = await verifyToken();
                 if (isValid) {
                     showApp();
-                    await loadConversations();
+                    await loadConversations(true);  // autoSelect: 恢复到最近对话
                     checkPersonalityTestStatus();
                 } else {
                     showLogin();
@@ -4985,7 +4985,7 @@
         }
 
         // ==================== 对话管理 ====================
-        async function loadConversations() {
+        async function loadConversations(autoSelect = false) {
             try {
                 const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
                     headers: {}
@@ -4995,6 +4995,22 @@
                     const data = await response.json();
                     state.conversations = data.conversations;
                     renderConversationsList();
+
+                    // 页面初始化时自动选中最近的对话（恢复上次状态）
+                    if (autoSelect && !state.currentConversationId && state.conversations.length > 0) {
+                        const latest = state.conversations[0]; // 已按 updated_at 降序排列
+                        state.currentConversationId = latest.id;
+                        renderConversationsList();
+                        // 加载该对话的消息
+                        const convResp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${latest.id}`, {
+                            headers: {}
+                        });
+                        if (convResp.ok) {
+                            const convData = await convResp.json();
+                            state.messages = convData.messages || [];
+                            renderMessages();
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load conversations:', error);
@@ -5341,6 +5357,26 @@
             showTyping();
 
             try {
+                // 如果没有当前对话 ID，先显式创建一个新对话
+                // 避免后端隐式使用 get_active_conversation 导致消息跑到旧对话
+                let createdNewConv = false;
+                if (!state.currentConversationId) {
+                    try {
+                        const createResp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ title: 'New Chat' })
+                        });
+                        if (createResp.ok) {
+                            const createData = await createResp.json();
+                            state.currentConversationId = createData.conversation.id;
+                            createdNewConv = true;
+                        }
+                    } catch (e) {
+                        console.error('Failed to pre-create conversation:', e);
+                    }
+                }
+
                 const response = await authFetch(`${CONFIG.API_BASE_URL}/api/chat`, {
                     method: 'POST',
                     headers: {
@@ -5355,10 +5391,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // 更新当前对话 ID
-                    const isNewConversation = !state.currentConversationId || data.conversation_id !== state.currentConversationId;
-                    const wasFirstMessage = state.messages.length === 0;
-
+                    // 更新当前对话 ID（后端可能返回不同的 ID）
                     if (data.conversation_id) {
                         state.currentConversationId = data.conversation_id;
                     }
@@ -5376,7 +5409,6 @@
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
                         document.getElementById('companion-name-display').textContent = data.companionNameChanged;
                         applyLanguage(); // 同步更新设置页面等处的名字
-                        // 不需要开新对话，AI 在当前对话已经接受了新名字
                     }
 
                     // 更新本地消息记录
@@ -5385,10 +5417,9 @@
                         { role: 'assistant', content: data.reply }
                     );
 
-                    // 如果是新对话的第一条消息，自动生成标题
-                    if (wasFirstMessage && state.currentConversationId) {
+                    // 刷新侧边栏对话列表 + 自动生成标题
+                    if (createdNewConv || state.messages.length <= 2) {
                         await autoGenerateTitle(state.currentConversationId, message);
-                    } else if (isNewConversation) {
                         await loadConversations();
                     }
                 } else {
