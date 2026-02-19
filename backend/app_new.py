@@ -684,6 +684,9 @@ def chat():
     else:
         conversation = db.get_active_conversation(user_id)
 
+    # 记录是否是新对话的第一条消息（用于后续自动生成标题）
+    is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
+
     # 保存用户消息
     db.add_message_to_conversation(
         conversation["_id"],
@@ -842,6 +845,36 @@ def chat():
             args=(user_id, user_message, reply),
             daemon=True
         ).start()
+
+        # 异步生成对话标题（仅第一条消息时触发）
+        if is_first_message:
+            def _async_generate_title(conv_id, uid, umsg, areply):
+                try:
+                    from memory_engine import _call_gemini
+                    prompt = (
+                        "Generate a very short conversation title (max 6 words) based on this chat. "
+                        "If the message is in Chinese, return Chinese title. If in English, return English title. "
+                        "Return ONLY the title text, nothing else. No quotes, no punctuation at the end.\n\n"
+                        f"User: {umsg[:200]}\nAssistant: {areply[:200]}"
+                    )
+                    title = _call_gemini(prompt)
+                    if title and len(title) < 50:
+                        # 清理标题（去掉引号、多余空白等）
+                        title = title.strip().strip('"\'').strip()
+                        if title:
+                            from datetime import datetime as dt
+                            db.db["conversations"].update_one(
+                                {"_id": conv_id, "user_id": uid},
+                                {"$set": {"title": title, "updated_at": dt.utcnow()}}
+                            )
+                            logger.info(f"[TITLE] Auto-generated title: {title}")
+                except Exception as e:
+                    logger.warning(f"[TITLE] Async title generation error: {e}")
+            threading.Thread(
+                target=_async_generate_title,
+                args=(conversation["_id"], user_id, user_message, reply),
+                daemon=True
+            ).start()
 
         return jsonify(result)
 

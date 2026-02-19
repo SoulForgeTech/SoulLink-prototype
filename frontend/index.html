@@ -5201,25 +5201,36 @@
         }
 
         async function autoGenerateTitle(convId, firstMessage) {
-            // 使用简洁的日期时间作为标题
-            const title = generateSimpleTitle();
-
-            try {
-                await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ title: title })
-                });
-
-                // 更新本地状态
-                const conv = state.conversations.find(c => c.id === convId);
-                if (conv) conv.title = title;
+            // 先用临时时间标题显示（后端会异步用 AI 生成智能标题）
+            const tempTitle = generateSimpleTitle();
+            const conv = state.conversations.find(c => c.id === convId);
+            if (conv) {
+                conv.title = tempTitle;
                 renderConversationsList();
-            } catch (error) {
-                console.error('Failed to auto-generate title:', error);
             }
+
+            // 3秒后拉取后端 AI 生成的标题（Gemini Flash 异步生成）
+            setTimeout(async () => {
+                try {
+                    const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
+                        headers: {}
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const aiTitle = data.title;
+                        // 如果后端已生成了非默认标题，更新
+                        if (aiTitle && aiTitle !== 'New Chat' && aiTitle !== '新对话') {
+                            const c = state.conversations.find(c => c.id === convId);
+                            if (c) {
+                                c.title = aiTitle;
+                                renderConversationsList();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // 静默失败，保留临时标题
+                }
+            }, 3000);
         }
 
         // ==================== 消息渲染 ====================
