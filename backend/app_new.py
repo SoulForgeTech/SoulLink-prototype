@@ -653,10 +653,31 @@ def chat():
             error_msg = response.get("error", full_response.get("error", "Unknown error"))
             if not reply and not error_msg:
                 error_msg = "Empty response from AnythingLLM"
-            return jsonify({
-                "success": False,
-                "error": error_msg
-            }), 500
+
+            # 检测 LLM 配置损坏（null id 错误），尝试自动修复 workspace 的 LLM 设置
+            if "null" in str(error_msg).lower() or "Cannot read properties" in str(error_msg):
+                logger.warning(f"Detected possible LLM config issue, attempting workspace repair for {workspace_slug}")
+                try:
+                    repair_result = workspace_manager.update_workspace_model(user_id, user.get("settings", {}).get("model", "gemini"))
+                    if repair_result.get("success"):
+                        logger.info(f"Workspace {workspace_slug} LLM config repaired, retrying message...")
+                        # 重试一次
+                        response = api.send_message(message_to_send, session_id=str(conversation["_id"]))
+                        if response and response.get("text_response"):
+                            reply = response.get("text_response", "")
+                            full_response = response.get("full_response", {})
+                        else:
+                            return jsonify({"success": False, "error": "LLM config was repaired but message still failed. Please try again."}), 500
+                    else:
+                        return jsonify({"success": False, "error": "AI model configuration error. Please try switching models in settings."}), 500
+                except Exception as repair_err:
+                    logger.error(f"Workspace repair failed: {repair_err}")
+                    return jsonify({"success": False, "error": "AI model configuration error. Please contact support."}), 500
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": error_msg
+                }), 500
 
         # 检测 AI 回复中的改名标记 [RENAME:xxx]
         import re
@@ -1093,6 +1114,18 @@ def admin_sync_documents():
         return jsonify(result)
     except Exception as e:
         logger.error(f"Admin sync-documents failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/repair-workspaces", methods=["POST"])
+@require_admin
+def admin_repair_workspaces():
+    """修复所有 workspace 的 LLM 配置（当实例默认 LLM 设置损坏时使用）"""
+    try:
+        result = workspace_manager.repair_all_workspace_models()
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Admin repair-workspaces failed: {e}")
         return jsonify({"error": str(e)}), 500
 
 

@@ -295,11 +295,16 @@ class WorkspaceManager:
         chat_mode = os.getenv("ANYTHINGLLM_CHAT_MODE", "chat")
         temperature = float(os.getenv("ANYTHINGLLM_TEMPERATURE", "0.7"))
 
+        # 明确设置默认模型的 chatProvider 和 chatModel
+        # 避免依赖实例级别的默认 LLM 设置（如果实例配置损坏会导致所有 workspace 聊天失败）
+        default_model = self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {})
+
         payload = {
             "openAiPrompt": system_prompt,
             "chatMode": chat_mode,
             "openAiTemp": temperature,
-            # 使用系统默认的 LLM provider（不指定则使用实例默认设置）
+            "chatProvider": default_model.get("chatProvider", "gemini"),
+            "chatModel": default_model.get("chatModel", "gemini-2.5-flash"),
         }
 
         try:
@@ -717,6 +722,55 @@ class WorkspaceManager:
             "success": True,
             "total_users": len(users),
             "synced": synced,
+            "errors": errors
+        }
+
+    def repair_all_workspace_models(self) -> Dict[str, Any]:
+        """
+        修复所有 workspace 的 LLM 配置
+        当 AnythingLLM 实例默认 LLM 设置损坏时，为每个 workspace 显式设置 chatProvider/chatModel
+        """
+        import requests
+
+        headers = {
+            "Authorization": f"Bearer {self.anythingllm_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        workspaces = list(db.db["workspaces"].find({}))
+        repaired = 0
+        errors = []
+
+        for ws in workspaces:
+            slug = ws.get("slug")
+            if not slug:
+                continue
+
+            user_id = ws.get("user_id")
+            # 获取用户当前选择的模型
+            user = db.db["users"].find_one({"_id": user_id}) if user_id else None
+            model_id = user.get("settings", {}).get("model", self.DEFAULT_MODEL) if user else self.DEFAULT_MODEL
+            model_config = self.SUPPORTED_MODELS.get(model_id, self.SUPPORTED_MODELS[self.DEFAULT_MODEL])
+
+            update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
+            payload = {
+                "chatProvider": model_config["chatProvider"],
+                "chatModel": model_config["chatModel"],
+            }
+
+            try:
+                resp = requests.post(update_url, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    repaired += 1
+                else:
+                    errors.append(f"{slug}: HTTP {resp.status_code}")
+            except Exception as e:
+                errors.append(f"{slug}: {str(e)}")
+
+        return {
+            "success": True,
+            "total_workspaces": len(workspaces),
+            "repaired": repaired,
             "errors": errors
         }
 
