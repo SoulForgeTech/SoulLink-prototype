@@ -5830,6 +5830,7 @@
             const currentSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
             const styleChanged = (settingsSelectedGender && settingsSelectedGender !== currentGender) ||
                                  (settingsSelectedSubtype && settingsSelectedSubtype !== currentSubtype);
+            console.log('[STYLE DEBUG] currentGender=', currentGender, 'selectedGender=', settingsSelectedGender, 'currentSubtype=', currentSubtype, 'selectedSubtype=', settingsSelectedSubtype, 'styleChanged=', styleChanged);
             if (styleChanged) hasChanges = true;
 
             if (!hasChanges) {
