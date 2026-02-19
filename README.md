@@ -18,6 +18,7 @@ SoulLink is an AI companion platform that creates meaningful connections through
 **AI Chat**
 - Real-time AI conversations with personalized companion
 - Multi-model support (GPT-4o & Gemini 2.5 Flash)
+- Three-layer AI memory system (permanent / long-term / short-term)
 - Smart companion rename via natural chat
 - Custom companion avatar upload
 - Conversation history management
@@ -26,10 +27,12 @@ SoulLink is an AI companion platform that creates meaningful connections through
 - Personality test with tarot card reveal
 - AI adapts behavior based on your personality profile
 - Unique companion persona for each user
+- Companion gender & style selection (8 subtypes)
 
 **User System**
 - Google OAuth & email/password authentication
 - Email verification with 6-digit code
+- Trust Device — stay logged in for 90 days (JWT + Refresh Token)
 - Bilingual support (English / Chinese)
 - User profile & settings management
 
@@ -47,7 +50,8 @@ SoulLink is an AI companion platform that creates meaningful connections through
 | Backend | Python Flask, Gunicorn |
 | AI Engine | AnythingLLM (GPT-4o, Gemini) |
 | Database | MongoDB Atlas |
-| Auth | JWT, Google OAuth 2.0 |
+| Auth | JWT + Refresh Token, Google OAuth 2.0 |
+| Memory | Gemini 2.5 Flash (extraction), MongoDB (storage) |
 | Email | Resend API |
 | Hosting | AWS EC2, Vercel, Cloudflare |
 
@@ -61,14 +65,17 @@ prototype/
 │   └── paytous/            # Payment QR codes & icons
 ├── backend/
 │   ├── app_new.py          # Flask API server
-│   ├── auth.py             # JWT & Google OAuth
+│   ├── auth.py             # JWT, Google OAuth & Refresh Token
 │   ├── database.py         # MongoDB operations
+│   ├── models.py           # MongoDB data models & indexes
+│   ├── memory_engine.py    # Three-layer AI memory system
 │   ├── workspace_manager.py # AnythingLLM workspace management
 │   ├── personality_engine.py # Personality test & tarot system
 │   ├── anythingllm_api.py  # AnythingLLM API client
 │   ├── email_service.py    # Email verification (Resend)
 │   ├── admin_panel.html    # Admin dashboard UI
-│   └── system_prompt_template.txt # AI system prompt template
+│   ├── system_prompt_template.txt      # Female companion prompt
+│   └── system_prompt_template_male.txt # Male companion prompt
 └── vercel.json             # Vercel deployment config
 ```
 
@@ -82,6 +89,8 @@ prototype/
 | POST | `/api/auth/login` | Email login |
 | GET | `/api/auth/google/url` | Google OAuth URL |
 | POST | `/api/auth/google/callback` | Google OAuth callback |
+| POST | `/api/auth/refresh` | Refresh JWT with refresh token |
+| POST | `/api/auth/logout` | Logout & revoke refresh token |
 
 ### Authenticated (JWT)
 | Method | Path | Description |
@@ -122,7 +131,7 @@ bash /home/ubuntu/restart.sh
 
 ## Current Version
 
-**v0.0.3-beta** (2026-02-17)
+**v0.0.5-beta** (2026-02-19)
 
 See the in-app changelog for full release history.
 
