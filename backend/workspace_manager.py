@@ -299,12 +299,14 @@ class WorkspaceManager:
     def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female") -> str:
         """构建完整的 system prompt"""
         system_prompt_template = self._load_system_prompt_template(companion_gender)
-        system_prompt = system_prompt_template.replace("{{user_name}}", user_name)
-        system_prompt = system_prompt.replace("{{language}}", language)
 
-        # 根据性别选择默认 persona
+        # 先插入 persona（因为 persona 中可能包含 {{user_name}} 占位符）
         default_persona = self.DEFAULT_PERSONA_MALE if companion_gender == "male" else self.DEFAULT_PERSONA
-        system_prompt = system_prompt.replace("{{persona}}", persona or default_persona)
+        system_prompt = system_prompt_template.replace("{{persona}}", persona or default_persona)
+
+        # 再替换所有占位符（包括模板中的和 persona 中的）
+        system_prompt = system_prompt.replace("{{user_name}}", user_name)
+        system_prompt = system_prompt.replace("{{language}}", language)
         system_prompt = system_prompt.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
         # 替换当前模型名称
         model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
@@ -727,16 +729,41 @@ class WorkspaceManager:
         """
         同步所有用户的 system prompt（用最新模板重新构建）
         保留用户已有的：性格数据、语言、companion名字等
+        同时用最新的 generate_personality_profile() 重新生成 persona
         """
+        from personality_engine import generate_personality_profile, COMPANION_SUBTYPES
+
         users = list(db.db["users"].find({}))
         synced = 0
+        regenerated = 0
         errors = []
 
         for user in users:
             user_id = user["_id"]
             user_name = user.get("name", "Friend")
             try:
-                result = self.update_system_prompt(user_id, user_name)
+                # 重新生成 persona（使用最新的 generate_personality_profile）
+                pt = user.get("personality_test", {})
+                settings = user.get("settings", {})
+                language = settings.get("language", "en")
+                companion_subtype = settings.get("companion_subtype", "female_gentle")
+
+                if pt.get("completed") and pt.get("dimensions") and pt.get("tarot_cards"):
+                    new_persona = generate_personality_profile(
+                        pt["dimensions"], pt["tarot_cards"], language, companion_subtype
+                    )
+                    # 更新数据库中的 persona
+                    db.db["users"].update_one(
+                        {"_id": user_id},
+                        {"$set": {"personality_test.personality_profile": new_persona}}
+                    )
+                    regenerated += 1
+                    # 用新 persona 更新 system prompt
+                    result = self.update_system_prompt(user_id, user_name, persona=new_persona)
+                else:
+                    # 没有性格测试数据，直接用最新模板同步
+                    result = self.update_system_prompt(user_id, user_name)
+
                 if result.get("success"):
                     synced += 1
                 else:
@@ -748,6 +775,7 @@ class WorkspaceManager:
             "success": True,
             "total_users": len(users),
             "synced": synced,
+            "regenerated": regenerated,
             "errors": errors
         }
 
