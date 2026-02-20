@@ -748,6 +748,18 @@ def chat():
         # 获取最近的对话历史作为上下文
         recent_messages = conversation.get("messages", [])[-10:]  # 最近10条消息
 
+        # 联网搜索增强：判断是否需要实时信息，自动搜索并注入结果
+        try:
+            from web_search import enhance_message_with_search
+            enhanced_msg, did_search = enhance_message_with_search(user_message)
+            if did_search:
+                message_to_send = enhanced_msg
+            else:
+                message_to_send = user_message
+        except Exception as e:
+            logger.warning(f"[SEARCH] Enhancement failed, using original: {e}")
+            message_to_send = user_message
+
         # 检测用户消息是否可能包含改名意图，如果是则追加提醒让 AI 记得输出标记
         import re
         rename_hint_patterns = [
@@ -755,10 +767,9 @@ def chat():
             r'call you|name you|rename|your name',
             r'名字.*叫|名字.*是',
         ]
-        message_to_send = user_message
         for p in rename_hint_patterns:
             if re.search(p, user_message, re.IGNORECASE):
-                message_to_send = user_message + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
+                message_to_send = message_to_send + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
                 logger.info(f"[RENAME] Detected possible rename intent, adding hint to message")
                 break
 
