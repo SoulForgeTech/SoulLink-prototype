@@ -9,6 +9,7 @@ SoulLink Memory Engine — 三层记忆系统
 """
 
 import os
+import re
 import json
 import logging
 from datetime import datetime, timedelta
@@ -26,29 +27,125 @@ SHORT_TERM_DAYS = 14
 LONG_TERM_DAYS = 90
 SYNC_EVERY_N = 5  # 每 N 次提取同步一次 system prompt
 
-EXTRACTION_PROMPT = """You are a memory extraction assistant. Extract key facts worth remembering from this conversation between a user and their AI companion.
+EXTRACTION_PROMPT = """You are a STRICT memory extraction assistant for an AI companion app. Your job is to decide what's worth remembering about the user. Memory slots are LIMITED and precious — only store facts that will be useful in FUTURE conversations.
 
 User message: {user_msg}
 AI reply: {ai_reply}
 
-User's existing memories:
+Existing memories:
 {existing_summary}
 
-Rules:
-1. Only extract genuinely useful NEW information. Skip pure chitchat.
-2. If the user corrects or updates old info (e.g. "I changed jobs"), output an update.
-3. Keep each fact SHORT (under 20 words), in the SAME language as the user's message.
-4. NEVER store real-time data (weather, temperature, news headlines, stock prices, sports scores). These expire immediately and waste memory slots.
-5. DO store the user's INTEREST (e.g. "用户关注Riverside天气" is ok, "Riverside今天48°F" is NOT).
-6. Categories:
-   - permanent: identity, family, pets, job, hometown, birthday, real name — things that rarely change
-   - long_term: hobbies, preferences, important experiences, relationships, habits
-   - short_term: recent events, current mood, temporary plans
+=== STRICT RULES ===
 
-Return ONLY valid JSON (no markdown, no explanation):
-{{"new_memories": [{{"fact": "...", "type": "permanent|long_term|short_term"}}], "updates": [{{"old_fact": "exact old fact text", "new_fact": "updated text"}}]}}
+1. BE EXTREMELY SELECTIVE. When in doubt, store NOTHING. Empty output is perfectly fine and expected for most conversations.
 
-If nothing worth remembering, return: {{"new_memories": [], "updates": []}}"""
+2. NEVER store any of these (instant reject):
+   - Greetings & farewells: 你好, 晚安, 早上好, goodbye, good night, hi, hey, 再见, 拜拜, 睡了, 起床了
+   - Real-time data: weather, temperature, °F, °C, stock prices, sports scores, exchange rates
+   - News events: accidents, disasters, elections, celebrity gossip, headlines
+   - Timestamps: "今天", "昨天", "刚才", "现在" — these expire immediately
+   - Meta-conversation: "测试AI", "你能不能...", "试试看", testing the AI, asking what AI can do
+   - Vague emotions: "心情不好", "有点累", "无聊" (too transient to remember)
+   - AI's own responses or capabilities — only store facts ABOUT THE USER
+
+3. ONLY store facts that pass this test: "Would this fact still be useful to know in 2 weeks?"
+   - YES: "用户在星巴克工作" → useful for future conversations
+   - YES: "用户养了一只叫Mochi的猫" → permanent identity fact
+   - YES: "用户下周要搬到纽约" → important upcoming life event
+   - NO:  "用户今天准备睡觉" → irrelevant tomorrow
+   - NO:  "Riverside今天48°F" → expired in hours
+   - NO:  "用户说了晚安" → just a greeting
+   - NO:  "太浩湖发生雪崩" → news, not about the user
+
+4. Store the user's INTEREST, not the data itself:
+   - OK:  "用户经常关注Riverside天气"
+   - BAD: "Riverside今天48°F有风"
+   - OK:  "用户关注加密货币市场"
+   - BAD: "比特币今天涨了5%"
+
+5. Categories (be strict about placement):
+   - permanent: real name, family members, pets, job/school, hometown, birthday, nationality — things that rarely change
+   - long_term: hobbies, food preferences, relationship status, important life plans, recurring habits
+   - short_term: ONLY significant upcoming events (travel plans, job interviews, exams) — NOT daily trivia
+
+6. Keep each fact under 15 words, in the SAME language as the user's message.
+
+7. If the user corrects old info (e.g. "I changed jobs"), output an update instead of a new memory.
+
+Return ONLY valid JSON:
+{{"new_memories": [{{"fact": "...", "type": "permanent|long_term|short_term"}}], "updates": [{{"old_fact": "exact old text", "new_fact": "updated text"}}]}}
+
+If NOTHING worth remembering (this should be the case for most casual messages): {{"new_memories": [], "updates": []}}"""
+
+
+# ==================== 预过滤 — 跳过不值得提取的消息 ====================
+
+# 短消息模式：打招呼、告别、单字回复等
+_SKIP_PATTERNS = [
+    # 中文
+    r'^(你好|嗨|哈喽|hello|hi|hey|嘿|在吗|在不在)[\s!！.。?？]*$',
+    r'^(晚安|早安|早上好|午安|下午好|晚上好|good\s*(morning|night|evening))[\s!！.。~～❤️💕😘🌙]*$',
+    r'^(拜拜|再见|bye|byebye|see\s*you|回见|走了|睡了|去了|下次见)[\s!！.。~～]*$',
+    r'^(好的?|ok|okay|嗯|哦|哈哈|呵呵|嘻嘻|谢谢|thanks?|thank\s*you|不客气|没事|对|是的?)[\s!！.。]*$',
+    r'^(啊|呃|唔|额|嗯嗯|哇|wow|lol|haha|😂|🤣|❤️|👍|💕|🥰|😊|😘)+[\s!！.。]*$',
+]
+_SKIP_COMPILED = [re.compile(p, re.IGNORECASE) for p in _SKIP_PATTERNS]
+
+
+def _should_skip_extraction(user_msg: str) -> bool:
+    """判断消息是否太短/太trivial，不值得调 Gemini 提取"""
+    msg = user_msg.strip()
+
+    # 空消息
+    if not msg:
+        return True
+
+    # 纯 emoji
+    if all(ord(c) > 0x1F000 or c in ' \t' for c in msg):
+        return True
+
+    # 过短且无实质信息（< 4个中文字符或 < 8个英文字符）
+    clean = re.sub(r'[\s!！?？.。,，~～]+', '', msg)
+    if len(clean) <= 3:
+        return True
+
+    # 匹配跳过模式
+    for pattern in _SKIP_COMPILED:
+        if pattern.match(msg):
+            return True
+
+    return False
+
+
+# ==================== 后置过滤 — 拦截垃圾记忆 ====================
+
+_JUNK_PATTERNS = [
+    # 实时数据
+    r'(今天|昨天|现在|刚才|目前).{0,10}(温度|°[FC]|度|℃|℉)',
+    r'\d+\s*°[FC]',
+    r'(天气|气温|降雨|下雨|下雪|有风|晴|多云|阴天)',
+    # 新闻事件
+    r'(雪崩|地震|事故|洪水|台风|飓风|遇难|死亡|伤亡)',
+    r'(新闻|头条|报道|breaking)',
+    # 打招呼/告别
+    r'^用户(说了?|打了?)(晚安|早安|你好|再见|拜拜)',
+    r'(准备睡觉|要睡了|去睡了|准备休息|going to sleep|going to bed)',
+    # 元对话
+    r'(测试AI|试探AI|考验AI|测试.*判断|边界问题|testing)',
+    r'用户(问|询问|想知道)(AI|人工智能)(能不能|是否|会不会)',
+    # 股票/价格
+    r'(股价|股票|比特币|bitcoin|涨了?|跌了?|价格)\s*\d',
+]
+_JUNK_COMPILED = [re.compile(p, re.IGNORECASE) for p in _JUNK_PATTERNS]
+
+
+def _is_junk_memory(fact: str) -> bool:
+    """代码层兜底：拦截 Gemini 错误提取的垃圾记忆"""
+    for pattern in _JUNK_COMPILED:
+        if pattern.search(fact):
+            logger.info(f"[MEMORY] Junk filter blocked: '{fact}'")
+            return True
+    return False
 
 
 # ==================== Gemini API 调用 ====================
@@ -123,6 +220,13 @@ def extract_memories(user_msg: str, ai_reply: str, existing_memory: Dict) -> Opt
             result["new_memories"] = []
         if "updates" not in result:
             result["updates"] = []
+
+        # 后置过滤：拦截垃圾记忆
+        result["new_memories"] = [
+            m for m in result["new_memories"]
+            if not _is_junk_memory(m.get("fact", ""))
+        ]
+
         return result
     except json.JSONDecodeError as e:
         logger.warning(f"[MEMORY] JSON parse error: {e}, raw: {text[:200]}")
@@ -158,6 +262,10 @@ def merge_memories(existing: Dict, extracted: Dict) -> tuple:
         old_fact = update.get("old_fact", "").strip()
         new_fact = update.get("new_fact", "").strip()
         if not old_fact or not new_fact:
+            continue
+
+        # 后置过滤：更新内容也要检查
+        if _is_junk_memory(new_fact):
             continue
 
         found = False
@@ -259,22 +367,34 @@ def cleanup_expired(memory: Dict) -> Dict:
 def build_memory_text(memory: Dict) -> str:
     """
     将记忆转成简洁文本块，用于注入 system prompt 的 {{memory}} 占位符。
-    如果没有记忆返回空字符串。
+    分层显示，让 AI 知道优先级。如果没有记忆返回空字符串。
     """
-    lines = []
+    sections = []
 
-    for item in memory.get("permanent", []):
-        lines.append(f"- {item['fact']}")
-    for item in memory.get("long_term", []):
-        lines.append(f"- {item['fact']}")
-    for item in memory.get("short_term", []):
-        lines.append(f"- {item['fact']}")
+    perm = memory.get("permanent", [])
+    if perm:
+        facts = "\n".join(f"- {item['fact']}" for item in perm)
+        sections.append(f"[Core — always remember]\n{facts}")
 
-    if not lines:
+    lt = memory.get("long_term", [])
+    if lt:
+        facts = "\n".join(f"- {item['fact']}" for item in lt)
+        sections.append(f"[Important — remember for now]\n{facts}")
+
+    # short_term: 只注入最近 3 天的，避免过时信息污染 prompt
+    st = memory.get("short_term", [])
+    if st:
+        cutoff = datetime.utcnow() - timedelta(days=3)
+        recent = [item for item in st if item.get("updated_at", item.get("created_at", datetime.min)) > cutoff]
+        if recent:
+            facts = "\n".join(f"- {item['fact']}" for item in recent)
+            sections.append(f"[Recent — may be outdated]\n{facts}")
+
+    if not sections:
         return ""
 
-    header = "# 关于用户的记忆 / Memories about the user\n以下是你记住的关于用户的重要信息，对话中自然运用：\nKey facts you remember about the user — use naturally in conversation:\n"
-    return header + "\n".join(lines)
+    header = "# Memories about the user\nUse these naturally in conversation. Core facts are most important.\n"
+    return header + "\n\n".join(sections)
 
 
 # ==================== 主入口 ====================
@@ -282,6 +402,7 @@ def build_memory_text(memory: Dict) -> str:
 def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str):
     """
     完整记忆处理流程（在后台线程中运行）：
+    0. 预过滤：跳过打招呼/告别等无意义消息
     1. 从 MongoDB 读取已有记忆
     2. 清理过期记忆
     3. 调 Gemini 提取新记忆
@@ -290,6 +411,11 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str):
     6. 按频率同步 system prompt
     """
     from database import db
+
+    # 0. 预过滤 — 短消息/打招呼/告别直接跳过，省 Gemini API 调用
+    if _should_skip_extraction(user_msg):
+        logger.debug(f"[MEMORY] Skipped trivial message: '{user_msg[:50]}'")
+        return
 
     try:
         # 1. 读取用户及已有记忆
