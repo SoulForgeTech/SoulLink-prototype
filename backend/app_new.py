@@ -707,6 +707,26 @@ def chat():
     workspace = workspace_result["workspace"]
     workspace_slug = workspace["slug"]
 
+    # 确保 AnythingLLM workspace 的 model 与用户设置一致
+    # （防止 MongoDB 和 AnythingLLM 不同步的情况）
+    try:
+        user_model = user.get("settings", {}).get("model", "gemini")
+        if user_model in workspace_manager.SUPPORTED_MODELS:
+            model_config = workspace_manager.SUPPORTED_MODELS[user_model]
+            import requests as req
+            sync_url = f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update"
+            sync_headers = {
+                "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
+                "Content-Type": "application/json"
+            }
+            sync_payload = {
+                "chatProvider": model_config["chatProvider"],
+                "chatModel": model_config["chatModel"],
+            }
+            req.post(sync_url, headers=sync_headers, json=sync_payload, timeout=3)
+    except Exception as e:
+        logger.warning(f"Model sync check failed (non-fatal): {e}")
+
     # 获取或创建对话
     if conversation_id:
         try:
