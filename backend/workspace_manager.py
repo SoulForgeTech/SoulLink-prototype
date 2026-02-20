@@ -17,7 +17,7 @@ from anythingllm_api import AnythingLLMAPI
 class WorkspaceManager:
     """用户 Workspace 管理器"""
 
-    # 支持的 AI 模型列表（先做 Gemini + GPT-4o）
+    # 支持的 AI 模型列表
     SUPPORTED_MODELS = {
         "gemini": {
             "id": "gemini",
@@ -33,6 +33,14 @@ class WorkspaceManager:
             "chatProvider": "openai",
             "chatModel": "gpt-4o",
             "icon": "◉",
+            "is_default": False,
+        },
+        "grok": {
+            "id": "grok",
+            "name": "Grok",
+            "chatProvider": "xai",
+            "chatModel": "grok-4-1-fast-reasoning",
+            "icon": "𝕏",
             "is_default": False,
         },
     }
