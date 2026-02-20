@@ -772,30 +772,28 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            background: rgba(255, 255, 255, 0.45);
+            background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 20px;
             padding: 5px 14px;
             cursor: pointer;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.5);
             transition: all 0.25s ease;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
         }
 
         .thinking-toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.55);
-            color: rgba(124, 58, 237, 0.9);
-            border-color: rgba(124, 58, 237, 0.25);
+            background: rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.8);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .thinking-toggle-btn.active {
-            background: rgba(124, 58, 237, 0.15);
-            border-color: rgba(124, 58, 237, 0.35);
-            color: #a78bfa;
-            box-shadow: 0 0 8px rgba(124, 58, 237, 0.12);
+            background: rgba(167, 139, 250, 0.15);
+            border-color: rgba(167, 139, 250, 0.3);
+            color: rgba(167, 139, 250, 0.9);
         }
 
         .thinking-icon {
@@ -804,60 +802,68 @@
 
         /* Thinking Bubble — 聊天区域里的思考卡片 */
         .thinking-bubble {
-            margin: 0 24px 6px 72px;
-            border-radius: 12px;
+            margin: 2px 24px 4px 72px;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
-            background: rgba(124, 58, 237, 0.06);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(124, 58, 237, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .thinking-bubble .thinking-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 14px;
-            font-size: 12px;
+            padding: 6px 12px;
+            font-size: 11px;
             font-weight: 500;
-            color: #a78bfa;
+            color: rgba(167, 139, 250, 0.7);
             user-select: none;
+            letter-spacing: 0.02em;
         }
 
         .thinking-header-left {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+        }
+
+        .thinking-header-left .thinking-icon-brain {
+            font-size: 12px;
+            opacity: 0.8;
         }
 
         .thinking-chevron {
-            font-size: 10px;
+            font-size: 8px;
             transition: transform 0.3s ease;
-            opacity: 0.6;
+            opacity: 0.4;
         }
 
         .thinking-bubble:not(.collapsed) .thinking-chevron {
             transform: rotate(180deg);
+            opacity: 0.6;
         }
 
         .thinking-bubble .thinking-text {
-            padding: 0 14px 10px;
-            color: rgba(180, 160, 220, 0.85);
-            font-size: 12px;
-            line-height: 1.6;
+            padding: 0 12px 8px;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 11px;
+            line-height: 1.55;
             white-space: pre-wrap;
-            max-height: 160px;
+            word-break: break-word;
+            max-height: 200px;
             overflow-y: auto;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.25s ease;
         }
 
         .thinking-bubble .thinking-text::-webkit-scrollbar {
             width: 3px;
         }
         .thinking-bubble .thinking-text::-webkit-scrollbar-thumb {
-            background: rgba(124, 58, 237, 0.2);
+            background: rgba(167, 139, 250, 0.15);
             border-radius: 3px;
         }
 
@@ -869,8 +875,8 @@
         }
 
         .thinking-bubble:hover {
-            border-color: rgba(124, 58, 237, 0.25);
-            background: rgba(124, 58, 237, 0.09);
+            border-color: rgba(167, 139, 250, 0.18);
+            background: rgba(255, 255, 255, 0.06);
         }
 
         /* 输入框 */
@@ -4020,7 +4026,7 @@
             <div class="thinking-toggle-bar" id="thinking-toggle-bar" style="display:none;">
                 <button class="thinking-toggle-btn" id="thinking-toggle-btn" onclick="toggleThinking()">
                     <span class="thinking-icon">💭</span>
-                    <span class="thinking-label" id="thinking-label">显示思考</span>
+                    <span class="thinking-label" id="thinking-label" data-i18n="thinking.toggle">Show Thinking</span>
                 </button>
             </div>
 
@@ -4178,6 +4184,9 @@
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
                 'bg.picker.title': 'Background',
+                'thinking.toggle': 'Show Thinking',
+                'thinking.toggle.active': 'Show Thinking ✓',
+                'thinking.header': 'Thought Process',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -4302,6 +4311,9 @@
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
                 'bg.picker.title': '背景',
+                'thinking.toggle': '显示思考',
+                'thinking.toggle.active': '显示思考 ✓',
+                'thinking.header': '思考过程',
             }
         };
 
@@ -5680,10 +5692,10 @@
 
             if (showThinking) {
                 btn.classList.add('active');
-                label.textContent = state.language === 'zh-CN' ? '显示思考 ✓' : 'Thinking ✓';
+                label.textContent = t('thinking.toggle.active');
             } else {
                 btn.classList.remove('active');
-                label.textContent = state.language === 'zh-CN' ? '显示思考' : 'Thinking';
+                label.textContent = t('thinking.toggle');
             }
         }
 
@@ -5704,14 +5716,14 @@
             bubble.className = 'thinking-bubble collapsed';
             bubble.style.display = showThinking ? 'block' : 'none';
 
-            const headerLabel = state.language === 'zh-CN' ? '思考过程' : 'Thinking';
+            const headerLabel = t('thinking.header');
             bubble.innerHTML = `
                 <div class="thinking-header">
                     <span class="thinking-header-left">
-                        <span>🧠</span>
+                        <span class="thinking-icon-brain">💭</span>
                         <span>${headerLabel}</span>
                     </span>
-                    <span class="thinking-chevron">▼</span>
+                    <span class="thinking-chevron">▾</span>
                 </div>
                 <div class="thinking-text">${escapeHtml(thinkingText)}</div>
             `;
