@@ -6577,18 +6577,24 @@
             const img = new Image();
             const src = bgId === 'default' ? 'images/bg.png' : `images/Background/${bg.file}`;
             img.onload = function() {
-                const oldLayer = app.querySelector('.bg-layer');
+                const oldLayer = app.querySelector('.bg-layer:not(.old)');
                 const newLayer = document.createElement('div');
                 newLayer.className = 'bg-layer';
                 newLayer.style.backgroundImage = newUrl;
                 newLayer.style.opacity = '0';
                 app.insertBefore(newLayer, app.firstChild);
-                // Force reflow
+                // Force reflow then fade in
                 void newLayer.offsetWidth;
                 newLayer.style.opacity = '1';
+                // Clean up inline opacity after transition so .old class can override later
+                newLayer.addEventListener('transitionend', function handler() {
+                    newLayer.style.opacity = '';
+                    newLayer.removeEventListener('transitionend', handler);
+                });
                 if (oldLayer) {
+                    oldLayer.style.opacity = '';
                     oldLayer.classList.add('old');
-                    setTimeout(() => oldLayer.remove(), 600);
+                    setTimeout(() => oldLayer.remove(), 700);
                 }
             };
             img.src = src;
