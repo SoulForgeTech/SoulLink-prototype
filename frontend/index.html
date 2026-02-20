@@ -764,55 +764,57 @@
         /* Thinking Toggle — 输入框上方的开关 */
         /* Thinking Bubble — 聊天区域里的思考卡片 */
         .thinking-bubble {
-            margin: 2px 24px 4px 72px;
-            border-radius: 8px;
+            margin: -8px 24px 12px 72px;
+            border-radius: 14px;
             cursor: pointer;
             transition: all 0.25s ease;
             overflow: hidden;
-            background: rgba(147, 112, 250, 0.10);
-            border: none;
-            border-left: 2.5px solid rgba(147, 112, 250, 0.6);
+            background: rgba(30, 25, 55, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(140, 110, 255, 0.2);
         }
 
         .thinking-bubble .thinking-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 10px 5px 10px;
+            padding: 7px 12px;
             font-size: 11px;
             font-weight: 600;
-            color: rgba(160, 130, 255, 0.9);
+            color: rgba(180, 160, 255, 0.95);
             user-select: none;
         }
 
         .thinking-header-left {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
 
         .thinking-header-left .thinking-icon-brain {
-            font-size: 11px;
+            font-size: 12px;
         }
 
         .thinking-chevron {
-            font-size: 8px;
+            font-size: 9px;
             transition: transform 0.25s ease;
             opacity: 0.5;
+            color: rgba(180, 160, 255, 0.7);
         }
 
         .thinking-bubble:not(.collapsed) .thinking-chevron {
             transform: rotate(180deg);
-            opacity: 0.7;
+            opacity: 0.8;
         }
 
         .thinking-bubble .thinking-text {
-            padding: 0 10px 8px 10px;
-            color: rgba(255, 255, 255, 0.55);
-            font-size: 11px;
-            line-height: 1.55;
+            padding: 0 12px 10px 12px;
+            color: rgba(210, 200, 240, 0.75);
+            font-size: 12px;
+            line-height: 1.6;
             word-break: break-word;
-            max-height: 250px;
+            max-height: 280px;
             overflow-y: auto;
             transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                         padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -826,34 +828,35 @@
             margin-bottom: 0;
         }
         .thinking-bubble .thinking-text strong {
-            color: rgba(255, 255, 255, 0.72);
+            color: rgba(230, 220, 255, 0.9);
             font-weight: 600;
         }
         .thinking-bubble .thinking-text em {
-            color: rgba(170, 140, 255, 0.8);
+            color: rgba(180, 160, 255, 0.85);
             font-style: italic;
         }
         .thinking-bubble .thinking-text ul,
         .thinking-bubble .thinking-text ol {
-            margin: 3px 0;
+            margin: 4px 0;
             padding-left: 16px;
         }
         .thinking-bubble .thinking-text li {
-            margin-bottom: 1px;
+            margin-bottom: 2px;
         }
         .thinking-bubble .thinking-text code {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 1px 3px;
-            border-radius: 2px;
-            font-size: 10px;
+            background: rgba(140, 110, 255, 0.15);
+            color: rgba(200, 185, 255, 0.9);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 11px;
         }
 
         .thinking-bubble .thinking-text::-webkit-scrollbar {
-            width: 2px;
+            width: 3px;
         }
         .thinking-bubble .thinking-text::-webkit-scrollbar-thumb {
-            background: rgba(147, 112, 250, 0.25);
-            border-radius: 2px;
+            background: rgba(140, 110, 255, 0.3);
+            border-radius: 3px;
         }
 
         .thinking-bubble.collapsed .thinking-text {
@@ -864,7 +867,23 @@
         }
 
         .thinking-bubble:hover {
-            background: rgba(147, 112, 250, 0.14);
+            background: rgba(40, 32, 70, 0.8);
+            border-color: rgba(140, 110, 255, 0.35);
+        }
+
+        /* 微信风格时间分隔符 */
+        .time-separator {
+            display: flex;
+            justify-content: center;
+            padding: 8px 0 12px;
+        }
+        .time-separator span {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 10px;
+            border-radius: 10px;
+            letter-spacing: 0.02em;
         }
 
         /* 输入框 */
@@ -5372,26 +5391,95 @@
         }
 
         // ==================== 消息渲染 ====================
+        // 微信风格时间格式化
+        function formatMessageTime(dateInput) {
+            if (!dateInput) return '';
+            const date = (typeof dateInput === 'string') ? new Date(dateInput) : dateInput;
+            if (isNaN(date.getTime())) return '';
+
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const diffDays = Math.floor((today - msgDay) / 86400000);
+
+            const hours = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const isZh = state.language === 'zh-CN';
+
+            let timeStr;
+            if (isZh) {
+                const period = hours < 6 ? '凌晨' : hours < 12 ? '上午' : hours < 13 ? '中午' : hours < 18 ? '下午' : '晚上';
+                const h12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+                timeStr = `${period}${h12}:${minutes}`;
+            } else {
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const h12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+                timeStr = `${h12}:${minutes} ${ampm}`;
+            }
+
+            if (diffDays === 0) return timeStr;
+            if (diffDays === 1) return isZh ? `昨天 ${timeStr}` : `Yesterday ${timeStr}`;
+            if (diffDays < 7) {
+                const weekdays = isZh
+                    ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+                    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                return `${weekdays[date.getDay()]} ${timeStr}`;
+            }
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            if (date.getFullYear() === now.getFullYear()) {
+                return isZh ? `${month}月${day}日 ${timeStr}` : `${month}/${day} ${timeStr}`;
+            }
+            return isZh
+                ? `${date.getFullYear()}年${month}月${day}日 ${timeStr}`
+                : `${month}/${day}/${date.getFullYear()} ${timeStr}`;
+        }
+
+        // 判断两条消息之间是否需要插入时间分隔（间隔 > 5分钟）
+        function shouldShowTimeSeparator(prevMsg, currMsg) {
+            if (!prevMsg || !currMsg) return !!currMsg;
+            const prevTime = prevMsg.timestamp ? new Date(prevMsg.timestamp) : null;
+            const currTime = currMsg.timestamp ? new Date(currMsg.timestamp) : null;
+            if (!prevTime || !currTime) return false;
+            return (currTime - prevTime) > 5 * 60 * 1000;
+        }
+
+        function addTimeSeparator(container, typingIndicator, timestamp) {
+            const sep = document.createElement('div');
+            sep.className = 'time-separator';
+            sep.innerHTML = `<span>${formatMessageTime(timestamp)}</span>`;
+            container.insertBefore(sep, typingIndicator);
+        }
+
         function renderMessages() {
             const container = document.getElementById('messages-container');
             const welcomeMsg = document.getElementById('welcome-message');
             const typingIndicator = document.getElementById('typing-indicator');
 
-            // 清除现有消息和 thinking bubbles（保留 welcome 和 typing indicator）
-            const existingMessages = container.querySelectorAll('.message, .thinking-bubble');
-            existingMessages.forEach(msg => msg.remove());
+            // 清除现有消息、thinking bubbles 和时间分隔符（保留 welcome 和 typing indicator）
+            const existingElements = container.querySelectorAll('.message, .thinking-bubble, .time-separator');
+            existingElements.forEach(el => el.remove());
 
             if (state.messages.length === 0) {
                 welcomeMsg.style.display = 'block';
             } else {
                 welcomeMsg.style.display = 'none';
 
-                state.messages.forEach(msg => {
+                let prevMsg = null;
+                state.messages.forEach((msg, idx) => {
+                    // 微信风格：间隔超过5分钟显示时间分隔
+                    if (idx === 0 && msg.timestamp) {
+                        addTimeSeparator(container, typingIndicator, msg.timestamp);
+                    } else if (shouldShowTimeSeparator(prevMsg, msg)) {
+                        addTimeSeparator(container, typingIndicator, msg.timestamp);
+                    }
+
                     // 如果是 AI 回复且有 thinking 内容，先显示 thinking bubble
                     if (msg.role === 'assistant' && msg.thinking) {
                         addThinkingBubble(msg.thinking);
                     }
                     addMessageToUI(msg.content, msg.role === 'user');
+                    prevMsg = msg;
                 });
             }
 
@@ -5502,6 +5590,15 @@
             input.disabled = true;
             sendBtn.disabled = true;
 
+            // 微信风格：如果距离上条消息超过5分钟，插入时间分隔
+            const lastMsg = state.messages[state.messages.length - 1];
+            const nowTs = new Date();
+            if (!lastMsg || !lastMsg.timestamp || (nowTs - new Date(lastMsg.timestamp)) > 5 * 60 * 1000) {
+                const container = document.getElementById('messages-container');
+                const typingIndicator = document.getElementById('typing-indicator');
+                addTimeSeparator(container, typingIndicator, nowTs);
+            }
+
             // 添加用户消息到 UI
             addMessageToUI(message, true);
             input.value = '';
@@ -5570,10 +5667,11 @@
                         applyLanguage(); // 同步更新设置页面等处的名字
                     }
 
-                    // 更新本地消息记录
+                    // 更新本地消息记录（带时间戳供时间分隔符使用）
+                    const now = new Date().toISOString();
                     state.messages.push(
-                        { role: 'user', content: message },
-                        { role: 'assistant', content: data.reply }
+                        { role: 'user', content: message, timestamp: now },
+                        { role: 'assistant', content: data.reply, thinking: data.thinking || null, timestamp: now }
                     );
 
                     // 新对话：先刷新侧边栏列表，再异步等 AI 标题更新
