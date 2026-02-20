@@ -600,6 +600,41 @@ def submit_feedback():
         return jsonify({"error": "Failed to save feedback"}), 500
 
 
+@app.route("/api/contact", methods=["POST"])
+def contact_message():
+    """官网留言表单（公开接口，无需登录）"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
+    if len(message) > 2000:
+        return jsonify({"error": "Message must be 2000 characters or less"}), 400
+
+    name = (data.get("name") or "").strip()[:100]
+    email = (data.get("email") or "").strip()[:200]
+
+    from datetime import datetime
+    doc = {
+        "name": name or "Anonymous",
+        "email": email or "",
+        "message": message,
+        "source": "website",
+        "created_at": datetime.utcnow(),
+        "status": "new"
+    }
+
+    try:
+        db.db["contact_messages"].insert_one(doc)
+        logger.info(f"[CONTACT] New message from {name or 'Anonymous'}: {message[:50]}...")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"[CONTACT] Failed to save: {e}")
+        return jsonify({"error": "Failed to save message"}), 500
+
+
 # ==================== Workspace 接口 ====================
 
 @app.route("/api/workspace", methods=["GET"])
