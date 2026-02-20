@@ -280,24 +280,11 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
-            scrollbar-width: thin;
-            scrollbar-color: transparent transparent;
-        }
-        .conversations-list:hover {
-            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
         .conversations-list::-webkit-scrollbar {
-            width: 4px;
-        }
-        .conversations-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .conversations-list::-webkit-scrollbar-thumb {
-            background: transparent;
-            border-radius: 4px;
-        }
-        .conversations-list:hover::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
+            display: none;
         }
 
         .conversation-item {
@@ -3860,7 +3847,7 @@
             <!-- 背景选择面板 -->
             <div class="bg-picker-panel" id="bg-picker-panel">
                 <div class="bg-picker-header">
-                    <span>背景 / Background</span>
+                    <span data-i18n="bg.picker.title">Background</span>
                     <button onclick="toggleBgPicker()">✕</button>
                 </div>
                 <div class="bg-thumb-grid" id="bg-thumb-grid">
@@ -4041,6 +4028,7 @@
                 'about.feedback.thanks': 'Thank you for your feedback!',
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
+                'bg.picker.title': 'Background',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -4164,6 +4152,7 @@
                 'about.feedback.thanks': '感谢你的反馈！',
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
+                'bg.picker.title': '背景',
             }
         };
 
