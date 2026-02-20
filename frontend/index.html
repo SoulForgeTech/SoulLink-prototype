@@ -187,11 +187,21 @@
         #app {
             display: none;
             height: 100vh;
-            background-image: url('images/bg.png');
+            position: relative;
+            background: #1a1a2e;
+        }
+
+        #app .bg-layer {
+            position: fixed;
+            inset: 0;
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
-            position: relative;
+            z-index: 1;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+        #app .bg-layer.old {
+            opacity: 0;
         }
 
         #app::before {
@@ -200,21 +210,7 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.15);
             pointer-events: none;
-            z-index: 0;
-        }
-
-        #app .bg-crossfade {
-            position: fixed;
-            inset: 0;
-            background-size: cover;
-            background-position: center;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-            z-index: -1;
-            pointer-events: none;
-        }
-        #app .bg-crossfade.visible {
-            opacity: 1;
+            z-index: 2;
         }
 
         #app.active {
@@ -6559,6 +6555,15 @@
             }).join('');
         }
 
+        function initBgLayer() {
+            const app = document.getElementById('app');
+            if (app.querySelector('.bg-layer')) return;
+            const layer = document.createElement('div');
+            layer.className = 'bg-layer';
+            layer.style.backgroundImage = "url('images/bg.png')";
+            app.insertBefore(layer, app.firstChild);
+        }
+
         function selectBackground(bgId) {
             const bg = BACKGROUNDS.find(b => b.id === bgId);
             if (!bg) return;
@@ -6568,22 +6573,25 @@
                 ? "url('images/bg.png')"
                 : `url('images/Background/${bg.file}')`;
 
-            // Crossfade transition
-            let overlay = app.querySelector('.bg-crossfade');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.className = 'bg-crossfade';
-                app.insertBefore(overlay, app.firstChild);
-            }
-            overlay.style.backgroundImage = newUrl;
-            overlay.classList.remove('visible');
-            // Force reflow then fade in
-            void overlay.offsetWidth;
-            overlay.classList.add('visible');
-            setTimeout(() => {
-                app.style.backgroundImage = newUrl;
-                overlay.classList.remove('visible');
-            }, 600);
+            // Preload image then crossfade
+            const img = new Image();
+            const src = bgId === 'default' ? 'images/bg.png' : `images/Background/${bg.file}`;
+            img.onload = function() {
+                const oldLayer = app.querySelector('.bg-layer');
+                const newLayer = document.createElement('div');
+                newLayer.className = 'bg-layer';
+                newLayer.style.backgroundImage = newUrl;
+                newLayer.style.opacity = '0';
+                app.insertBefore(newLayer, app.firstChild);
+                // Force reflow
+                void newLayer.offsetWidth;
+                newLayer.style.opacity = '1';
+                if (oldLayer) {
+                    oldLayer.classList.add('old');
+                    setTimeout(() => oldLayer.remove(), 600);
+                }
+            };
+            img.src = src;
 
             // Update active state in grid
             document.querySelectorAll('.bg-thumb-item').forEach(item => {
@@ -6608,13 +6616,17 @@
         }
 
         function loadBackground() {
+            const app = document.getElementById('app');
+            initBgLayer();
             const bgId = state.user?.settings?.chat_background;
-            if (!bgId || bgId === 'default') return; // CSS default is bg.png
+            if (!bgId || bgId === 'default') return;
 
             const bg = BACKGROUNDS.find(b => b.id === bgId);
             if (bg) {
-                const app = document.getElementById('app');
-                app.style.backgroundImage = `url('images/Background/${bg.file}')`;
+                const layer = app.querySelector('.bg-layer');
+                if (layer) {
+                    layer.style.backgroundImage = `url('images/Background/${bg.file}')`;
+                }
             }
         }
 
