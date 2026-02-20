@@ -1,61 +1,23 @@
 """
 SoulLink Web Search Module
-两层过滤：关键词快速筛 → Gemini 精确判断 → Google Custom Search
+Gemini 判断是否需要搜索 → Serper.dev Search
 """
 
 import os
-import re
 import logging
 import requests
 from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Google Custom Search 配置
-GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID", "c299681d1d793434b")
-GOOGLE_CSE_API_KEY = os.getenv("GOOGLE_CSE_API_KEY", "")
-
-# ========== 第一层：关键词快速过滤（0ms，过滤 95% 日常聊天） ==========
-
-SEARCH_KEYWORDS_ZH = [
-    r'天气', r'气温', r'下雨', r'下雪',
-    r'新闻', r'热搜', r'热点', r'头条',
-    r'股价', r'股票', r'基金', r'比特币', r'汇率',
-    r'比赛', r'比分', r'赛事', r'世界杯', r'奥运',
-    r'最新', r'最近', r'今天.*发生', r'昨天.*发生',
-    r'现在.*多少', r'目前.*怎么样',
-    r'上映', r'票房', r'开播',
-    r'发布', r'发售', r'上市',
-    r'谁赢了', r'结果.*怎么样',
-    r'航班', r'火车', r'高铁',
-]
-
-SEARCH_KEYWORDS_EN = [
-    r'weather', r'temperature', r'forecast',
-    r'news', r'trending', r'headline',
-    r'stock', r'price', r'bitcoin', r'crypto', r'exchange rate',
-    r'score', r'game.*today', r'match.*result',
-    r'latest', r'recent', r'current',
-    r'release date', r'box office', r'premiere',
-    r'who won', r'result',
-    r'flight', r'train',
-]
-
-ALL_SEARCH_PATTERNS = [re.compile(p, re.IGNORECASE) for p in SEARCH_KEYWORDS_ZH + SEARCH_KEYWORDS_EN]
+# Serper.dev 配置
+SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 
 
-def _keyword_filter(message: str) -> bool:
-    """第一层：关键词快速判断，返回 True 表示可能需要搜索"""
-    for pattern in ALL_SEARCH_PATTERNS:
-        if pattern.search(message):
-            return True
-    return False
-
-
-# ========== 第二层：Gemini 精确判断（仅通过第一层的才触发） ==========
+# ========== Gemini 判断是否需要搜索 ==========
 
 def _gemini_classify(user_message: str) -> Tuple[bool, Optional[str]]:
-    """第二层：用 Gemini Flash 精确判断 + 生成搜索关键词"""
+    """用 Gemini Flash 判断是否需要联网搜索 + 生成搜索关键词"""
     try:
         from memory_engine import _call_gemini
         prompt = (
@@ -65,7 +27,7 @@ def _gemini_classify(user_message: str) -> Tuple[bool, Optional[str]]:
             f"Message: {user_message[:200]}\n\n"
             "Reply format:\n"
             "SEARCH: yes or no\n"
-            "QUERY: search keywords (same language as message)\n"
+            "QUERY: search keywords (ALWAYS in English, include full location names e.g. 'Riverside CA' not just 'Riverside')\n"
         )
         result = _call_gemini(prompt)
         if not result:
@@ -91,37 +53,76 @@ def _gemini_classify(user_message: str) -> Tuple[bool, Optional[str]]:
         return False, None
 
 
-# ========== Google Custom Search ==========
+# ========== Serper.dev Search ==========
 
-def _google_search(query: str, num_results: int = 3) -> Optional[str]:
-    """调用 Google Custom Search API"""
-    api_key = GOOGLE_CSE_API_KEY or os.getenv("GOOGLE_CSE_API_KEY", "")
+def _serper_search(query: str, num_results: int = 5) -> Optional[str]:
+    """调用 Serper.dev Search API"""
+    api_key = SERPER_API_KEY or os.getenv("SERPER_API_KEY", "")
     if not api_key:
-        logger.warning("[SEARCH] GOOGLE_CSE_API_KEY not configured")
+        logger.warning("[SEARCH] SERPER_API_KEY not configured")
         return None
 
     try:
-        resp = requests.get(
-            "https://www.googleapis.com/customsearch/v1",
-            params={"key": api_key, "cx": GOOGLE_CSE_ID, "q": query, "num": num_results},
+        resp = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+            json={"q": query, "num": num_results},
             timeout=5
         )
         resp.raise_for_status()
-        items = resp.json().get("items", [])
-        if not items:
-            return None
+        data = resp.json()
 
         results = []
-        for i, item in enumerate(items, 1):
+
+        # 提取 answerBox（如果有直接答案）
+        answer_box = data.get("answerBox")
+        if answer_box:
+            title = answer_box.get("title", "")
+            answer = answer_box.get("answer") or answer_box.get("snippet", "")
+            if answer:
+                answer_clean = answer.replace("\n", " | ")
+                results.append(f"[DIRECT ANSWER] {title}: {answer_clean}")
+
+        # 提取 knowledgeGraph（如果有知识面板）
+        kg = data.get("knowledgeGraph")
+        if kg:
+            kg_title = kg.get("title", "")
+            kg_desc = kg.get("description", "")
+            kg_attrs = kg.get("attributes", {})
+            if kg_title and kg_desc:
+                kg_line = f"[KNOWLEDGE] {kg_title}: {kg_desc}"
+                if kg_attrs:
+                    attrs = "; ".join(f"{k}: {v}" for k, v in list(kg_attrs.items())[:5])
+                    kg_line += f" ({attrs})"
+                results.append(kg_line)
+
+        # 提取 organic 搜索结果
+        items = data.get("organic", [])
+        for i, item in enumerate(items[:num_results], 1):
             title = item.get("title", "")
             snippet = item.get("snippet", "")
-            results.append(f"{i}. {title}: {snippet}")
+            date = item.get("date", "")
+            date_str = f" [{date}]" if date else ""
+            results.append(f"{i}. {title}{date_str}: {snippet}")
 
-        logger.info(f"[SEARCH] Found {len(items)} results for: {query}")
+        # 提取 topStories（新闻类查询）
+        stories = data.get("topStories", [])
+        if stories:
+            for s in stories[:3]:
+                s_title = s.get("title", "")
+                s_source = s.get("source", "")
+                s_date = s.get("date", "")
+                if s_title:
+                    results.append(f"[NEWS] {s_title} — {s_source} ({s_date})")
+
+        if not results:
+            return None
+
+        logger.info(f"[SEARCH] Found {len(results)} results for: {query}")
         return "\n".join(results)
 
     except Exception as e:
-        logger.error(f"[SEARCH] Google search failed: {e}")
+        logger.error(f"[SEARCH] Serper search failed: {e}")
         return None
 
 
@@ -129,33 +130,29 @@ def _google_search(query: str, num_results: int = 3) -> Optional[str]:
 
 def enhance_message_with_search(user_message: str) -> Tuple[str, bool]:
     """
-    两层过滤 + 搜索增强：
-    1. 关键词过滤（0ms）→ 过滤 95% 日常聊天
-    2. Gemini 判断（~1s）→ 精确判断 + 生成搜索词
-    3. Google 搜索（~0.5s）→ 获取结果注入消息
+    Gemini 判断 + 搜索增强：
+    1. Gemini 判断（~1s）→ 精确判断是否需要搜索 + 生成搜索词
+    2. Serper 搜索（~0.5s）→ 获取结果注入消息
     """
-    # 第一层：关键词快速过滤
-    if not _keyword_filter(user_message):
-        return user_message, False
-
-    logger.info(f"[SEARCH] Keyword filter passed, checking with Gemini...")
-
-    # 第二层：Gemini 精确判断
+    # Gemini 判断是否需要搜索
     need_search, query = _gemini_classify(user_message)
     if not need_search or not query:
         return user_message, False
 
-    # 第三步：Google 搜索
-    search_results = _google_search(query)
+    # Serper 搜索
+    search_results = _serper_search(query)
     if not search_results:
         return user_message, False
 
-    # 注入搜索结果
+    # 注入搜索结果（中英双语指令）
     enhanced = (
         f"{user_message}\n\n"
-        f"[System: 以下是联网搜索到的最新信息供你参考回答。"
-        f"请用自然的口吻回答，就像你本来就知道这些信息一样，"
-        f"不要说'根据搜索结果'之类的话。如果与问题无关则忽略。]\n"
+        f"[System: Below are real-time web search results for your reference. "
+        f"Use this information naturally in your reply — respond as if you already knew it. "
+        f"Do NOT say 'according to search results' or similar phrases. "
+        f"Ignore results that are not relevant to the question. "
+        f"Reply in the same language as the user's message.]\n"
+        f"以下是联网搜索到的最新信息，请自然地融入回答中，不要提及搜索。\n"
         f"---\n{search_results}\n---"
     )
 

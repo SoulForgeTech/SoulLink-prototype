@@ -280,6 +280,24 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        .conversations-list:hover {
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        .conversations-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .conversations-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .conversations-list::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 4px;
+        }
+        .conversations-list:hover::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .conversation-item {
@@ -3436,6 +3454,7 @@
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v130.3">Chat background picker — 15 curated wallpapers to choose from</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v130.4">Companion gender & personality — boyfriend or girlfriend with 4 unique styles</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v130.5">AI auto-generates conversation titles based on chat content</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v130.7">Web Search — AI can now search the internet for real-time weather, news & more</span></li>
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v130.6">Smarter session handling & major stability improvements</span></li>
                     </ul>
                 </div>
@@ -3659,8 +3678,8 @@
                         <label data-i18n="settings.companion.style">Companion Style</label>
                         <div class="settings-style-selector">
                             <div class="settings-gender-row">
-                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">👩 <span data-i18n="companion.gender.her">Her</span></button>
-                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">👨 <span data-i18n="companion.gender.him">Him</span></button>
+                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">💃 <span data-i18n="companion.gender.her">Her</span></button>
+                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">🕺 <span data-i18n="companion.gender.him">Him</span></button>
                             </div>
                             <div class="settings-subtype-row" id="settings-subtype-row">
                                 <!-- 由 JS 动态填充 -->
@@ -3722,11 +3741,11 @@
             <p class="style-selection-subtitle" id="gender-selection-subtitle">你希望你的灵魂伴侣是...？</p>
             <div class="gender-cards">
                 <div class="gender-card" onclick="selectGender('female')">
-                    <div class="gender-icon">👩</div>
+                    <div class="gender-icon">💃</div>
                     <h3 data-i18n="companion.gender.her">Her</h3>
                 </div>
                 <div class="gender-card" onclick="selectGender('male')">
-                    <div class="gender-icon">👨</div>
+                    <div class="gender-icon">🕺</div>
                     <h3 data-i18n="companion.gender.him">Him</h3>
                 </div>
             </div>
@@ -3988,6 +4007,7 @@
                 'changelog.v130.3': 'Chat background picker — 15 curated wallpapers to choose from',
                 'changelog.v130.4': 'Companion gender & personality — boyfriend or girlfriend with 4 unique styles',
                 'changelog.v130.5': 'AI auto-generates conversation titles based on chat content',
+                'changelog.v130.7': 'Web Search — AI can now search the internet for real-time weather, news & more',
                 'changelog.v130.6': 'Smarter session handling & major stability improvements',
                 'changelog.v120.1': 'About & Feedback page with donation support (Zelle / WeChat / Alipay)',
                 'changelog.v120.2': 'Custom companion avatar — click to upload your own image',
@@ -4110,6 +4130,7 @@
                 'changelog.v130.3': '聊天背景切换 — 15张精选壁纸随心换',
                 'changelog.v130.4': '伴侣性别与性格 — 男友/女友 x 4种独特风格任你挑',
                 'changelog.v130.5': 'AI智能生成对话标题 — 聊天内容自动提取主题',
+                'changelog.v130.7': '联网搜索 — AI现在能搜索实时天气、新闻等最新信息',
                 'changelog.v130.6': '更智能的会话管理，稳定性大幅提升',
                 'changelog.v120.1': '关于与反馈页面，支持打赏（Zelle / 微信 / 支付宝）',
                 'changelog.v120.2': '自定义AI头像 — 点击上传你喜欢的图片',

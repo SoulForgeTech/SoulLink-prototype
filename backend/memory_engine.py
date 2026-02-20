@@ -38,7 +38,9 @@ Rules:
 1. Only extract genuinely useful NEW information. Skip pure chitchat.
 2. If the user corrects or updates old info (e.g. "I changed jobs"), output an update.
 3. Keep each fact SHORT (under 20 words), in the SAME language as the user's message.
-4. Categories:
+4. NEVER store real-time data (weather, temperature, news headlines, stock prices, sports scores). These expire immediately and waste memory slots.
+5. DO store the user's INTEREST (e.g. "用户关注Riverside天气" is ok, "Riverside今天48°F" is NOT).
+6. Categories:
    - permanent: identity, family, pets, job, hometown, birthday, real name — things that rarely change
    - long_term: hobbies, preferences, important experiences, relationships, habits
    - short_term: recent events, current mood, temporary plans
