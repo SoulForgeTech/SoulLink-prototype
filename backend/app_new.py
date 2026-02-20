@@ -690,7 +690,8 @@ def chat():
 
         user_message = data["message"]
         conversation_id = data.get("conversation_id")
-        logger.info(f"Message: {user_message[:50]}...")
+        show_thinking = data.get("show_thinking", False)
+        logger.info(f"Message: {user_message[:50]}... | show_thinking={show_thinking}")
 
         # 确保用户有 workspace
         logger.info("Getting or creating workspace...")
@@ -944,7 +945,7 @@ def chat():
             "sources": sources,
             "conversation_id": str(conversation["_id"])
         }
-        if thinking_content:
+        if thinking_content and show_thinking:
             result["thinking"] = thinking_content
         if companion_name_changed:
             result["companionNameChanged"] = companion_name_changed
