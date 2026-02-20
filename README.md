@@ -131,7 +131,7 @@ bash /home/ubuntu/restart.sh
 
 ## Current Version
 
-**v0.0.5-beta** (2026-02-19)
+**v0.0.4-beta** (2026-02-19)
 
 See the in-app changelog for full release history.
 
