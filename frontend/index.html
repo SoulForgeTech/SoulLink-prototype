@@ -762,59 +762,60 @@
         }
 
         /* Thinking Toggle — 输入框上方的开关 */
-        /* Thinking Bubble — 聊天区域里的思考卡片 */
+        /* Thinking Bubble — AI消息气泡上方的折叠思考卡片，与AI气泡风格统一 */
         .thinking-bubble {
-            margin: -8px 24px 12px 72px;
-            border-radius: 14px;
+            /* 对齐：头像45px + gap12px + 左边距padding = 57px，与.message一致 */
+            margin: -10px 0 6px 57px;
+            max-width: calc(70% - 57px);
+            border-radius: 16px;
+            border-bottom-left-radius: 6px;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             overflow: hidden;
-            background: rgba(30, 25, 55, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(140, 110, 255, 0.2);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
         }
 
         .thinking-bubble .thinking-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 7px 12px;
+            padding: 5px 10px;
             font-size: 11px;
-            font-weight: 600;
-            color: rgba(180, 160, 255, 0.95);
+            font-weight: 500;
+            color: rgba(120, 90, 200, 0.85);
             user-select: none;
         }
 
         .thinking-header-left {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .thinking-header-left .thinking-icon-brain {
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .thinking-chevron {
-            font-size: 9px;
+            font-size: 8px;
             transition: transform 0.25s ease;
-            opacity: 0.5;
-            color: rgba(180, 160, 255, 0.7);
+            color: rgba(120, 90, 200, 0.5);
         }
 
         .thinking-bubble:not(.collapsed) .thinking-chevron {
             transform: rotate(180deg);
-            opacity: 0.8;
         }
 
         .thinking-bubble .thinking-text {
-            padding: 0 12px 10px 12px;
-            color: rgba(210, 200, 240, 0.75);
-            font-size: 12px;
-            line-height: 1.6;
+            padding: 0 10px 8px;
+            color: rgba(60, 50, 90, 0.7);
+            font-size: 11px;
+            line-height: 1.5;
             word-break: break-word;
-            max-height: 280px;
+            max-height: 200px;
             overflow-y: auto;
             transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                         padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -822,41 +823,40 @@
         }
 
         .thinking-bubble .thinking-text p {
-            margin: 0 0 6px 0;
+            margin: 0 0 4px 0;
         }
         .thinking-bubble .thinking-text p:last-child {
             margin-bottom: 0;
         }
         .thinking-bubble .thinking-text strong {
-            color: rgba(230, 220, 255, 0.9);
+            color: rgba(60, 50, 90, 0.85);
             font-weight: 600;
         }
         .thinking-bubble .thinking-text em {
-            color: rgba(180, 160, 255, 0.85);
-            font-style: italic;
+            color: rgba(120, 90, 200, 0.8);
         }
         .thinking-bubble .thinking-text ul,
         .thinking-bubble .thinking-text ol {
-            margin: 4px 0;
-            padding-left: 16px;
+            margin: 3px 0;
+            padding-left: 14px;
         }
         .thinking-bubble .thinking-text li {
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         .thinking-bubble .thinking-text code {
-            background: rgba(140, 110, 255, 0.15);
-            color: rgba(200, 185, 255, 0.9);
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-size: 11px;
+            background: rgba(120, 90, 200, 0.08);
+            color: rgba(100, 70, 180, 0.85);
+            padding: 0 3px;
+            border-radius: 2px;
+            font-size: 10px;
         }
 
         .thinking-bubble .thinking-text::-webkit-scrollbar {
-            width: 3px;
+            width: 2px;
         }
         .thinking-bubble .thinking-text::-webkit-scrollbar-thumb {
-            background: rgba(140, 110, 255, 0.3);
-            border-radius: 3px;
+            background: rgba(120, 90, 200, 0.15);
+            border-radius: 2px;
         }
 
         .thinking-bubble.collapsed .thinking-text {
@@ -867,8 +867,8 @@
         }
 
         .thinking-bubble:hover {
-            background: rgba(40, 32, 70, 0.8);
-            border-color: rgba(140, 110, 255, 0.35);
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         /* 微信风格时间分隔符 */
