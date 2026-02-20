@@ -191,6 +191,7 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            position: relative;
         }
 
         #app::before {
@@ -200,6 +201,20 @@
             background: rgba(0, 0, 0, 0.15);
             pointer-events: none;
             z-index: 0;
+        }
+
+        #app .bg-crossfade {
+            position: fixed;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            z-index: -1;
+            pointer-events: none;
+        }
+        #app .bg-crossfade.visible {
+            opacity: 1;
         }
 
         #app.active {
@@ -280,11 +295,25 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
         }
         .conversations-list::-webkit-scrollbar {
-            display: none;
+            width: 4px;
+        }
+        .conversations-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .conversations-list::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        .conversations-list.scrolling {
+            scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+        }
+        .conversations-list.scrolling::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.25);
         }
 
         .conversation-item {
@@ -6535,13 +6564,26 @@
             if (!bg) return;
 
             const app = document.getElementById('app');
+            const newUrl = bgId === 'default'
+                ? "url('images/bg.png')"
+                : `url('images/Background/${bg.file}')`;
 
-            // Update background image
-            if (bgId === 'default') {
-                app.style.backgroundImage = "url('images/bg.png')";
-            } else {
-                app.style.backgroundImage = `url('images/Background/${bg.file}')`;
+            // Crossfade transition
+            let overlay = app.querySelector('.bg-crossfade');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'bg-crossfade';
+                app.insertBefore(overlay, app.firstChild);
             }
+            overlay.style.backgroundImage = newUrl;
+            overlay.classList.remove('visible');
+            // Force reflow then fade in
+            void overlay.offsetWidth;
+            overlay.classList.add('visible');
+            setTimeout(() => {
+                app.style.backgroundImage = newUrl;
+                overlay.classList.remove('visible');
+            }, 600);
 
             // Update active state in grid
             document.querySelectorAll('.bg-thumb-item').forEach(item => {
@@ -6586,6 +6628,18 @@
                 }
             }
         });
+
+        // Show scrollbar only while scrolling
+        (function() {
+            let scrollTimer;
+            const list = document.getElementById('conversations-list');
+            if (!list) return;
+            list.addEventListener('scroll', function() {
+                list.classList.add('scrolling');
+                clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(() => list.classList.remove('scrolling'), 800);
+            });
+        })();
     </script>
 </body>
 </html>
