@@ -798,16 +798,36 @@ def chat():
 
         # ========== 分离 thinking 内容 ==========
         # 统一处理所有模型的 thinking/reasoning 内容
-        # Grok: <think>...</think>  |  Gemini: <thought>...</thought>  |  Gemini: "思考：..."前缀
+        # Gemini 通过 OpenAI 兼容 API 返回 thinking 的方式：
+        #   content = "<thought>思考内容</thought>实际回复"
+        # 但有时 <thought> 标签不闭合，整个 content 都是 thinking
         import re
         thinking_content = ""
 
-        # Pattern 1: <think>...</think> 或 <thought>...</thought> 标签
+        # Pattern 1a: <think>...</think> 或 <thought>...</thought> 标签（有闭合）
         think_tag_match = re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', reply, re.DOTALL)
         if think_tag_match:
             thinking_content = think_tag_match.group(1).strip()
             reply = re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', reply, flags=re.DOTALL).strip()
             logger.info(f"[THINKING] Extracted thinking tag content ({len(thinking_content)} chars)")
+
+        # Pattern 1b: <thought> 标签未闭合 — Gemini 有时整个 content 都是 thinking 没有 </thought>
+        if not thinking_content:
+            unclosed_match = re.match(r'^<(?:think|thought)>(.*)', reply, re.DOTALL)
+            if unclosed_match:
+                raw = unclosed_match.group(1).strip()
+                # 尝试在内容中找到实际回复（通常 thinking 后面跟着双换行 + 回复）
+                # 或者 Gemini 把回复放在最后一段
+                split_match = re.split(r'\n\n(?=[^\n*#\-])', raw, maxsplit=1)
+                if len(split_match) > 1 and len(split_match[-1].strip()) > 5:
+                    # 最后一段看起来像是实际回复
+                    thinking_content = split_match[0].strip()
+                    reply = split_match[-1].strip()
+                else:
+                    # 整个内容都是 thinking，没有明确的回复分隔
+                    thinking_content = raw
+                    reply = ""  # 会在后面触发 fallback
+                logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
 
         # Pattern 2: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
         if not thinking_content:
@@ -825,6 +845,20 @@ def chat():
         if json_match:
             reply = json_match.group(1).strip()
             logger.info(f"[THINKING] Extracted reply from Gemini JSON wrapper")
+
+        # 如果 reply 为空但有 thinking 内容，用 thinking 最后一部分作为 fallback 回复
+        # （Gemini 有时整个 content 都是 thinking 没有单独的回复文本）
+        if not reply and thinking_content:
+            # 取 thinking 最后一段作为回复
+            paragraphs = [p.strip() for p in thinking_content.split('\n\n') if p.strip()]
+            if paragraphs:
+                reply = paragraphs[-1]
+                # 从 thinking 中移除被用作 reply 的部分
+                if len(paragraphs) > 1:
+                    thinking_content = '\n\n'.join(paragraphs[:-1])
+                else:
+                    thinking_content = ""
+                logger.info(f"[THINKING] Used last paragraph of thinking as reply fallback ({len(reply)} chars)")
 
         # 检查是否有错误
         if "error" in response or not reply:

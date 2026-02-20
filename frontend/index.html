@@ -761,9 +761,9 @@
             border-bottom-right-radius: 8px;
         }
 
-        /* Thinking Toggle */
+        /* Thinking Toggle — 输入框上方的开关 */
         .thinking-toggle-bar {
-            padding: 0 24px 4px;
+            padding: 0 24px 6px;
             display: flex;
             justify-content: flex-start;
         }
@@ -771,68 +771,106 @@
         .thinking-toggle-btn {
             display: flex;
             align-items: center;
-            gap: 4px;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(147, 130, 220, 0.2);
-            border-radius: 16px;
-            padding: 4px 12px;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: 5px 14px;
             cursor: pointer;
             font-size: 12px;
-            color: #888;
-            transition: all 0.2s ease;
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.25s ease;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
         }
 
         .thinking-toggle-btn:hover {
-            background: rgba(147, 130, 220, 0.1);
-            color: #7c3aed;
+            background: rgba(255, 255, 255, 0.55);
+            color: rgba(124, 58, 237, 0.9);
+            border-color: rgba(124, 58, 237, 0.25);
         }
 
         .thinking-toggle-btn.active {
-            background: rgba(124, 58, 237, 0.1);
-            border-color: rgba(124, 58, 237, 0.3);
-            color: #7c3aed;
+            background: rgba(124, 58, 237, 0.15);
+            border-color: rgba(124, 58, 237, 0.35);
+            color: #a78bfa;
+            box-shadow: 0 0 8px rgba(124, 58, 237, 0.12);
         }
 
         .thinking-icon {
-            font-size: 14px;
-        }
-
-        /* Thinking Display in Chat */
-        .thinking-bubble {
-            margin: 0 24px 4px;
-            padding: 10px 14px;
-            background: rgba(124, 58, 237, 0.06);
-            border-left: 3px solid rgba(124, 58, 237, 0.3);
-            border-radius: 0 8px 8px 0;
             font-size: 13px;
-            color: #9580b8;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
-            cursor: pointer;
-            transition: max-height 0.3s ease;
         }
 
-        .thinking-bubble.collapsed {
-            max-height: 40px;
+        /* Thinking Bubble — 聊天区域里的思考卡片 */
+        .thinking-bubble {
+            margin: 0 24px 6px 72px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
+            background: rgba(124, 58, 237, 0.06);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(124, 58, 237, 0.12);
         }
 
         .thinking-bubble .thinking-header {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-weight: 500;
-            color: #7c3aed;
-            margin-bottom: 6px;
+            justify-content: space-between;
+            padding: 8px 14px;
             font-size: 12px;
+            font-weight: 500;
+            color: #a78bfa;
+            user-select: none;
+        }
+
+        .thinking-header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .thinking-chevron {
+            font-size: 10px;
+            transition: transform 0.3s ease;
+            opacity: 0.6;
+        }
+
+        .thinking-bubble:not(.collapsed) .thinking-chevron {
+            transform: rotate(180deg);
         }
 
         .thinking-bubble .thinking-text {
-            color: #8b7aab;
+            padding: 0 14px 10px;
+            color: rgba(180, 160, 220, 0.85);
             font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 160px;
+            overflow-y: auto;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .thinking-bubble .thinking-text::-webkit-scrollbar {
+            width: 3px;
+        }
+        .thinking-bubble .thinking-text::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.2);
+            border-radius: 3px;
+        }
+
+        .thinking-bubble.collapsed .thinking-text {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+        }
+
+        .thinking-bubble:hover {
+            border-color: rgba(124, 58, 237, 0.25);
+            background: rgba(124, 58, 237, 0.09);
         }
 
         /* 输入框 */
@@ -5636,10 +5674,10 @@
 
             if (showThinking) {
                 btn.classList.add('active');
-                label.textContent = state.language === 'zh-CN' ? '思考中...' : 'Thinking ON';
+                label.textContent = state.language === 'zh-CN' ? '显示思考 ✓' : 'Thinking ✓';
             } else {
                 btn.classList.remove('active');
-                label.textContent = state.language === 'zh-CN' ? '显示思考' : 'Show Thinking';
+                label.textContent = state.language === 'zh-CN' ? '显示思考' : 'Thinking';
             }
         }
 
@@ -5659,8 +5697,16 @@
             const bubble = document.createElement('div');
             bubble.className = 'thinking-bubble collapsed';
             bubble.style.display = showThinking ? 'block' : 'none';
+
+            const headerLabel = state.language === 'zh-CN' ? '思考过程' : 'Thinking';
             bubble.innerHTML = `
-                <div class="thinking-header">💭 ${state.language === 'zh-CN' ? 'AI 思考过程' : 'AI Thinking Process'}</div>
+                <div class="thinking-header">
+                    <span class="thinking-header-left">
+                        <span>🧠</span>
+                        <span>${headerLabel}</span>
+                    </span>
+                    <span class="thinking-chevron">▼</span>
+                </div>
                 <div class="thinking-text">${escapeHtml(thinkingText)}</div>
             `;
             bubble.onclick = () => bubble.classList.toggle('collapsed');
