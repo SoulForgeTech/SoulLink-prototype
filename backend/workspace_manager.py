@@ -37,7 +37,7 @@ class WorkspaceManager:
         },
         "grok": {
             "id": "grok",
-            "name": "Grok 4.1 Fast",
+            "name": "Grok 4.1 Fast Reasoning",
             "chatProvider": "xai",
             "chatModel": "grok-4-1-fast-reasoning",
             "icon": "⚡",
