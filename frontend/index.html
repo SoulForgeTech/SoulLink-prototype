@@ -5201,7 +5201,7 @@
         }
 
         async function autoGenerateTitle(convId, firstMessage) {
-            // 先用临时时间标题显示（后端会异步用 AI 生成智能标题）
+            // 先用临时时间标题，立即显示在侧边栏
             const tempTitle = generateSimpleTitle();
             const conv = state.conversations.find(c => c.id === convId);
             if (conv) {
@@ -5209,8 +5209,11 @@
                 renderConversationsList();
             }
 
-            // 3秒后拉取后端 AI 生成的标题（Gemini Flash 异步生成）
-            setTimeout(async () => {
+            // 后端异步用 Gemini 生成标题（约2-4秒），轮询拉取
+            // 第一次 3 秒后尝试，失败则 6 秒后再试一次
+            const delays = [3000, 6000];
+            for (const delay of delays) {
+                await new Promise(r => setTimeout(r, delay));
                 try {
                     const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${convId}`, {
                         headers: {}
@@ -5218,19 +5221,18 @@
                     if (resp.ok) {
                         const data = await resp.json();
                         const aiTitle = data.title;
-                        // 如果后端已生成了非默认标题，更新
                         if (aiTitle && aiTitle !== 'New Chat' && aiTitle !== '新对话') {
+                            // 找到 AI 标题，更新本地状态和侧边栏
                             const c = state.conversations.find(c => c.id === convId);
-                            if (c) {
-                                c.title = aiTitle;
-                                renderConversationsList();
-                            }
+                            if (c) c.title = aiTitle;
+                            renderConversationsList();
+                            return; // 成功，退出轮询
                         }
                     }
                 } catch (e) {
-                    // 静默失败，保留临时标题
+                    // 静默失败，继续下一次尝试
                 }
-            }, 3000);
+            }
         }
 
         // ==================== 消息渲染 ====================
@@ -5428,10 +5430,11 @@
                         { role: 'assistant', content: data.reply }
                     );
 
-                    // 刷新侧边栏对话列表 + 自动生成标题
+                    // 新对话：先刷新侧边栏列表，再异步等 AI 标题更新
                     if (createdNewConv || state.messages.length <= 2) {
-                        await autoGenerateTitle(state.currentConversationId, message);
                         await loadConversations();
+                        // autoGenerateTitle 内部会轮询等待后端 Gemini 生成标题并更新侧边栏
+                        autoGenerateTitle(state.currentConversationId, message);
                     }
                 } else {
                     hideTyping();
