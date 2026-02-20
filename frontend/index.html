@@ -4460,6 +4460,7 @@
                 const companionName = state.user.settings?.companion_name || 'Abigail';
                 document.getElementById('companion-name-display').textContent = companionName;
                 updateModelIndicator();
+                updateThinkingToggleVisibility();
                 // 更新 companion 头像
                 if (typeof updateCompanionAvatars === 'function') updateCompanionAvatars();
             }
@@ -5387,8 +5388,8 @@
             const welcomeMsg = document.getElementById('welcome-message');
             const typingIndicator = document.getElementById('typing-indicator');
 
-            // 清除现有消息（保留 welcome 和 typing indicator）
-            const existingMessages = container.querySelectorAll('.message');
+            // 清除现有消息和 thinking bubbles（保留 welcome 和 typing indicator）
+            const existingMessages = container.querySelectorAll('.message, .thinking-bubble');
             existingMessages.forEach(msg => msg.remove());
 
             if (state.messages.length === 0) {
@@ -5397,6 +5398,10 @@
                 welcomeMsg.style.display = 'none';
 
                 state.messages.forEach(msg => {
+                    // 如果是 AI 回复且有 thinking 内容，先显示 thinking bubble
+                    if (msg.role === 'assistant' && msg.thinking) {
+                        addThinkingBubble(msg.thinking);
+                    }
                     addMessageToUI(msg.content, msg.role === 'user');
                 });
             }

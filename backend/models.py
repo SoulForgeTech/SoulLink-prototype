@@ -85,16 +85,20 @@ class ConversationModel:
     def create_message(
         role: str,  # "user" or "assistant"
         content: str,
-        sources: Optional[List[Dict]] = None
+        sources: Optional[List[Dict]] = None,
+        thinking: Optional[str] = None
     ) -> Dict[str, Any]:
         """创建消息对象"""
-        return {
+        msg = {
             "id": str(ObjectId()),
             "role": role,
             "content": content,
             "sources": sources or [],
             "timestamp": datetime.utcnow()
         }
+        if thinking:
+            msg["thinking"] = thinking
+        return msg
 
     @staticmethod
     def get_indexes() -> List[Dict]:

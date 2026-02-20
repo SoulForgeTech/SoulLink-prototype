@@ -947,13 +947,14 @@ def chat():
         # 从 full_response 中获取 sources
         sources = full_response.get("data", {}).get("sources", [])
 
-        # 保存 AI 回复（保存清理后的版本）
+        # 保存 AI 回复（保存清理后的版本，含 thinking）
         db.add_message_to_conversation(
             conversation["_id"],
             user_id,
             "assistant",
             reply,
-            sources
+            sources,
+            thinking=thinking_content if thinking_content else None
         )
 
         # 更新统计
