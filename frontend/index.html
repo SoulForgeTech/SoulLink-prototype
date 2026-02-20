@@ -761,6 +761,80 @@
             border-bottom-right-radius: 8px;
         }
 
+        /* Thinking Toggle */
+        .thinking-toggle-bar {
+            padding: 0 24px 4px;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .thinking-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(147, 130, 220, 0.2);
+            border-radius: 16px;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #888;
+            transition: all 0.2s ease;
+        }
+
+        .thinking-toggle-btn:hover {
+            background: rgba(147, 130, 220, 0.1);
+            color: #7c3aed;
+        }
+
+        .thinking-toggle-btn.active {
+            background: rgba(124, 58, 237, 0.1);
+            border-color: rgba(124, 58, 237, 0.3);
+            color: #7c3aed;
+        }
+
+        .thinking-icon {
+            font-size: 14px;
+        }
+
+        /* Thinking Display in Chat */
+        .thinking-bubble {
+            margin: 0 24px 4px;
+            padding: 10px 14px;
+            background: rgba(124, 58, 237, 0.06);
+            border-left: 3px solid rgba(124, 58, 237, 0.3);
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #9580b8;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            cursor: pointer;
+            transition: max-height 0.3s ease;
+        }
+
+        .thinking-bubble.collapsed {
+            max-height: 40px;
+            overflow: hidden;
+        }
+
+        .thinking-bubble .thinking-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            color: #7c3aed;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .thinking-bubble .thinking-text {
+            color: #8b7aab;
+            font-size: 12px;
+        }
+
         /* 输入框 */
         .input-container {
             padding: 16px 24px 24px;
@@ -3904,6 +3978,14 @@
                 </div>
             </div>
 
+            <!-- Thinking Toggle -->
+            <div class="thinking-toggle-bar" id="thinking-toggle-bar" style="display:none;">
+                <button class="thinking-toggle-btn" id="thinking-toggle-btn" onclick="toggleThinking()">
+                    <span class="thinking-icon">💭</span>
+                    <span class="thinking-label" id="thinking-label">显示思考</span>
+                </button>
+            </div>
+
             <!-- 输入框 -->
             <div class="input-container">
                 <div class="input-wrapper">
@@ -5438,6 +5520,11 @@
                     // 隐藏 typing indicator
                     hideTyping();
 
+                    // 如果有 thinking 内容，先显示思考过程
+                    if (data.thinking) {
+                        addThinkingBubble(data.thinking);
+                    }
+
                     // 添加 AI 回复（使用打字机效果）
                     addMessageToUI(data.reply, false, true);
 
@@ -5502,6 +5589,7 @@
                 desc_zh: '快速 · 角色感强',
                 badge_en: 'Free',
                 badge_zh: '免费',
+                hasThinking: true,
             },
             {
                 id: 'gpt4o',
@@ -5512,6 +5600,7 @@
                 desc_zh: '更走心 · 懂情绪',
                 badge_en: 'Limited Free',
                 badge_zh: '限时免费',
+                hasThinking: false,
             },
             {
                 id: 'grok',
@@ -5522,10 +5611,61 @@
                 desc_zh: '更亲密 · 更开放',
                 badge_en: 'Limited Free',
                 badge_zh: '限时免费',
+                hasThinking: false,
             },
         ];
 
         let selectedModel = null;
+        let showThinking = localStorage.getItem('soullink_show_thinking') === 'true'; // 用户是否开启思考过程显示
+
+        // ==================== Thinking Toggle ====================
+        function toggleThinking() {
+            showThinking = !showThinking;
+            localStorage.setItem('soullink_show_thinking', showThinking);
+            updateThinkingToggleUI();
+            // 切换已有的 thinking bubbles 显示/隐藏
+            document.querySelectorAll('.thinking-bubble').forEach(el => {
+                el.style.display = showThinking ? 'block' : 'none';
+            });
+        }
+
+        function updateThinkingToggleUI() {
+            const btn = document.getElementById('thinking-toggle-btn');
+            const label = document.getElementById('thinking-label');
+            if (!btn || !label) return;
+
+            if (showThinking) {
+                btn.classList.add('active');
+                label.textContent = state.language === 'zh-CN' ? '思考中...' : 'Thinking ON';
+            } else {
+                btn.classList.remove('active');
+                label.textContent = state.language === 'zh-CN' ? '显示思考' : 'Show Thinking';
+            }
+        }
+
+        function updateThinkingToggleVisibility() {
+            const bar = document.getElementById('thinking-toggle-bar');
+            if (!bar) return;
+            const currentModel = state.user?.settings?.model || 'gemini';
+            const modelDef = MODEL_DEFINITIONS.find(m => m.id === currentModel);
+            bar.style.display = (modelDef && modelDef.hasThinking) ? 'flex' : 'none';
+            updateThinkingToggleUI();
+        }
+
+        function addThinkingBubble(thinkingText) {
+            if (!thinkingText) return;
+            const container = document.getElementById('messages-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const bubble = document.createElement('div');
+            bubble.className = 'thinking-bubble collapsed';
+            bubble.style.display = showThinking ? 'block' : 'none';
+            bubble.innerHTML = `
+                <div class="thinking-header">💭 ${state.language === 'zh-CN' ? 'AI 思考过程' : 'AI Thinking Process'}</div>
+                <div class="thinking-text">${escapeHtml(thinkingText)}</div>
+            `;
+            bubble.onclick = () => bubble.classList.toggle('collapsed');
+            container.insertBefore(bubble, typingIndicator);
+        }
 
         function renderModelSelector() {
             const container = document.getElementById('model-selector');
@@ -5558,6 +5698,8 @@
             document.querySelectorAll('.model-option').forEach(el => {
                 el.classList.toggle('selected', el.dataset.model === modelId);
             });
+            // 切换模型后更新 thinking toggle 可见性
+            updateThinkingToggleVisibility();
         }
 
         function updateModelIndicator() {
@@ -5851,6 +5993,9 @@
             // 渲染模型选择器
             renderModelSelector();
 
+            // 初始化 thinking toggle
+            updateThinkingToggleVisibility();
+
             // 初始化伴侣风格选择器
             settingsSelectedGender = state.user?.settings?.companion_gender || 'female';
             settingsSelectedSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
@@ -6060,6 +6205,7 @@
                         if (modelChanged) {
                             state.user.settings.model = selectedModel;
                             updateModelIndicator();
+                            updateThinkingToggleVisibility();
                         }
                         if (styleChanged) {
                             state.user.settings.companion_gender = settingsSelectedGender;

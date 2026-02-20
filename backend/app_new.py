@@ -762,16 +762,21 @@ def chat():
 
         # 检测用户消息是否可能包含改名意图，如果是则追加提醒让 AI 记得输出标记
         import re
+        # 排除"你叫什么"这类问名字的场景
+        ask_name_patterns = r'你叫什么|你叫啥|你的名字是|what.s your name|what do (they|you) call you'
+        is_asking_name = re.search(ask_name_patterns, user_message, re.IGNORECASE)
+
         rename_hint_patterns = [
-            r'叫你|叫做|就叫|改叫|你叫|叫回|改回|换回|交回|改名|取名|起名',
-            r'call you|name you|rename|your name',
-            r'名字.*叫|名字.*是',
+            r'叫你|叫做|就叫|改叫|叫回|改回|换回|交回|改名|取名|起名',
+            r'call you|name you|rename|your name will|your name is',
+            r'名字.*改|名字.*换|名字.*叫做',
         ]
-        for p in rename_hint_patterns:
-            if re.search(p, user_message, re.IGNORECASE):
-                message_to_send = message_to_send + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
-                logger.info(f"[RENAME] Detected possible rename intent, adding hint to message")
-                break
+        if not is_asking_name:
+            for p in rename_hint_patterns:
+                if re.search(p, user_message, re.IGNORECASE):
+                    message_to_send = message_to_send + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
+                    logger.info(f"[RENAME] Detected possible rename intent, adding hint to message")
+                    break
 
         # 发送消息
         logger.info(f"Sending message: {message_to_send[:80]}...")
@@ -790,6 +795,36 @@ def chat():
         # send_message 返回格式: {'text_response': ..., 'full_response': {...}}
         reply = response.get("text_response", "")
         full_response = response.get("full_response", {})
+
+        # ========== 分离 thinking 内容 ==========
+        # 统一处理所有模型的 thinking/reasoning 内容
+        # Grok: <think>...</think>  |  Gemini: <thought>...</thought>  |  Gemini: "思考：..."前缀
+        import re
+        thinking_content = ""
+
+        # Pattern 1: <think>...</think> 或 <thought>...</thought> 标签
+        think_tag_match = re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', reply, re.DOTALL)
+        if think_tag_match:
+            thinking_content = think_tag_match.group(1).strip()
+            reply = re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', reply, flags=re.DOTALL).strip()
+            logger.info(f"[THINKING] Extracted thinking tag content ({len(thinking_content)} chars)")
+
+        # Pattern 2: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
+        if not thinking_content:
+            gemini_think_match = re.match(
+                r'^(?:思考|Thinking|思考过程|Let me think|我(?:先)?(?:想想|思考一下|分析一下))[\s：:：]+(.+?)(?:\n\n|\n(?=[^\n]))',
+                reply, re.DOTALL
+            )
+            if gemini_think_match:
+                thinking_content = gemini_think_match.group(1).strip()
+                reply = reply[gemini_think_match.end():].strip()
+                logger.info(f"[THINKING] Stripped Gemini thinking prefix ({len(thinking_content)} chars)")
+
+        # Pattern 3: Gemini 有时返回 JSON 包装 {"response": "..."}
+        json_match = re.search(r'```json\s*\{["\']response["\']\s*:\s*["\'](.+?)["\']\s*\}\s*```', reply, re.DOTALL)
+        if json_match:
+            reply = json_match.group(1).strip()
+            logger.info(f"[THINKING] Extracted reply from Gemini JSON wrapper")
 
         # 检查是否有错误
         if "error" in response or not reply:
@@ -875,6 +910,8 @@ def chat():
             "sources": sources,
             "conversation_id": str(conversation["_id"])
         }
+        if thinking_content:
+            result["thinking"] = thinking_content
         if companion_name_changed:
             result["companionNameChanged"] = companion_name_changed
 
