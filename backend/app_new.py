@@ -857,34 +857,67 @@ def chat():
                 logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
 
         # Pattern 2: "THOUGHT" 前缀（Gemini 思考泄露）
-        # 格式: THOUGHT\n英文分析...\nPlan:\n1. ...\n2. ...\nN. ...实际回复
-        # 策略：找最后一个 "N. " 编号项结尾处 + 第一个非ASCII字符，或 Plan 块结束后的回复
+        # 格式: THOUGHT\n英文分析...\nPlan:\n1. ...\n\n中文回复
+        # 或: THOUGHT\n英文分析...\nPlan:\n1. ...\nN. 英文...中文回复（无双换行）
         if not thinking_content and re.match(r'^THOUGHT[\s\n]', reply):
             raw = re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
             actual_reply = ""
 
-            # 方法1：找 Plan 列表最后一个编号项，其后紧跟的非编号内容 = 回复
-            # 匹配 "N. 英文内容" 后面紧跟的非英文/非编号内容
-            plan_match = re.search(r'\d+\.\s+[^\n]*?([（\uff08\u4e00-\u9fff])', raw)
-            if plan_match:
-                thinking_content = raw[:plan_match.start(1)].rstrip(' .\n')
-                actual_reply = raw[plan_match.start(1):].strip()
+            # 方法1：双换行分隔 — 找最后一个双换行，其后内容如果以CJK/括号开头则为回复
+            double_nl_parts = raw.split('\n\n')
+            if len(double_nl_parts) > 1:
+                # 从后往前找，第一个以中文/括号/星号动作开头的段落 = 回复起点
+                for i in range(len(double_nl_parts) - 1, 0, -1):
+                    candidate = double_nl_parts[i].strip()
+                    if candidate and re.match(r'[\u4e00-\u9fff（\uff08*「【《""]', candidate):
+                        thinking_content = '\n\n'.join(double_nl_parts[:i]).strip()
+                        actual_reply = '\n\n'.join(double_nl_parts[i:]).strip()
+                        break
 
-            # 方法2：找第一个中文/CJK字符
+            # 方法2：无双换行 — 找最后一个Plan编号项后的回复边界
             if not actual_reply:
-                chn_match = re.search(r'[\u4e00-\u9fff\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d]', raw)
-                if chn_match:
-                    thinking_content = raw[:chn_match.start()].rstrip(' .\n')
-                    actual_reply = raw[chn_match.start():].strip()
+                last_plan_items = list(re.finditer(r'^\d+\.\s', raw, re.MULTILINE))
+                if last_plan_items:
+                    last_item_pos = last_plan_items[-1].start()
+                    last_item_text = raw[last_item_pos:]
+                    # 找该编号行的末尾
+                    line_end = last_item_text.find('\n')
+                    if line_end > 0:
+                        # 编号行后有换行，换行后非编号内容 = 回复
+                        after = raw[last_item_pos + line_end:].strip()
+                        if after and not re.match(r'^\d+\.\s', after):
+                            thinking_content = raw[:last_item_pos + line_end].rstrip()
+                            actual_reply = after
+                    else:
+                        # 最后一行，找最后一个英文句号后紧跟的中文（连续5+CJK = 回复，非引号内短词）
+                        all_matches = list(re.finditer(r'[.!?]\s*(?=[\u4e00-\u9fff（\uff08])', last_item_text))
+                        for m in reversed(all_matches):
+                            candidate = last_item_text[m.end():].strip()
+                            # 至少10个字符才算真正的回复，排除 "有的" 这种引号内短词
+                            if len(candidate) >= 10:
+                                cut = last_item_pos + m.end()
+                                thinking_content = raw[:cut].rstrip()
+                                actual_reply = raw[cut:].strip()
+                                break
 
-            # 方法3：找括号动作 (text) 开头（英文回复场景）
+            # 方法3：无Plan列表 — 找连续CJK段落（长度>=10）作为回复
             if not actual_reply:
-                action_match = re.search(r'\n\((?![\d])[a-z]', raw)
+                # 找换行后跟着长CJK内容的位置
+                for m in re.finditer(r'\n([\u4e00-\u9fff（\uff08*「【《""])', raw):
+                    candidate = raw[m.start(1):].strip()
+                    if len(candidate) >= 10:
+                        thinking_content = raw[:m.start(1)].rstrip()
+                        actual_reply = candidate
+                        break
+
+            # 方法4：找括号动作 (text) 开头（英文回复场景）
+            if not actual_reply:
+                action_match = re.search(r'\n(\([a-z])', raw)
                 if action_match:
                     thinking_content = raw[:action_match.start()].strip()
                     actual_reply = raw[action_match.start():].strip()
 
-            # fallback：整段都是思考
+            # fallback：整段都是思考，reply 为空（后面有 fallback 逻辑取最后一段）
             if not actual_reply:
                 thinking_content = raw
                 actual_reply = ""
