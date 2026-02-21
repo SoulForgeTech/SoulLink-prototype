@@ -3510,6 +3510,44 @@
         }
         .about-survey-img:hover { transform: scale(1.02); }
 
+        .about-community-section { margin-bottom: 4px; }
+        .about-community-text { font-size: 0.82rem; color: #718096; margin: 0 0 12px; }
+        .about-community-qr {
+            width: 100%; max-width: 260px; display: block; margin: 0 auto;
+            border-radius: 12px; cursor: pointer;
+            transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .about-community-qr:hover { transform: scale(1.02); }
+
+        /* 社群弹窗 */
+        .community-popup-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .community-popup-overlay.active { opacity: 1; pointer-events: auto; }
+        .community-popup {
+            background: #fff; border-radius: 20px; padding: 28px 24px;
+            max-width: 320px; width: 90%; text-align: center;
+            transform: scale(0.9); transition: transform 0.3s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .community-popup-overlay.active .community-popup { transform: scale(1); }
+        .community-popup h3 { margin: 0 0 6px; font-size: 1.1rem; color: #2d3748; }
+        .community-popup p { margin: 0 0 16px; font-size: 0.82rem; color: #718096; line-height: 1.5; }
+        .community-popup img {
+            width: 200px; height: 200px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .community-popup-close {
+            margin-top: 16px; padding: 8px 32px; border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .community-popup-close:hover { opacity: 0.85; }
+
         .about-footer { text-align: center; color: #a0aec0; font-size: 0.75rem; margin-top: 10px; }
         .about-footer p { margin: 0 0 6px; }
         .about-links a { color: #667eea; text-decoration: none; font-size: 0.75rem; }
@@ -3870,7 +3908,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.4-beta</p>
+                    <p class="about-version">v0.0.5-beta</p>
                 </div>
             </div>
 
@@ -3878,6 +3916,15 @@
             <div class="about-description">
                 <p data-i18n="about.description">SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.</p>
             </div>
+
+            <!-- 社群 -->
+            <div class="about-community-section">
+                <h4 data-i18n="about.community">Join Our Community</h4>
+                <p class="about-community-text" data-i18n="about.community.desc">Join our WeChat group for updates, feedback & discussion!</p>
+                <img src="images/wechat_group_qr.jpg" alt="WeChat Group QR" class="about-community-qr" onclick="window.open(this.src, '_blank')">
+            </div>
+
+            <div class="about-divider"></div>
 
             <!-- 打赏 -->
             <div class="about-donate-section">
@@ -3944,6 +3991,17 @@
             </div><!-- /about-modal-body -->
         </div><!-- /about-modal -->
     </div><!-- /about-modal-overlay -->
+
+    <!-- 社群弹窗 -->
+    <div class="community-popup-overlay" id="community-popup">
+        <div class="community-popup">
+            <h3 data-i18n="community.popup.title">Join Our Community</h3>
+            <p data-i18n="community.popup.desc">Scan to join our WeChat group for updates & feedback!</p>
+            <img src="images/wechat_group_qr.jpg" alt="WeChat Group QR">
+            <br>
+            <button class="community-popup-close" onclick="closeCommunityPopup()" data-i18n="community.popup.close">Got it</button>
+        </div>
+    </div>
 
     <!-- Companion 头像修改模态框 -->
     <div class="companion-avatar-modal-overlay" id="companion-avatar-modal">
@@ -4410,6 +4468,11 @@
                 'about.feedback.placeholder': 'Tell us what you think...',
                 'about.feedback.submit': 'Submit Feedback',
                 'about.feedback.thanks': 'Thank you for your feedback!',
+                'about.community': 'Join Our Community',
+                'about.community.desc': 'Join our WeChat group for updates, feedback & discussion!',
+                'community.popup.title': 'Join Our Community',
+                'community.popup.desc': 'Scan to join our WeChat group for updates & feedback!',
+                'community.popup.close': 'Got it',
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
                 'bg.picker.title': 'Background',
@@ -4545,6 +4608,11 @@
                 'about.feedback.placeholder': '说说你的想法...',
                 'about.feedback.submit': '提交反馈',
                 'about.feedback.thanks': '感谢你的反馈！',
+                'about.community': '加入社群',
+                'about.community.desc': '扫码加入微信群，获取更新通知、反馈建议！',
+                'community.popup.title': '加入社群',
+                'community.popup.desc': '扫码加入微信群，获取最新动态和交流反馈！',
+                'community.popup.close': '知道了',
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
                 'bg.picker.title': '背景',
@@ -4696,7 +4764,25 @@
             updateUserInfo();
             // Load saved background
             if (typeof loadBackground === 'function') loadBackground();
+            // 社群弹窗（每用户只弹一次）
+            showCommunityPopupOnce();
         }
+
+        function showCommunityPopupOnce() {
+            const key = 'community_popup_shown';
+            if (localStorage.getItem(key)) return;
+            localStorage.setItem(key, '1');
+            setTimeout(() => {
+                document.getElementById('community-popup').classList.add('active');
+            }, 1500);
+        }
+
+        function closeCommunityPopup() {
+            document.getElementById('community-popup').classList.remove('active');
+        }
+        document.getElementById('community-popup')?.addEventListener('click', function(e) {
+            if (e.target === this) closeCommunityPopup();
+        });
 
         function updateUserInfo() {
             if (state.user) {
