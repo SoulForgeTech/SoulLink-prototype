@@ -856,18 +856,20 @@ def chat():
                     reply = ""  # 会在后面触发 fallback
                 logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
 
-        # Pattern 2: "THOUGHT ..." 前缀（GPT-4o / Grok 思考泄露）
-        if not thinking_content:
-            thought_match = re.match(r'^THOUGHT\s+(.+?)(?:\n\n)(.*)', reply, re.DOTALL)
-            if thought_match:
-                thinking_content = thought_match.group(1).strip()
-                reply = thought_match.group(2).strip()
-                logger.info(f"[THINKING] Stripped THOUGHT prefix ({len(thinking_content)} chars)")
-            elif re.match(r'^THOUGHT\s+', reply):
-                # THOUGHT 后没有双换行分隔，整段都是思考
-                thinking_content = re.sub(r'^THOUGHT\s+', '', reply).strip()
+        # Pattern 2: "THOUGHT" 前缀（GPT-4o / Grok / Gemini 思考泄露）
+        # 格式: THOUGHT\n英文思考...\nPlan:\n1...\n2...\n3...（中文回复）
+        # 思考内容全英文，找到第一个中文字符或中文括号 = 实际回复起点
+        if not thinking_content and re.match(r'^THOUGHT[\s\n]', reply):
+            raw = re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
+            # 找到第一个中文字符或中文括号（全角括号）的位置
+            chn_match = re.search(r'[\u4e00-\u9fff\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d]', raw)
+            if chn_match:
+                thinking_content = raw[:chn_match.start()].rstrip(' .\n')
+                reply = raw[chn_match.start():].strip()
+            else:
+                thinking_content = raw
                 reply = ""
-                logger.info(f"[THINKING] Entire reply was THOUGHT ({len(thinking_content)} chars)")
+            logger.info(f"[THINKING] Stripped THOUGHT prefix ({len(thinking_content)} chars), reply={len(reply)} chars")
 
         # Pattern 3: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
         if not thinking_content:
