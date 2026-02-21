@@ -5853,6 +5853,15 @@
             const sendBtn = document.getElementById('send-btn');
             const message = input.value.trim();
 
+            // Wait for any in-progress file reads to finish
+            if (filesReading > 0) {
+                await new Promise(resolve => {
+                    const check = setInterval(() => {
+                        if (filesReading === 0) { clearInterval(check); resolve(); }
+                    }, 50);
+                });
+            }
+
             const hasFiles = pendingFiles.length > 0;
             if ((!message && !hasFiles) || state.isLoading) return;
 
@@ -5993,6 +6002,7 @@
 
         // ==================== 文件上传 ====================
         let pendingFiles = []; // {file, name, mime, dataUrl, isImage}
+        let filesReading = 0; // track in-progress FileReader operations
         const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
         const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
         const ALLOWED_DOC_EXTS = ['.pdf', '.txt', '.md', '.csv', '.json'];
@@ -6018,8 +6028,10 @@
                 alert(t('chat.file.too_large'));
                 return;
             }
+            filesReading++;
             const reader = new FileReader();
             reader.onload = (e) => {
+                filesReading--;
                 const isImage = IMAGE_TYPES.includes(file.type);
                 pendingFiles.push({
                     file,
@@ -6030,6 +6042,7 @@
                 });
                 renderFilePreview();
             };
+            reader.onerror = () => { filesReading--; };
             reader.readAsDataURL(file);
         }
 
