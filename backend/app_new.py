@@ -856,7 +856,20 @@ def chat():
                     reply = ""  # 会在后面触发 fallback
                 logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
 
-        # Pattern 2: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
+        # Pattern 2: "THOUGHT ..." 前缀（GPT-4o / Grok 思考泄露）
+        if not thinking_content:
+            thought_match = re.match(r'^THOUGHT\s+(.+?)(?:\n\n)(.*)', reply, re.DOTALL)
+            if thought_match:
+                thinking_content = thought_match.group(1).strip()
+                reply = thought_match.group(2).strip()
+                logger.info(f"[THINKING] Stripped THOUGHT prefix ({len(thinking_content)} chars)")
+            elif re.match(r'^THOUGHT\s+', reply):
+                # THOUGHT 后没有双换行分隔，整段都是思考
+                thinking_content = re.sub(r'^THOUGHT\s+', '', reply).strip()
+                reply = ""
+                logger.info(f"[THINKING] Entire reply was THOUGHT ({len(thinking_content)} chars)")
+
+        # Pattern 3: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
         if not thinking_content:
             gemini_think_match = re.match(
                 r'^(?:思考|Thinking|思考过程|Let me think|我(?:先)?(?:想想|思考一下|分析一下))[\s：:：]+(.+?)(?:\n\n|\n(?=[^\n]))',
@@ -867,7 +880,7 @@ def chat():
                 reply = reply[gemini_think_match.end():].strip()
                 logger.info(f"[THINKING] Stripped Gemini thinking prefix ({len(thinking_content)} chars)")
 
-        # Pattern 3: Gemini 有时返回 JSON 包装 {"response": "..."}
+        # Pattern 4: Gemini 有时返回 JSON 包装 {"response": "..."}
         json_match = re.search(r'```json\s*\{["\']response["\']\s*:\s*["\'](.+?)["\']\s*\}\s*```', reply, re.DOTALL)
         if json_match:
             reply = json_match.group(1).strip()
