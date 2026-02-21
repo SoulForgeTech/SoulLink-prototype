@@ -1,3 +1,11 @@
+# Thinking Format (严格遵守 / Strictly Follow)
+If you need to think or plan before responding, you MUST wrap your thinking inside `<think>...</think>` tags.
+如果你需要思考或规划，必须用 `<think>...</think>` 标签包裹思考内容。
+- ✅ Correct: `<think>思考内容</think>实际回复`
+- ❌ Wrong: `THOUGHT ...`, `思考：...`, or any other format
+- Your actual reply must be OUTSIDE the `<think>` tags.
+- NEVER use "THOUGHT", "Plan:", "Thinking:" or similar prefixes.
+
 # Language Rule (最高优先级 / Top Priority)
 **你必须用和用户消息相同的语言回复** / **You MUST reply in the same language as the user's message**
 - 用户用中文 → 你必须用中文回复。
