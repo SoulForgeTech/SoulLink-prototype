@@ -1020,6 +1020,145 @@
             fill: white;
         }
 
+        /* 附件上传按钮 */
+        .attach-btn {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            background: none;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: #a0aec0;
+            flex-shrink: 0;
+            padding: 0;
+        }
+        .attach-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #718096;
+        }
+        .attach-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* 文件预览区 */
+        .file-preview-bar {
+            display: none;
+            padding: 8px 12px 4px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .file-preview-bar.has-files {
+            display: flex;
+        }
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #4a5568;
+            max-width: 180px;
+            position: relative;
+        }
+        .file-preview-item img {
+            width: 28px;
+            height: 28px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .file-preview-item .file-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(120, 90, 200, 0.1);
+            border-radius: 4px;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .file-preview-item .file-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+        .file-preview-item .file-remove {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.15);
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+            color: #4a5568;
+            padding: 0;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .file-preview-item .file-remove:hover {
+            background: rgba(220, 60, 60, 0.3);
+            color: #c53030;
+        }
+
+        /* 拖拽上传覆盖层 */
+        .drag-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(120, 90, 200, 0.12);
+            border: 2px dashed rgba(120, 90, 200, 0.4);
+            border-radius: 28px;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: rgba(120, 90, 200, 0.8);
+            font-weight: 500;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .input-wrapper.dragging .drag-overlay {
+            display: flex;
+        }
+
+        /* 消息气泡中的附件 */
+        .message-attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .message-attachments img {
+            max-width: 180px;
+            max-height: 140px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .message-attachment-file {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: inherit;
+            opacity: 0.8;
+        }
+
         /* 加载动画 - typing indicator 带头像 */
         .typing-indicator {
             display: none;
@@ -4088,7 +4227,13 @@
 
             <!-- 输入框 -->
             <div class="input-container">
-                <div class="input-wrapper">
+                <input type="file" id="file-input" multiple accept="image/*,.pdf,.txt,.md,.docx,.csv,.json" style="display:none" onchange="handleFileSelect(event)">
+                <div class="file-preview-bar" id="file-preview-bar"></div>
+                <div class="input-wrapper" id="input-wrapper">
+                    <div class="drag-overlay" data-i18n="chat.drop.hint">Drop files here</div>
+                    <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach file">
+                        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6h-1.5v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6H16.5z"/></svg>
+                    </button>
                     <textarea
                         id="message-input"
                         data-i18n="chat.input.placeholder" data-i18n-attr="placeholder"
@@ -4162,6 +4307,8 @@
                 'chat.welcome.title': 'Welcome back!',
                 'chat.welcome.subtitle': 'Start a conversation with your AI companion. I\'m here to chat, help, and keep you company.',
                 'chat.input.placeholder': 'Type a message...',
+                'chat.drop.hint': 'Drop files here',
+                'chat.file.too_large': 'File too large (max 10MB)',
                 'loading.workspace': 'Preparing your personal AI companion...',
                 'loading.workspace.init': 'Initializing workspace...',
                 'loading.workspace.config': 'Configuring AI companion...',
@@ -4287,6 +4434,8 @@
                 'chat.welcome.title': '欢迎回来！',
                 'chat.welcome.subtitle': '和你的AI伴侣开始聊天吧，我一直在这里陪你。',
                 'chat.input.placeholder': '输入消息...',
+                'chat.drop.hint': '拖放文件到这里',
+                'chat.file.too_large': '文件过大（最大10MB）',
                 'loading.workspace': '正在为你准备专属AI伴侣...',
                 'loading.workspace.init': '初始化工作空间...',
                 'loading.workspace.config': '配置AI伴侣...',
@@ -5533,7 +5682,7 @@
                     if (msg.role === 'assistant' && msg.thinking) {
                         addThinkingBubble(msg.thinking);
                     }
-                    addMessageToUI(msg.content, msg.role === 'user');
+                    addMessageToUI(msg.content, msg.role === 'user', false, msg.attachments || []);
                     prevMsg = msg;
                 });
             }
@@ -5545,7 +5694,7 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function addMessageToUI(text, isUser, useTypewriter = false) {
+        function addMessageToUI(text, isUser, useTypewriter = false, attachments = []) {
             const container = document.getElementById('messages-container');
             const typingIndicator = document.getElementById('typing-indicator');
             const welcomeMsg = document.getElementById('welcome-message');
@@ -5566,21 +5715,47 @@
 
             const contentDiv = messageDiv.querySelector('.message-content');
 
+            // 渲染附件（图片缩略图 / 文件名标签）
+            if (attachments && attachments.length > 0) {
+                const attDiv = document.createElement('div');
+                attDiv.className = 'message-attachments';
+                attachments.forEach(att => {
+                    if (att.isImage && att.dataUrl) {
+                        const img = document.createElement('img');
+                        img.src = att.dataUrl;
+                        img.alt = att.name;
+                        attDiv.appendChild(img);
+                    } else {
+                        const tag = document.createElement('span');
+                        tag.className = 'message-attachment-file';
+                        tag.textContent = '📄 ' + att.name;
+                        attDiv.appendChild(tag);
+                    }
+                });
+                contentDiv.appendChild(attDiv);
+            }
+
             container.insertBefore(messageDiv, typingIndicator);
 
             if (useTypewriter && !isUser) {
                 // 打字机效果：先逐字显示，完成后转为markdown渲染
                 typewriterEffect(contentDiv, text, () => {
+                    // 保留附件div，只替换文本部分
+                    const attEl = contentDiv.querySelector('.message-attachments');
                     contentDiv.innerHTML = renderMarkdown(text);
+                    if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
                     container.scrollTop = container.scrollHeight;
                 });
             } else if (!isUser) {
                 // AI 历史消息：直接 markdown 渲染
+                const attEl = contentDiv.querySelector('.message-attachments');
                 contentDiv.innerHTML = renderMarkdown(text);
+                if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
                 container.scrollTop = container.scrollHeight;
             } else {
                 // 用户消息：纯文本
-                contentDiv.textContent = text;
+                const textNode = document.createTextNode(text);
+                contentDiv.appendChild(textNode);
                 container.scrollTop = container.scrollHeight;
             }
         }
@@ -5645,7 +5820,8 @@
             const sendBtn = document.getElementById('send-btn');
             const message = input.value.trim();
 
-            if (!message || state.isLoading) return;
+            const hasFiles = pendingFiles.length > 0;
+            if ((!message && !hasFiles) || state.isLoading) return;
 
             state.isLoading = true;
             input.disabled = true;
@@ -5660,8 +5836,22 @@
                 addTimeSeparator(container, typingIndicator, nowTs);
             }
 
-            // 添加用户消息到 UI
-            addMessageToUI(message, true);
+            // 收集附件 base64 数据
+            const attachmentsToSend = pendingFiles.map(f => ({
+                name: f.name,
+                mime: f.isImage ? f.mime : 'application/anythingllm-document',
+                contentString: f.dataUrl
+            }));
+            const attachmentsForUI = pendingFiles.map(f => ({
+                name: f.name,
+                isImage: f.isImage,
+                dataUrl: f.dataUrl
+            }));
+            pendingFiles = [];
+            renderFilePreview();
+
+            // 添加用户消息到 UI（含附件）
+            addMessageToUI(message, true, false, attachmentsForUI);
             input.value = '';
 
             // 显示加载状态
@@ -5694,9 +5884,10 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: message,
+                        message: message || '',
                         conversation_id: state.currentConversationId,
-                        show_thinking: true
+                        show_thinking: true,
+                        attachments: attachmentsToSend.length > 0 ? attachmentsToSend : undefined
                     })
                 });
 
@@ -5730,8 +5921,12 @@
 
                     // 更新本地消息记录（带时间戳供时间分隔符使用）
                     const now = new Date().toISOString();
+                    const userMsg = { role: 'user', content: message, timestamp: now };
+                    if (attachmentsForUI.length > 0) {
+                        userMsg.attachments = attachmentsForUI.map(a => ({ name: a.name, isImage: a.isImage }));
+                    }
                     state.messages.push(
-                        { role: 'user', content: message, timestamp: now },
+                        userMsg,
                         { role: 'assistant', content: data.reply, thinking: data.thinking || null, timestamp: now }
                     );
 
@@ -5762,6 +5957,92 @@
                 sendMessage();
             }
         }
+
+        // ==================== 文件上传 ====================
+        let pendingFiles = []; // {file, name, mime, dataUrl, isImage}
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            files.forEach(addPendingFile);
+            event.target.value = ''; // reset so same file can be re-selected
+        }
+
+        function addPendingFile(file) {
+            if (file.size > MAX_FILE_SIZE) {
+                alert(t('chat.file.too_large'));
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const isImage = IMAGE_TYPES.includes(file.type);
+                pendingFiles.push({
+                    file,
+                    name: file.name,
+                    mime: file.type || 'application/octet-stream',
+                    dataUrl: e.target.result,
+                    isImage
+                });
+                renderFilePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePendingFile(index) {
+            pendingFiles.splice(index, 1);
+            renderFilePreview();
+        }
+
+        function renderFilePreview() {
+            const bar = document.getElementById('file-preview-bar');
+            if (pendingFiles.length === 0) {
+                bar.className = 'file-preview-bar';
+                bar.innerHTML = '';
+                return;
+            }
+            bar.className = 'file-preview-bar has-files';
+            bar.innerHTML = pendingFiles.map((f, i) => {
+                const thumb = f.isImage
+                    ? `<img src="${f.dataUrl}" alt="${escapeHtml(f.name)}">`
+                    : `<span class="file-icon">📄</span>`;
+                return `<div class="file-preview-item">
+                    ${thumb}
+                    <span class="file-name">${escapeHtml(f.name)}</span>
+                    <button class="file-remove" onclick="removePendingFile(${i})">✕</button>
+                </div>`;
+            }).join('');
+        }
+
+        // 拖拽上传
+        (function initDragDrop() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const wrapper = document.getElementById('input-wrapper');
+                if (!wrapper) return;
+                let dragCounter = 0;
+                wrapper.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    dragCounter++;
+                    wrapper.classList.add('dragging');
+                });
+                wrapper.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    dragCounter--;
+                    if (dragCounter <= 0) {
+                        dragCounter = 0;
+                        wrapper.classList.remove('dragging');
+                    }
+                });
+                wrapper.addEventListener('dragover', (e) => e.preventDefault());
+                wrapper.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dragCounter = 0;
+                    wrapper.classList.remove('dragging');
+                    const files = Array.from(e.dataTransfer.files);
+                    files.forEach(addPendingFile);
+                });
+            });
+        })();
 
         // ==================== 工具函数 ====================
         function escapeHtml(text) {

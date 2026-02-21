@@ -691,7 +691,8 @@ def chat():
         user_message = data["message"]
         conversation_id = data.get("conversation_id")
         show_thinking = data.get("show_thinking", False)
-        logger.info(f"Message: {user_message[:50]}... | show_thinking={show_thinking}")
+        attachments = data.get("attachments")  # [{name, mime, contentString}]
+        logger.info(f"Message: {user_message[:50]}... | show_thinking={show_thinking} | attachments={len(attachments) if attachments else 0}")
 
         # 确保用户有 workspace
         logger.info("Getting or creating workspace...")
@@ -743,12 +744,16 @@ def chat():
     # 记录是否是新对话的第一条消息（用于后续自动生成标题）
     is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
 
-    # 保存用户消息
+    # 保存用户消息（附件只存元数据，不存base64）
+    attachment_meta = None
+    if attachments:
+        attachment_meta = [{"name": a.get("name", "file"), "mime": a.get("mime", ""), "isImage": a.get("mime", "").startswith("image/")} for a in attachments]
     db.add_message_to_conversation(
         conversation["_id"],
         user_id,
         "user",
-        user_message
+        user_message,
+        attachments=attachment_meta
     )
 
     # 调用 AnythingLLM
@@ -803,7 +808,8 @@ def chat():
         logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
             message_to_send,
-            session_id=str(conversation["_id"])
+            session_id=str(conversation["_id"]),
+            attachments=attachments
         )
         logger.info(f"Response received: {response}")
 

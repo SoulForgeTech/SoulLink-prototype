@@ -86,7 +86,8 @@ class ConversationModel:
         role: str,  # "user" or "assistant"
         content: str,
         sources: Optional[List[Dict]] = None,
-        thinking: Optional[str] = None
+        thinking: Optional[str] = None,
+        attachments: Optional[List[Dict]] = None
     ) -> Dict[str, Any]:
         """创建消息对象"""
         msg = {
@@ -98,6 +99,8 @@ class ConversationModel:
         }
         if thinking:
             msg["thinking"] = thinking
+        if attachments:
+            msg["attachments"] = attachments  # [{name, mime, isImage}]
         return msg
 
     @staticmethod

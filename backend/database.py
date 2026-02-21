@@ -199,10 +199,11 @@ class MongoDB:
         role: str,
         content: str,
         sources: Optional[List[Dict]] = None,
-        thinking: Optional[str] = None
+        thinking: Optional[str] = None,
+        attachments: Optional[List[Dict]] = None
     ) -> bool:
         """向对话添加消息"""
-        message = ConversationModel.create_message(role, content, sources, thinking=thinking)
+        message = ConversationModel.create_message(role, content, sources, thinking=thinking, attachments=attachments)
         result = self.db[ConversationModel.collection_name].update_one(
             {"_id": conv_id, "user_id": user_id},
             {

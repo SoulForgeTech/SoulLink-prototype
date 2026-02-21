@@ -220,10 +220,11 @@ class AnythingLLMAPI:
             logging.error(error_msg)
             return {'status_code': 500, 'error': error_msg}
 
-    def send_message(self, message: str, mode: str = "chat", session_id: Optional[str] = None) -> Dict[str, Any]:
+    def send_message(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None) -> Dict[str, Any]:
         """
         Send a message to the workspace.
         FIXED: Improved source extraction and response formatting.
+        Supports attachments (base64 encoded) for AnythingLLM v1.9.1+.
         """
         url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/chat"
         payload = {
@@ -231,6 +232,9 @@ class AnythingLLMAPI:
             "mode": mode,
             "sessionId": session_id if session_id else "default-session"
         }
+        if attachments:
+            payload["attachments"] = attachments
+            logging.info(f"Sending {len(attachments)} attachment(s) with message")
 
 
         # 添加这些日志
