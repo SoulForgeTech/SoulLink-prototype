@@ -176,6 +176,45 @@
             height: 20px;
         }
 
+        /* 登录页社群链接 */
+        .login-community-link {
+            margin-top: 16px; text-align: center; cursor: pointer;
+            font-size: 0.78rem; color: rgba(255,255,255,0.7);
+            transition: color 0.2s;
+        }
+        .login-community-link:hover { color: #fff; }
+        .login-community-qr {
+            display: none; margin: 10px auto 0; width: 180px;
+            border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        }
+        .login-community-qr.show { display: block; }
+
+        /* 聊天公告栏 */
+        .announcement-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; margin: 0;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+            border-bottom: 1px solid rgba(102,126,234,0.15);
+            font-size: 0.75rem; color: #4a5568;
+        }
+        .announcement-bar.hidden { display: none; }
+        .announcement-text { flex: 1; }
+        .announcement-link {
+            color: #667eea; font-weight: 600; cursor: pointer;
+            white-space: nowrap;
+        }
+        .announcement-link:hover { text-decoration: underline; }
+        .announcement-dismiss {
+            background: none; border: none; color: #a0aec0; cursor: pointer;
+            font-size: 0.85rem; padding: 0 2px; line-height: 1;
+        }
+        .announcement-dismiss:hover { color: #4a5568; }
+        .announcement-never {
+            background: none; border: none; color: #a0aec0; cursor: pointer;
+            font-size: 0.65rem; white-space: nowrap;
+        }
+        .announcement-never:hover { color: #667eea; }
+
         /* Google One Tap 容器 */
         #g_id_onload {
             position: fixed;
@@ -3777,6 +3816,11 @@
                 </svg>
                 <span data-i18n="login.google">Continue with Google</span>
             </button>
+
+            <div class="login-community-link">
+                <span data-i18n="login.community">💬 Join our WeChat community</span>
+                <img src="images/wechat_group_qr.jpg" alt="WeChat Group" class="login-community-qr" id="login-community-qr">
+            </div>
         </div>
 
         <!-- Google One Tap -->
@@ -4268,6 +4312,14 @@
                 </button>
             </header>
 
+            <!-- 公告栏 -->
+            <div class="announcement-bar" id="announcement-bar">
+                <span class="announcement-text" data-i18n="announcement.community">💬 Join our WeChat community for updates & feedback!</span>
+                <span class="announcement-link" onclick="openCommunityFromBanner()" data-i18n="announcement.view">View</span>
+                <button class="announcement-dismiss" onclick="dismissAnnouncement(false)" title="Dismiss">✕</button>
+                <button class="announcement-never" onclick="dismissAnnouncement(true)" data-i18n="announcement.never">Don't show again</button>
+            </div>
+
             <!-- 背景选择面板 -->
             <div class="bg-picker-panel" id="bg-picker-panel">
                 <div class="bg-picker-header">
@@ -4473,6 +4525,10 @@
                 'community.popup.title': 'Join Our Community',
                 'community.popup.desc': 'Scan to join our WeChat group for updates & feedback!',
                 'community.popup.close': 'Got it',
+                'login.community': '💬 Join our WeChat community',
+                'announcement.community': '💬 Join our WeChat community for updates & feedback!',
+                'announcement.view': 'View',
+                'announcement.never': "Don't show again",
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
                 'bg.picker.title': 'Background',
@@ -4613,6 +4669,10 @@
                 'community.popup.title': '加入社群',
                 'community.popup.desc': '扫码加入微信群，获取最新动态和交流反馈！',
                 'community.popup.close': '知道了',
+                'login.community': '💬 加入微信社群',
+                'announcement.community': '💬 加入微信社群，获取更新通知和交流反馈！',
+                'announcement.view': '查看',
+                'announcement.never': '不再提示',
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
                 'bg.picker.title': '背景',
@@ -4766,6 +4826,8 @@
             if (typeof loadBackground === 'function') loadBackground();
             // 社群弹窗（每用户只弹一次）
             showCommunityPopupOnce();
+            // 公告栏
+            initAnnouncement();
         }
 
         function showCommunityPopupOnce() {
@@ -4783,6 +4845,25 @@
         document.getElementById('community-popup')?.addEventListener('click', function(e) {
             if (e.target === this) closeCommunityPopup();
         });
+
+        // 登录页社群二维码 toggle
+        document.querySelector('.login-community-link')?.addEventListener('click', function() {
+            document.getElementById('login-community-qr').classList.toggle('show');
+        });
+
+        // 公告栏
+        function initAnnouncement() {
+            if (localStorage.getItem('announcement_never')) {
+                document.getElementById('announcement-bar').classList.add('hidden');
+            }
+        }
+        function dismissAnnouncement(never) {
+            document.getElementById('announcement-bar').classList.add('hidden');
+            if (never) localStorage.setItem('announcement_never', '1');
+        }
+        function openCommunityFromBanner() {
+            document.getElementById('community-popup').classList.add('active');
+        }
 
         function updateUserInfo() {
             if (state.user) {
