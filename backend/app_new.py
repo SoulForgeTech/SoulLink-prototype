@@ -1426,22 +1426,21 @@ def admin_ai_health():
     except Exception as e:
         results["gemini"] = {"ok": False, "error": str(e)[:100]}
 
-    # --- GPT-4o (via AnythingLLM → OpenAI) ---
+    # --- GPT-4o (via AnythingLLM workspaces) ---
     try:
         import requests as req
         allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
         allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
         t0 = time.time()
         r = req.get(
-            f"{allm_url}/api/v1/openai/models",
+            f"{allm_url}/api/v1/workspaces",
             headers={"Authorization": f"Bearer {allm_key}"},
             timeout=10
         )
         latency = int((time.time() - t0) * 1000)
         if r.status_code == 200:
-            models = r.json().get("data", [])
-            gpt_found = any("gpt" in (m.get("id","")).lower() for m in models)
-            results["gpt"] = {"ok": True, "latency": latency, "models": len(models)}
+            workspaces = r.json().get("workspaces", [])
+            results["gpt"] = {"ok": True, "latency": latency, "workspaces": len(workspaces)}
         else:
             results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}"}
     except Exception as e:
