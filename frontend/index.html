@@ -3573,7 +3573,8 @@
         }
         .changelog-list li {
             position: relative; padding: 4px 0 4px 20px;
-            font-size: 0.82rem; color: #4a5568; line-height: 1.6;
+            font-size: 0.78rem; color: #4a5568; line-height: 1.6;
+            display: flex; align-items: baseline;
         }
         .changelog-list li::before {
             content: ''; position: absolute; left: 4px; top: 12px;
@@ -3581,14 +3582,13 @@
             background: #a78bfa;
         }
         .changelog-badge {
-            display: inline-block; padding: 2px 8px; border-radius: 10px;
-            font-size: 0.65rem; font-weight: 700; margin-right: 8px;
-            min-width: 36px; text-align: center; color: #fff;
-            letter-spacing: 0.5px;
+            display: inline-block; padding: 1px 0; border-radius: 4px;
+            font-size: 0.65rem; font-weight: 600; margin-right: 8px;
+            min-width: 36px; text-align: center; flex-shrink: 0;
         }
-        .badge-feat { background: linear-gradient(135deg, #6366f1, #818cf8); }
-        .badge-fix { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-        .badge-ui { background: linear-gradient(135deg, #a78bfa, #c4b5fd); }
+        .badge-feat { background: #e0e7ff; color: #4f46e5; }
+        .badge-fix { background: #fef3c7; color: #d97706; }
+        .badge-ui { background: #ede9fe; color: #7c3aed; }
 
         .hidden { display: none !important; }
 
