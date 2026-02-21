@@ -856,19 +856,40 @@ def chat():
                     reply = ""  # 会在后面触发 fallback
                 logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
 
-        # Pattern 2: "THOUGHT" 前缀（GPT-4o / Grok / Gemini 思考泄露）
-        # 格式: THOUGHT\n英文思考...\nPlan:\n1...\n2...\n3...（中文回复）
-        # 思考内容全英文，找到第一个中文字符或中文括号 = 实际回复起点
+        # Pattern 2: "THOUGHT" 前缀（Gemini 思考泄露）
+        # 格式: THOUGHT\n英文分析...\nPlan:\n1. ...\n2. ...\nN. ...实际回复
+        # 策略：找最后一个 "N. " 编号项结尾处 + 第一个非ASCII字符，或 Plan 块结束后的回复
         if not thinking_content and re.match(r'^THOUGHT[\s\n]', reply):
             raw = re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
-            # 找到第一个中文字符或中文括号（全角括号）的位置
-            chn_match = re.search(r'[\u4e00-\u9fff\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d]', raw)
-            if chn_match:
-                thinking_content = raw[:chn_match.start()].rstrip(' .\n')
-                reply = raw[chn_match.start():].strip()
-            else:
+            actual_reply = ""
+
+            # 方法1：找 Plan 列表最后一个编号项，其后紧跟的非编号内容 = 回复
+            # 匹配 "N. 英文内容" 后面紧跟的非英文/非编号内容
+            plan_match = re.search(r'\d+\.\s+[^\n]*?([（\uff08\u4e00-\u9fff])', raw)
+            if plan_match:
+                thinking_content = raw[:plan_match.start(1)].rstrip(' .\n')
+                actual_reply = raw[plan_match.start(1):].strip()
+
+            # 方法2：找第一个中文/CJK字符
+            if not actual_reply:
+                chn_match = re.search(r'[\u4e00-\u9fff\uff08\uff09\u3010\u3011\u300a\u300b\u201c\u201d]', raw)
+                if chn_match:
+                    thinking_content = raw[:chn_match.start()].rstrip(' .\n')
+                    actual_reply = raw[chn_match.start():].strip()
+
+            # 方法3：找括号动作 (text) 开头（英文回复场景）
+            if not actual_reply:
+                action_match = re.search(r'\n\((?![\d])[a-z]', raw)
+                if action_match:
+                    thinking_content = raw[:action_match.start()].strip()
+                    actual_reply = raw[action_match.start():].strip()
+
+            # fallback：整段都是思考
+            if not actual_reply:
                 thinking_content = raw
-                reply = ""
+                actual_reply = ""
+
+            reply = actual_reply
             logger.info(f"[THINKING] Stripped THOUGHT prefix ({len(thinking_content)} chars), reply={len(reply)} chars")
 
         # Pattern 3: Gemini "思考：..." / "Thinking：..." 前缀泄露（无标签时）
