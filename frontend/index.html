@@ -2430,11 +2430,11 @@
         }
 
         .model-option-icon.openai-icon {
-            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            background: linear-gradient(135deg, #1a3a2a, #0d4a2a);
         }
 
         .model-option-icon.grok-icon {
-            background: transparent;
+            background: linear-gradient(135deg, #1a1a2e, #2d1b4e);
         }
 
         .model-option-info {
@@ -4247,22 +4247,24 @@
     </div>
 
     <!-- 伴侣取名 + 模型选择页面 -->
-    <div id="companion-naming-page" class="personality-page">
-        <div class="style-selection-container" style="text-align: center;">
+    <div id="companion-naming-page" class="personality-page" style="background: url('images/bg.png') center/cover no-repeat; position: fixed; inset: 0;">
+        <!-- 暗色遮罩层 -->
+        <div style="position: absolute; inset: 0; background: rgba(10, 10, 26, 0.75); z-index: 0;"></div>
+        <div class="style-selection-container" style="text-align: center; position: relative; z-index: 1;">
             <h2 class="style-selection-title" data-i18n="naming.title">Give your companion a name</h2>
             <p style="color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px;" data-i18n="naming.subtitle">You can always change it later in settings</p>
             <input type="text" id="companion-name-input"
-                   style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.15); border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; background: rgba(255,255,255,0.06); color: #fff;"
+                   style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.15); border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; background: rgba(255,255,255,0.08); color: #fff; backdrop-filter: blur(10px);"
                    onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'"
                    placeholder="Abigail" maxlength="20">
 
             <!-- 模型选择 -->
-            <h3 style="color: #c4c9d4; font-size: 0.95rem; margin: 32px 0 16px; font-weight: 500;" data-i18n="naming.model.title">Choose an AI model</h3>
+            <h3 style="color: #c4c9d4; font-size: 0.95rem; margin: 28px 0 14px; font-weight: 500;" data-i18n="naming.model.title">Choose an AI model</h3>
             <div id="onboarding-model-selector" style="display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 360px; margin: 0 auto;"></div>
 
-            <div style="margin-top: 28px;">
+            <div style="margin-top: 24px;">
                 <button onclick="confirmCompanionName()"
-                        style="padding: 12px 40px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 12px; font-size: 1rem; cursor: pointer; font-weight: 600;"
+                        style="padding: 12px 40px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 12px; font-size: 1rem; cursor: pointer; font-weight: 600; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);"
                         data-i18n="naming.confirm">Start Chatting ✨</button>
             </div>
         </div>
@@ -6365,7 +6367,7 @@
                 id: 'gpt4o',
                 name: 'GPT-4o',
                 iconClass: 'openai-icon',
-                svg: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#202123"/></svg>`,
+                svg: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="#10a37f"/></svg>`,
                 desc_en: 'Heartfelt · Emotionally aware',
                 desc_zh: '更走心 · 懂情绪',
                 badge_en: 'Limited Free',
@@ -6376,7 +6378,7 @@
                 id: 'grok',
                 name: 'Grok 4.1 Fast Reasoning',
                 iconClass: 'grok-icon',
-                svg: `<img src="https://www.freelogovectors.net/wp-content/uploads/2025/06/grok_logo-freelogovectors.net_.png" alt="Grok" style="border-radius: 50%;">`,
+                svg: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3l7.5 9L3 21h2l6.5-7.8L18 21h3l-7.8-9.3L21 3h-2l-6.2 7.5L6 3H3z" fill="#fff" stroke="#fff" stroke-width="0.5"/></svg>`,
                 desc_en: 'Intimate · Open',
                 desc_zh: '更亲密 · 更开放',
                 badge_en: 'Limited Free',
@@ -7464,15 +7466,16 @@
                     <div class="onboarding-model-card ${isSelected ? 'selected' : ''}"
                          onclick="selectOnboardingModel('${model.id}')" data-model="${model.id}"
                          style="display:flex; align-items:center; gap:12px; padding:12px 14px;
-                                background:${isSelected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)'};
-                                border:2px solid ${isSelected ? '#7c3aed' : 'rgba(255,255,255,0.1)'};
-                                border-radius:12px; cursor:pointer; transition:all 0.2s;">
-                        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <div style="width:28px;height:28px;" class="${model.iconClass}">${model.svg}</div>
+                                background:${isSelected ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.08)'};
+                                border:2px solid ${isSelected ? '#7c3aed' : 'rgba(255,255,255,0.12)'};
+                                border-radius:12px; cursor:pointer; transition:all 0.2s;
+                                backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+                        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.08);">
+                            <div style="width:24px;height:24px;" class="${model.iconClass}">${model.svg}</div>
                         </div>
                         <div style="flex:1;text-align:left;">
                             <div style="color:#fff;font-size:0.9rem;font-weight:600;">${model.name}</div>
-                            <div style="color:#8a94a6;font-size:0.75rem;">${desc}</div>
+                            <div style="color:#a0a8b8;font-size:0.75rem;">${desc}</div>
                         </div>
                         ${model.id === 'grok' ? `<span style="padding:2px 8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:6px;font-size:0.65rem;font-weight:600;">${recText}</span>` : ''}
                         ${badge && model.id !== 'grok' ? `<span style="padding:2px 8px;background:rgba(255,255,255,0.1);color:#8a94a6;border-radius:6px;font-size:0.65rem;">${badge}</span>` : ''}
@@ -7486,8 +7489,8 @@
             document.querySelectorAll('.onboarding-model-card').forEach(el => {
                 const isSel = el.dataset.model === modelId;
                 el.classList.toggle('selected', isSel);
-                el.style.background = isSel ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)';
-                el.style.borderColor = isSel ? '#7c3aed' : 'rgba(255,255,255,0.1)';
+                el.style.background = isSel ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.08)';
+                el.style.borderColor = isSel ? '#7c3aed' : 'rgba(255,255,255,0.12)';
             });
         }
 
