@@ -342,6 +342,7 @@ class WorkspaceManager:
             "openAiPrompt": system_prompt,
             "chatMode": chat_mode,
             "openAiTemp": temperature,
+            "openAiHistory": 30,
             "chatProvider": default_model.get("chatProvider", "gemini"),
             "chatModel": default_model.get("chatModel", "gemini-2.5-flash"),
         }
