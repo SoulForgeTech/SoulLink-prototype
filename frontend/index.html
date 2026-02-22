@@ -4230,6 +4230,23 @@
         </div>
     </div>
 
+    <!-- 伴侣取名页面 -->
+    <div id="companion-naming-page" class="personality-page">
+        <div class="style-selection-container" style="text-align: center;">
+            <h2 class="style-selection-title" data-i18n="naming.title">Give your companion a name</h2>
+            <p style="color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px;" data-i18n="naming.subtitle">You can always change it later in settings</p>
+            <input type="text" id="companion-name-input"
+                   style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s;"
+                   onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e2e8f0'"
+                   placeholder="Abigail" maxlength="20">
+            <div style="margin-top: 24px;">
+                <button onclick="confirmCompanionName()"
+                        style="padding: 12px 40px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 12px; font-size: 1rem; cursor: pointer; font-weight: 600;"
+                        data-i18n="naming.confirm">Start Chatting ✨</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 性格测试提醒弹窗 -->
     <div id="test-reminder-popup" class="reminder-popup">
         <div class="reminder-content">
@@ -4411,9 +4428,9 @@
                 'login.email.placeholder': 'your@email.com',
                 'login.password.placeholder': 'Enter your password',
                 'login.submit': 'Sign In',
-                'register.nickname.label': 'What should Abigail call you?',
+                'register.nickname.label': 'What should your companion call you?',
                 'register.nickname.placeholder': 'Your nickname',
-                'register.nickname.hint': 'This is how your AI companion will address you',
+                'register.nickname.hint': 'You can name your AI companion after registration',
                 'register.email.label': 'Email',
                 'register.password.label': 'Password',
                 'register.password.placeholder': 'At least 6 characters',
@@ -4462,7 +4479,7 @@
                 'error.register.password.match': 'Passwords do not match',
                 'error.register.name.length': 'Nickname must be 2-20 characters',
                 'reminder.title': 'Discover Your Soul Match',
-                'reminder.message': 'Take a quick personality test so Abigail can truly understand you.',
+                'reminder.message': 'Take a quick personality test so your companion can truly understand you.',
                 'reminder.later': 'Maybe Later',
                 'reminder.start': 'Take the Test',
                 'tarot.draw.title': 'Your Soul Reading',
@@ -4480,6 +4497,9 @@
                 'rename.save': 'Save',
                 'companion.gender.her': 'Her',
                 'companion.gender.him': 'Him',
+                'naming.title': 'Give your companion a name',
+                'naming.subtitle': 'You can always change it later in settings',
+                'naming.confirm': 'Start Chatting ✨',
                 'settings.companion.style': 'Companion Style',
                 'settings.companion.hint': 'Changes will update your companion\'s personality',
                 'companion.avatar.title': 'Change Companion Avatar',
@@ -4558,9 +4578,9 @@
                 'login.email.placeholder': 'your@email.com',
                 'login.password.placeholder': '输入密码',
                 'login.submit': '登录',
-                'register.nickname.label': 'Abigail该怎么称呼你？',
+                'register.nickname.label': '你的AI伴侣该怎么称呼你？',
                 'register.nickname.placeholder': '你的昵称',
-                'register.nickname.hint': '这将是你的AI伴侣称呼你的方式',
+                'register.nickname.hint': '注册后可以给你的AI伴侣取名字哦',
                 'register.email.label': '邮箱',
                 'register.password.label': '密码',
                 'register.password.placeholder': '至少6个字符',
@@ -4609,7 +4629,7 @@
                 'error.register.password.match': '两次输入的密码不一致',
                 'error.register.name.length': '昵称需要2-20个字符',
                 'reminder.title': '探索你的灵魂匹配',
-                'reminder.message': '做一个简短的性格测试，让Abigail真正了解你。',
+                'reminder.message': '做一个简短的性格测试，让你的AI伴侣真正了解你。',
                 'reminder.later': '稍后再说',
                 'reminder.start': '开始测试',
                 'tarot.draw.title': '灵魂占卜',
@@ -4627,6 +4647,9 @@
                 'rename.save': '保存',
                 'companion.gender.her': '她',
                 'companion.gender.him': '他',
+                'naming.title': '给你的伴侣取个名字吧',
+                'naming.subtitle': '之后可以随时在设置中修改',
+                'naming.confirm': '开始聊天 ✨',
                 'settings.companion.style': '伴侣风格',
                 'settings.companion.hint': '更改将更新伴侣的性格风格',
                 'companion.avatar.title': '修改伴侣头像',
@@ -7365,6 +7388,45 @@
                 console.error('Style selection error:', err);
             }
             document.getElementById('subtype-selection-page').classList.remove('active');
+            showCompanionNaming();
+        }
+
+        function showCompanionNaming() {
+            const page = document.getElementById('companion-naming-page');
+            page.classList.add('active');
+            const input = document.getElementById('companion-name-input');
+            // 根据性别设置默认 placeholder
+            const isMale = state.selectedGender === 'male';
+            const isZh = state.language === 'zh-CN';
+            input.placeholder = isMale ? (isZh ? '例如：Gavin' : 'e.g. Gavin') : (isZh ? '例如：Abigail' : 'e.g. Abigail');
+            input.value = '';
+            setTimeout(() => input.focus(), 300);
+        }
+
+        async function confirmCompanionName() {
+            const input = document.getElementById('companion-name-input');
+            const name = input.value.trim();
+            // 如果用户没输入，用默认名
+            const companionName = name || (state.selectedGender === 'male' ? 'Gavin' : 'Abigail');
+
+            showLoading(state.language === 'zh-CN' ? '正在设置...' : 'Setting up...');
+            try {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companion_name: companionName })
+                });
+                hideLoading();
+                if (response.ok) {
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.companion_name = companionName;
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                }
+            } catch (err) {
+                hideLoading();
+                console.error('Companion naming error:', err);
+            }
+            document.getElementById('companion-naming-page').classList.remove('active');
             showApp();
         }
 
