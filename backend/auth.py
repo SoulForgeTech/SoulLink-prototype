@@ -448,8 +448,8 @@ def _register_test_account(email: str, password: str, name: Optional[str] = None
         {"$set": {"email_verified": True}}
     )
 
-    token = generate_token(user["_id"])
-    refresh_token = generate_refresh_token(user["_id"])
+    token = JWTAuth.create_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(user["_id"])
     return {
         "success": True,
         "token": token,
