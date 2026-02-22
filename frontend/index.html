@@ -7104,6 +7104,9 @@
 
                 // Show first question
                 document.getElementById('personality-test-page').classList.add('active');
+                // 跳过按钮只在首次注册时显示
+                const skipBtn = document.querySelector('.skip-test-btn');
+                if (skipBtn) skipBtn.style.display = state.isFirstRegistration ? 'block' : 'none';
                 renderQuestion();
             } catch (err) {
                 console.error('Failed to load questions:', err);
