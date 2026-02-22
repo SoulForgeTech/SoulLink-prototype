@@ -6537,6 +6537,10 @@
         }
         function closeChangelogModal() {
             document.getElementById('changelog-modal').classList.remove('active');
+            if (window._changelogAutoPopped) {
+                localStorage.setItem('last_seen_version', CURRENT_APP_VERSION);
+                window._changelogAutoPopped = false;
+            }
         }
         document.getElementById('changelog-modal')?.addEventListener('click', function(e) {
             if (e.target === this) closeChangelogModal();
@@ -6547,10 +6551,11 @@
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
-            // 延迟弹出，避免和社群弹窗冲突
+            // 延迟弹出，等社群弹窗先走完
             setTimeout(() => {
                 openChangelogModal();
-                localStorage.setItem('last_seen_version', CURRENT_APP_VERSION);
+                // 关闭时才标记已读（在 closeChangelogModal 里处理）
+                window._changelogAutoPopped = true;
             }, 2500);
         }
 
