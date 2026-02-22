@@ -4249,7 +4249,7 @@
     <!-- 伴侣取名 + 模型选择页面 -->
     <div id="companion-naming-page" class="personality-page" style="background: url('images/bg.png') center/cover no-repeat; position: fixed; inset: 0;">
         <!-- 暗色遮罩层 -->
-        <div style="position: absolute; inset: 0; background: rgba(10, 10, 26, 0.5); z-index: 0;"></div>
+        <div style="position: absolute; inset: 0; background: rgba(10, 10, 26, 0.65); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 0;"></div>
         <div class="style-selection-container" style="text-align: center; position: relative; z-index: 1;">
             <h2 class="style-selection-title" data-i18n="naming.title">Give your companion a name</h2>
             <p style="color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px;" data-i18n="naming.subtitle">You can always change it later in settings</p>
@@ -7466,10 +7466,10 @@
                     <div class="onboarding-model-card ${isSelected ? 'selected' : ''}"
                          onclick="selectOnboardingModel('${model.id}')" data-model="${model.id}"
                          style="position:relative; display:flex; align-items:center; gap:12px; padding:12px 14px;
-                                background:${isSelected ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.08)'};
-                                border:2px solid ${isSelected ? '#7c3aed' : 'rgba(255,255,255,0.12)'};
+                                background:${isSelected ? 'rgba(124,58,237,0.25)' : 'rgba(20,20,40,0.55)'};
+                                border:2px solid ${isSelected ? '#7c3aed' : 'rgba(255,255,255,0.15)'};
                                 border-radius:12px; cursor:pointer; transition:all 0.2s;
-                                backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);">
+                                backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
                         ${model.id === 'grok' ? `<span style="position:absolute;top:-8px;left:12px;padding:2px 8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:6px;font-size:0.65rem;font-weight:600;">${recText}</span>` : ''}
                         <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.08);">
                             <div style="width:24px;height:24px;" class="${model.iconClass}">${model.svg}</div>
@@ -7489,8 +7489,8 @@
             document.querySelectorAll('.onboarding-model-card').forEach(el => {
                 const isSel = el.dataset.model === modelId;
                 el.classList.toggle('selected', isSel);
-                el.style.background = isSel ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.08)';
-                el.style.borderColor = isSel ? '#7c3aed' : 'rgba(255,255,255,0.12)';
+                el.style.background = isSel ? 'rgba(124,58,237,0.25)' : 'rgba(20,20,40,0.55)';
+                el.style.borderColor = isSel ? '#7c3aed' : 'rgba(255,255,255,0.15)';
             });
         }
 
