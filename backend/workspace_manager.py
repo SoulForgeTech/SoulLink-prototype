@@ -335,11 +335,15 @@ class WorkspaceManager:
         chat_mode = os.getenv("ANYTHINGLLM_CHAT_MODE", "chat")
         temperature = float(os.getenv("ANYTHINGLLM_TEMPERATURE", "0.7"))
 
+        # 创建时明确设置默认模型的 provider，避免留在 "System default"
+        default_model = self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {})
+
         payload = {
             "openAiPrompt": system_prompt,
             "chatMode": chat_mode,
             "openAiTemp": temperature,
-            # 使用系统默认的 LLM provider（不指定则使用实例默认设置）
+            "chatProvider": default_model.get("chatProvider", "gemini"),
+            "chatModel": default_model.get("chatModel", "gemini-2.5-flash"),
         }
 
         try:
