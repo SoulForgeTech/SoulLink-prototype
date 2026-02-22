@@ -4246,16 +4246,21 @@
         </div>
     </div>
 
-    <!-- 伴侣取名页面 -->
+    <!-- 伴侣取名 + 模型选择页面 -->
     <div id="companion-naming-page" class="personality-page">
         <div class="style-selection-container" style="text-align: center;">
             <h2 class="style-selection-title" data-i18n="naming.title">Give your companion a name</h2>
             <p style="color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px;" data-i18n="naming.subtitle">You can always change it later in settings</p>
             <input type="text" id="companion-name-input"
-                   style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s;"
-                   onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e2e8f0'"
+                   style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.15); border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; background: rgba(255,255,255,0.06); color: #fff;"
+                   onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'"
                    placeholder="Abigail" maxlength="20">
-            <div style="margin-top: 24px;">
+
+            <!-- 模型选择 -->
+            <h3 style="color: #c4c9d4; font-size: 0.95rem; margin: 32px 0 16px; font-weight: 500;" data-i18n="naming.model.title">Choose an AI model</h3>
+            <div id="onboarding-model-selector" style="display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 360px; margin: 0 auto;"></div>
+
+            <div style="margin-top: 28px;">
                 <button onclick="confirmCompanionName()"
                         style="padding: 12px 40px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 12px; font-size: 1rem; cursor: pointer; font-weight: 600;"
                         data-i18n="naming.confirm">Start Chatting ✨</button>
@@ -4517,6 +4522,8 @@
                 'naming.title': 'Give your companion a name',
                 'naming.subtitle': 'You can always change it later in settings',
                 'naming.confirm': 'Start Chatting ✨',
+                'naming.model.title': 'Choose an AI model',
+                'naming.model.recommended': 'Recommended',
                 'settings.companion.style': 'Companion Style',
                 'settings.companion.hint': 'Changes will update your companion\'s personality',
                 'companion.avatar.title': 'Change Companion Avatar',
@@ -4668,6 +4675,8 @@
                 'naming.title': '给你的伴侣取个名字吧',
                 'naming.subtitle': '之后可以随时在设置中修改',
                 'naming.confirm': '开始聊天 ✨',
+                'naming.model.title': '选择AI模型',
+                'naming.model.recommended': '推荐',
                 'settings.companion.style': '伴侣风格',
                 'settings.companion.hint': '更改将更新伴侣的性格风格',
                 'companion.avatar.title': '修改伴侣头像',
@@ -7442,6 +7451,44 @@
             input.placeholder = isMale ? (isZh ? '例如：Gavin' : 'e.g. Gavin') : (isZh ? '例如：Abigail' : 'e.g. Abigail');
             input.value = '';
             setTimeout(() => input.focus(), 300);
+
+            // 渲染模型选择卡片
+            const recText = isZh ? '推荐' : 'Recommended';
+            const container = document.getElementById('onboarding-model-selector');
+            state._onboardingModel = 'grok'; // 默认选 Grok
+            container.innerHTML = MODEL_DEFINITIONS.map(model => {
+                const isSelected = model.id === 'grok';
+                const desc = isZh ? model.desc_zh : model.desc_en;
+                const badge = isZh ? model.badge_zh : model.badge_en;
+                return `
+                    <div class="onboarding-model-card ${isSelected ? 'selected' : ''}"
+                         onclick="selectOnboardingModel('${model.id}')" data-model="${model.id}"
+                         style="display:flex; align-items:center; gap:12px; padding:12px 14px;
+                                background:${isSelected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)'};
+                                border:2px solid ${isSelected ? '#7c3aed' : 'rgba(255,255,255,0.1)'};
+                                border-radius:12px; cursor:pointer; transition:all 0.2s;">
+                        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <div style="width:28px;height:28px;" class="${model.iconClass}">${model.svg}</div>
+                        </div>
+                        <div style="flex:1;text-align:left;">
+                            <div style="color:#fff;font-size:0.9rem;font-weight:600;">${model.name}</div>
+                            <div style="color:#8a94a6;font-size:0.75rem;">${desc}</div>
+                        </div>
+                        ${model.id === 'grok' ? `<span style="padding:2px 8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:6px;font-size:0.65rem;font-weight:600;">${recText}</span>` : ''}
+                        ${badge && model.id !== 'grok' ? `<span style="padding:2px 8px;background:rgba(255,255,255,0.1);color:#8a94a6;border-radius:6px;font-size:0.65rem;">${badge}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectOnboardingModel(modelId) {
+            state._onboardingModel = modelId;
+            document.querySelectorAll('.onboarding-model-card').forEach(el => {
+                const isSel = el.dataset.model === modelId;
+                el.classList.toggle('selected', isSel);
+                el.style.background = isSel ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)';
+                el.style.borderColor = isSel ? '#7c3aed' : 'rgba(255,255,255,0.1)';
+            });
         }
 
         async function confirmCompanionName() {
@@ -7449,18 +7496,21 @@
             const name = input.value.trim();
             // 如果用户没输入，用默认名
             const companionName = name || (state.selectedGender === 'male' ? 'Gavin' : 'Abigail');
+            const chosenModel = state._onboardingModel || 'grok';
 
             showLoading(state.language === 'zh-CN' ? '正在设置...' : 'Setting up...');
             try {
+                // 保存伴侣名 + 模型（一次请求）
                 const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ companion_name: companionName })
+                    body: JSON.stringify({ companion_name: companionName, model: chosenModel })
                 });
                 hideLoading();
                 if (response.ok) {
                     if (!state.user.settings) state.user.settings = {};
                     state.user.settings.companion_name = companionName;
+                    state.user.settings.model = chosenModel;
                     localStorage.setItem('soullink_user', JSON.stringify(state.user));
                 }
             } catch (err) {
