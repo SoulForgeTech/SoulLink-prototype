@@ -4844,6 +4844,8 @@
             if (typeof loadBackground === 'function') loadBackground();
             // 社群弹窗（每用户只弹一次）
             showCommunityPopupOnce();
+            // 版本更新弹窗
+            showChangelogIfNewVersion();
             // 公告栏
             initAnnouncement();
         }
@@ -6539,6 +6541,18 @@
         document.getElementById('changelog-modal')?.addEventListener('click', function(e) {
             if (e.target === this) closeChangelogModal();
         });
+
+        // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
+        const CURRENT_APP_VERSION = 'v0.0.6-beta';
+        function showChangelogIfNewVersion() {
+            const lastSeen = localStorage.getItem('last_seen_version');
+            if (lastSeen === CURRENT_APP_VERSION) return;
+            // 延迟弹出，避免和社群弹窗冲突
+            setTimeout(() => {
+                openChangelogModal();
+                localStorage.setItem('last_seen_version', CURRENT_APP_VERSION);
+            }, 2500);
+        }
 
         // ==================== About & Feedback ====================
         let selectedFeedbackType = 'suggestion';
