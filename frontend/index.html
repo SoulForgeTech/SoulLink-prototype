@@ -4249,7 +4249,7 @@
     <!-- 伴侣取名 + 模型选择页面 -->
     <div id="companion-naming-page" class="personality-page" style="background: url('images/bg.png') center/cover no-repeat; position: fixed; inset: 0;">
         <!-- 暗色遮罩层 -->
-        <div style="position: absolute; inset: 0; background: rgba(10, 10, 26, 0.75); z-index: 0;"></div>
+        <div style="position: absolute; inset: 0; background: rgba(10, 10, 26, 0.5); z-index: 0;"></div>
         <div class="style-selection-container" style="text-align: center; position: relative; z-index: 1;">
             <h2 class="style-selection-title" data-i18n="naming.title">Give your companion a name</h2>
             <p style="color: #8a94a6; font-size: 0.9rem; margin-bottom: 24px;" data-i18n="naming.subtitle">You can always change it later in settings</p>
@@ -6378,7 +6378,7 @@
                 id: 'grok',
                 name: 'Grok 4.1 Fast Reasoning',
                 iconClass: 'grok-icon',
-                svg: `<svg viewBox="0 0 841.9 595.3" xmlns="http://www.w3.org/2000/svg"><path d="M619.6 280.6c-11.8-18.2-63.3-97.5-120.5-185.5-4.7-7.2-12.7-11.6-21.3-11.6h-115c-13.7 0-22.2 14.9-15.3 26.7l89.5 153.5c1 1.7 1 3.9 0 5.6L316 478.2c-6.8 11.8 1.6 26.5 15.2 26.5h115.1c8.7 0 16.7-4.5 21.4-11.8 0 0 109-170.1 120.6-188 14.9-23.1 14.9-1.3 0-24.3h0z" fill="#fff"/><circle cx="666.3" cy="148.8" r="50.4" fill="#fff"/></svg>`,
+                svg: `<svg viewBox="0 0 512 510" xmlns="http://www.w3.org/2000/svg"><path d="M213.2 306l179-180v.2l51.7-51.8c-.9 1.3-1.9 2.6-2.8 3.9-39.3 54.2-58.5 80.6-43.1 146.9l-.1-.1c10.6 45.1-.7 95.1-37.4 131.8-46.2 46.3-120.2 56.6-181.1 14.9l42.5-19.7c38.9 15.3 81.4 8.6 111.9-22 30.6-30.6 37.4-75.2 22.1-112.3-2.9-7-11.7-8.8-17.8-4.3L213.2 306zm-25.8 22.4l-.03.03L68.1 435.2c7.6-10.4 17-20.3 26.3-30.1 26.4-27.8 52.7-55.4 36.7-94.3-21.4-52.1-9-113.2 30.7-152.9 41.2-41.3 102-51.7 152.7-30.8 11.2 4.2 21 10.1 28.6 15.6l-42.4 19.6c-39.4-16.6-84.6-5.3-112.2 22.3-37.3 37.3-44.8 102-1.1 143.8z" fill="#fff"/></svg>`,
                 desc_en: 'Intimate · Open',
                 desc_zh: '更亲密 · 更开放',
                 badge_en: 'Limited Free',
@@ -7478,7 +7478,7 @@
                             <div style="color:#fff;font-size:0.9rem;font-weight:600;">${model.name}</div>
                             <div style="color:#a0a8b8;font-size:0.75rem;">${desc}</div>
                         </div>
-                        ${badge && model.id !== 'grok' ? `<span style="padding:2px 8px;background:rgba(255,255,255,0.1);color:#8a94a6;border-radius:6px;font-size:0.65rem;">${badge}</span>` : ''}
+                        ${badge ? `<span style="padding:2px 8px;background:rgba(255,255,255,0.1);color:#8a94a6;border-radius:6px;font-size:0.65rem;">${badge}</span>` : ''}
                     </div>
                 `;
             }).join('');
