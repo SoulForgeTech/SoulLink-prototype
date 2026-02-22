@@ -384,8 +384,9 @@ class WorkspaceManager:
 
         # 如果没有传入 persona，从用户的性格测试结果中获取
         if persona is None:
-            if user and user.get("personality_test", {}).get("completed"):
-                persona = user["personality_test"].get("personality_profile")
+            pt = (user.get("personality_test") or {}) if user else {}
+            if pt.get("completed"):
+                persona = pt.get("personality_profile")
 
         # 如果没有传入 companion_name，从用户设置中获取
         if companion_name is None:
