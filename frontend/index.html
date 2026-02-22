@@ -5984,7 +5984,19 @@
                 welcomeMsg.style.display = 'none';
 
                 let prevMsg = null;
+                let skipNext = false;
                 state.messages.forEach((msg, idx) => {
+                    // 跳过系统通知消息（如改名通知）及其AI回复，不在前端显示
+                    if (msg.role === 'user' && msg.content && (msg.content.startsWith('[系统通知') || msg.content.startsWith('[System notice'))) {
+                        skipNext = true;
+                        return;
+                    }
+                    if (skipNext && msg.role === 'assistant') {
+                        skipNext = false;
+                        return;
+                    }
+                    skipNext = false;
+
                     // 微信风格：间隔超过5分钟显示时间分隔
                     if (idx === 0 && msg.timestamp) {
                         addTimeSeparator(container, typingIndicator, msg.timestamp);
