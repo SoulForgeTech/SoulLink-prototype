@@ -394,6 +394,11 @@ class WorkspaceManager:
         # 获取伴侣性别
         companion_gender = user.get("settings", {}).get("companion_gender", "female") if user else "female"
 
+        # 获取用户当前选择的模型名称
+        user_model_id = user.get("settings", {}).get("model", self.DEFAULT_MODEL) if user else self.DEFAULT_MODEL
+        model_config = self.SUPPORTED_MODELS.get(user_model_id, self.SUPPORTED_MODELS[self.DEFAULT_MODEL])
+        current_model_name = model_config["name"]
+
         # 获取用户记忆文本
         memory_text = ""
         try:
@@ -408,7 +413,7 @@ class WorkspaceManager:
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
+        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {
