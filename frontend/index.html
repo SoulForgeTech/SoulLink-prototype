@@ -2430,11 +2430,11 @@
         }
 
         .model-option-icon.openai-icon {
-            background: linear-gradient(135deg, #1a3a2a, #0d4a2a);
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
         }
 
         .model-option-icon.grok-icon {
-            background: linear-gradient(135deg, #1a1a2e, #2d1b4e);
+            background: linear-gradient(135deg, #ede7f6, #d1c4e9);
         }
 
         .model-option-info {
@@ -6378,7 +6378,7 @@
                 id: 'grok',
                 name: 'Grok 4.1 Fast Reasoning',
                 iconClass: 'grok-icon',
-                svg: `<svg viewBox="0 0 512 510" xmlns="http://www.w3.org/2000/svg"><path d="M213.2 306l179-180v.2l51.7-51.8c-.9 1.3-1.9 2.6-2.8 3.9-39.3 54.2-58.5 80.6-43.1 146.9l-.1-.1c10.6 45.1-.7 95.1-37.4 131.8-46.2 46.3-120.2 56.6-181.1 14.9l42.5-19.7c38.9 15.3 81.4 8.6 111.9-22 30.6-30.6 37.4-75.2 22.1-112.3-2.9-7-11.7-8.8-17.8-4.3L213.2 306zm-25.8 22.4l-.03.03L68.1 435.2c7.6-10.4 17-20.3 26.3-30.1 26.4-27.8 52.7-55.4 36.7-94.3-21.4-52.1-9-113.2 30.7-152.9 41.2-41.3 102-51.7 152.7-30.8 11.2 4.2 21 10.1 28.6 15.6l-42.4 19.6c-39.4-16.6-84.6-5.3-112.2 22.3-37.3 37.3-44.8 102-1.1 143.8z" fill="#fff"/></svg>`,
+                svg: `<svg viewBox="0 0 512 510" xmlns="http://www.w3.org/2000/svg"><path d="M213.2 306l179-180v.2l51.7-51.8c-.9 1.3-1.9 2.6-2.8 3.9-39.3 54.2-58.5 80.6-43.1 146.9l-.1-.1c10.6 45.1-.7 95.1-37.4 131.8-46.2 46.3-120.2 56.6-181.1 14.9l42.5-19.7c38.9 15.3 81.4 8.6 111.9-22 30.6-30.6 37.4-75.2 22.1-112.3-2.9-7-11.7-8.8-17.8-4.3L213.2 306zm-25.8 22.4l-.03.03L68.1 435.2c7.6-10.4 17-20.3 26.3-30.1 26.4-27.8 52.7-55.4 36.7-94.3-21.4-52.1-9-113.2 30.7-152.9 41.2-41.3 102-51.7 152.7-30.8 11.2 4.2 21 10.1 28.6 15.6l-42.4 19.6c-39.4-16.6-84.6-5.3-112.2 22.3-37.3 37.3-44.8 102-1.1 143.8z" fill="#5b21b6"/></svg>`,
                 desc_en: 'Intimate · Open',
                 desc_zh: '更亲密 · 更开放',
                 badge_en: 'Limited Free',
@@ -7471,8 +7471,8 @@
                                 border-radius:12px; cursor:pointer; transition:all 0.2s;
                                 backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
                         ${model.id === 'grok' ? `<span style="position:absolute;top:-8px;left:12px;padding:2px 8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:6px;font-size:0.65rem;font-weight:600;">${recText}</span>` : ''}
-                        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.08);">
-                            <div style="width:24px;height:24px;" class="${model.iconClass}">${model.svg}</div>
+                        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${model.id === 'gemini' ? 'linear-gradient(135deg,#1a2540,#1e3050)' : model.id === 'gpt4o' ? 'linear-gradient(135deg,#0d2818,#0a3d1f)' : 'linear-gradient(135deg,#1a1a2e,#2d1b4e)'};">
+                            <div style="width:24px;height:24px;${model.id === 'grok' ? 'filter:brightness(0) invert(1);' : ''}" class="${model.iconClass}">${model.id === 'gpt4o' ? model.svg.replace('#10a37f','#4ade80') : model.svg}</div>
                         </div>
                         <div style="flex:1;text-align:left;">
                             <div style="color:#fff;font-size:0.9rem;font-weight:600;">${model.name}</div>
