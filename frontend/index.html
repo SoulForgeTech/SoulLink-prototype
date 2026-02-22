@@ -4358,7 +4358,7 @@
                 </button>
                 <img class="companion-avatar" id="header-companion-avatar" src="images/avatar.png" alt="Companion" onclick="openCompanionAvatarModal()" title="Click to change avatar">
                 <div class="companion-info">
-                    <h2 id="companion-name-display" class="companion-name-clickable" onclick="openRenameModal()" title="Click to rename">Abigail</h2>
+                    <h2 id="companion-name-display" class="companion-name-clickable" onclick="openRenameModal()" title="Click to rename"></h2>
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
@@ -4771,11 +4771,16 @@
             }
         };
 
+        function getDefaultCompanionName() {
+            const gender = state.user?.settings?.companion_gender || 'female';
+            return gender === 'male' ? 'Gavin' : 'Abigail';
+        }
+
         function t(key) {
             const lang = state.language || 'en';
             let text = TRANSLATIONS[lang]?.[key] || TRANSLATIONS['en']?.[key] || key;
             // 动态替换 AI 昵称
-            const cname = state.user?.settings?.companion_name || 'Abigail';
+            const cname = state.user?.settings?.companion_name || getDefaultCompanionName();
             text = text.replace(/\{companion\}/g, cname);
             return text;
         }
@@ -4964,7 +4969,7 @@
                 document.getElementById('user-email').textContent = state.user.email;
                 document.getElementById('user-avatar').src = state.user.avatar_url || 'images/avatar.png';
                 // 显示AI昵称
-                const companionName = state.user.settings?.companion_name || 'Abigail';
+                const companionName = state.user.settings?.companion_name || getDefaultCompanionName();
                 document.getElementById('companion-name-display').textContent = companionName;
                 updateModelIndicator();
                 // 更新 companion 头像
@@ -6754,7 +6759,7 @@
         function openRenameModal() {
             const modal = document.getElementById('rename-modal');
             const input = document.getElementById('rename-input');
-            const currentName = state.user?.settings?.companion_name || 'Abigail';
+            const currentName = state.user?.settings?.companion_name || getDefaultCompanionName();
             input.value = currentName;
             modal.classList.add('active');
             setTimeout(() => input.select(), 100);
