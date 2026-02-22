@@ -7472,7 +7472,7 @@
                                 backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
                         ${model.id === 'grok' ? `<span style="position:absolute;top:-8px;left:12px;padding:2px 8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:6px;font-size:0.65rem;font-weight:600;">${recText}</span>` : ''}
                         <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;background:rgba(255,255,255,0.12);">
-                            <div style="width:24px;height:24px;">${model.svg}</div>
+                            <div style="width:24px;height:24px;">${model.id === 'gemini' ? '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12Z" fill="#fff"/></svg>' : model.svg}</div>
                         </div>
                         <div style="flex:1;text-align:left;">
                             <div style="color:#fff;font-size:0.9rem;font-weight:600;">${model.name}</div>
