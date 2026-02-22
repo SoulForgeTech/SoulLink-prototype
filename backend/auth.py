@@ -432,7 +432,13 @@ def _register_test_account(email: str, password: str, name: Optional[str] = None
 
     existing = db.get_user_by_email(email)
     if existing:
-        # 已存在则直接删除重建（方便反复测试）
+        # 已存在则先删除 AnythingLLM workspace，再删除 MongoDB 记录
+        try:
+            from workspace_manager import WorkspaceManager
+            wm = WorkspaceManager()
+            wm.delete_workspace(existing["_id"])
+        except Exception as e:
+            print(f"[TEST] Failed to delete workspace for {email}: {e}")
         db.db["users"].delete_one({"_id": existing["_id"]})
         db.db["workspaces"].delete_many({"user_id": existing["_id"]})
 
