@@ -350,6 +350,11 @@ def handle_email_register(email: str, password: str, name: Optional[str] = None)
     """
     from email_service import send_verification_email
 
+    # 测试账号：跳过邮箱验证
+    TEST_EMAILS = {"test@soullink.com", "demo@soullink.com"}
+    if email in TEST_EMAILS:
+        return _register_test_account(email, password, name)
+
     # 验证邮箱格式
     if not validate_email(email):
         return {"success": False, "error": "Invalid email format"}
@@ -417,6 +422,44 @@ def handle_email_register(email: str, password: str, name: Optional[str] = None)
         "requires_verification": True,
         "email": email,
         "message": "Verification code sent to your email"
+    }
+
+
+def _register_test_account(email: str, password: str, name: Optional[str] = None) -> Dict[str, Any]:
+    """测试账号注册：跳过邮箱验证，直接返回 token"""
+    user_name = name or email.split("@")[0]
+    password_hash = hash_password(password)
+
+    existing = db.get_user_by_email(email)
+    if existing:
+        # 已存在则直接删除重建（方便反复测试）
+        db.db["users"].delete_one({"_id": existing["_id"]})
+        db.db["workspaces"].delete_many({"user_id": existing["_id"]})
+
+    user = db.create_user(
+        email=email,
+        name=user_name,
+        password_hash=password_hash,
+        auth_provider="email"
+    )
+    # 直接标记为已验证
+    db.db["users"].update_one(
+        {"_id": user["_id"]},
+        {"$set": {"email_verified": True}}
+    )
+
+    token = generate_token(user["_id"])
+    refresh_token = generate_refresh_token(user["_id"])
+    return {
+        "success": True,
+        "token": token,
+        "refresh_token": refresh_token,
+        "user": {
+            "id": str(user["_id"]),
+            "email": email,
+            "name": user_name,
+            "settings": {}
+        }
     }
 
 
