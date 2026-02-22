@@ -2677,6 +2677,21 @@
             gap: 14px;
         }
 
+        .skip-test-btn {
+            display: block;
+            margin: 28px auto 0;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 8px 16px;
+            transition: color 0.2s;
+        }
+        .skip-test-btn:hover {
+            color: rgba(255,255,255,0.7);
+        }
+
         .question-option {
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12);
@@ -4173,6 +4188,7 @@
             <div class="question-progress" id="question-progress"></div>
             <div class="question-text" id="question-text"></div>
             <div class="question-options" id="question-options"></div>
+            <button class="skip-test-btn" onclick="skipPersonalityTest()" data-i18n="test.skip">Skip for now →</button>
         </div>
     </div>
 
@@ -4482,6 +4498,7 @@
                 'reminder.message': 'Take a quick personality test so your companion can truly understand you.',
                 'reminder.later': 'Maybe Later',
                 'reminder.start': 'Take the Test',
+                'test.skip': 'Skip for now →',
                 'tarot.draw.title': 'Your Soul Reading',
                 'tarot.draw.subtitle': 'Click each card to reveal your destiny',
                 'tarot.position.past': 'Past',
@@ -4632,6 +4649,7 @@
                 'reminder.message': '做一个简短的性格测试，让你的AI伴侣真正了解你。',
                 'reminder.later': '稍后再说',
                 'reminder.start': '开始测试',
+                'test.skip': '先跳过 →',
                 'tarot.draw.title': '灵魂占卜',
                 'tarot.draw.subtitle': '点击每张牌揭示你的命运',
                 'tarot.position.past': '过去',
@@ -5075,6 +5093,7 @@
                         localStorage.setItem('soullink_token', data.token);
                         if (data.refresh_token) localStorage.setItem('soullink_refresh_token', data.refresh_token);
                         localStorage.setItem('soullink_user', JSON.stringify(data.user));
+                        state.isFirstRegistration = true;
                         showApp();
                         document.getElementById('conversations-list').innerHTML = '';
                         renderMessages();
@@ -5203,6 +5222,7 @@
                     if (authDivider) authDivider.style.display = 'flex';
                     if (googleBtn) googleBtn.style.display = 'block';
 
+                    state.isFirstRegistration = true;
                     showApp();
                     document.getElementById('conversations-list').innerHTML = '';
                     renderMessages();
@@ -7043,6 +7063,20 @@
             document.getElementById('personality-test-page').classList.remove('active');
             document.getElementById('tarot-draw-page').classList.remove('active');
             document.getElementById('tarot-results-page').classList.remove('active');
+            document.getElementById('gender-selection-page').classList.remove('active');
+            document.getElementById('subtype-selection-page').classList.remove('active');
+            document.getElementById('companion-naming-page').classList.remove('active');
+        }
+
+        function skipPersonalityTest() {
+            document.getElementById('personality-test-page').classList.remove('active');
+            if (state.isFirstRegistration) {
+                // 首次注册：跳过问卷但仍需选性别/性格/取名
+                showGenderSelection();
+            } else {
+                // 重新测试时跳过：直接关闭
+                closePersonalityTest();
+            }
         }
 
         async function startPersonalityTest() {
@@ -7388,7 +7422,11 @@
                 console.error('Style selection error:', err);
             }
             document.getElementById('subtype-selection-page').classList.remove('active');
-            showCompanionNaming();
+            if (state.isFirstRegistration) {
+                showCompanionNaming();
+            } else {
+                showApp();
+            }
         }
 
         function showCompanionNaming() {
@@ -7427,6 +7465,7 @@
                 console.error('Companion naming error:', err);
             }
             document.getElementById('companion-naming-page').classList.remove('active');
+            state.isFirstRegistration = false;
             showApp();
         }
 
