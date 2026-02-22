@@ -1011,11 +1011,11 @@
             outline: none;
             resize: none;
             max-height: 150px;
-            min-height: 24px;
-            height: 24px;
-            line-height: 24px;
+            min-height: 22px;
+            height: 22px;
+            line-height: 22px;
             font-family: 'Poppins', sans-serif;
-            padding: 0;
+            padding: 8px 0;
             margin: 0;
             overflow-y: hidden;
         }
@@ -6140,7 +6140,7 @@
             // 添加用户消息到 UI（含附件）
             addMessageToUI(message, true, false, attachmentsForUI);
             input.value = '';
-            input.style.height = '24px';
+            input.style.height = '22px';
             input.style.overflowY = 'hidden';
             const wrapper = document.getElementById('input-wrapper');
             if (wrapper) wrapper.style.borderRadius = '24px';
@@ -6253,14 +6253,15 @@
         function autoResizeInput() {
             const textarea = document.getElementById('message-input');
             if (!textarea) return;
-            textarea.style.height = '24px'; // 先重置
-            const newHeight = Math.min(textarea.scrollHeight, 150); // max 150px
+            textarea.style.height = '22px'; // 先重置到单行
+            const scrollH = textarea.scrollHeight - 16; // 减去上下padding 8+8
+            const newHeight = Math.max(22, Math.min(scrollH, 150));
             textarea.style.height = newHeight + 'px';
-            textarea.style.overflowY = textarea.scrollHeight > 150 ? 'auto' : 'hidden';
+            textarea.style.overflowY = scrollH > 150 ? 'auto' : 'hidden';
             // 多行时调整圆角
             const wrapper = document.getElementById('input-wrapper');
             if (wrapper) {
-                wrapper.style.borderRadius = newHeight > 30 ? '16px' : '24px';
+                wrapper.style.borderRadius = newHeight > 28 ? '16px' : '24px';
             }
         }
 
