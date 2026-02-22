@@ -481,7 +481,17 @@ class WorkspaceManager:
             persona = user.get("persona")
             companion_name = user.get("settings", {}).get("companion_name")
             companion_gender = user.get("settings", {}).get("companion_gender", "female")
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender)
+
+            # 加载用户记忆（亲密度等），避免切换模型时丢失
+            memory_text = ""
+            try:
+                from memory_engine import build_memory_text
+                user_memory = user.get("memory", {}) if user else {}
+                memory_text = build_memory_text(user_memory)
+            except Exception as e:
+                print(f"[MEMORY] Failed to build memory text in model switch: {e}")
+
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
 
             # Grok 专属：角色锚定 + 内容自由
             if model_id == "grok":
