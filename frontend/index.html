@@ -2466,6 +2466,19 @@
             letter-spacing: 0.3px;
         }
 
+        .model-rec-tag {
+            display: inline-block;
+            font-size: 0.6rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #7c3aed, #a78bfa);
+            color: #fff;
+            font-weight: 600;
+            margin-left: 6px;
+            vertical-align: middle;
+            letter-spacing: 0.3px;
+        }
+
         /* 聊天头部模型标识 */
         .model-indicator {
             font-size: 0.7rem;
@@ -6438,6 +6451,7 @@
                 badge_en: 'Limited Free',
                 badge_zh: '限时免费',
                 hasThinking: false,
+                recommended: true,
             },
         ];
 
@@ -6517,13 +6531,14 @@
                 const isSelected = model.id === currentModel;
                 const badge = state.language === 'zh-CN' ? model.badge_zh : model.badge_en;
                 const desc = state.language === 'zh-CN' ? model.desc_zh : model.desc_en;
+                const recLabel = state.language === 'zh-CN' ? '推荐' : 'Recommended';
                 return `
                     <div class="model-option ${isSelected ? 'selected' : ''}"
                          onclick="selectModel('${model.id}')"
                          data-model="${model.id}">
                         <div class="model-option-icon ${model.iconClass}">${model.svg}</div>
                         <div class="model-option-info">
-                            <div class="model-option-name">${model.name}</div>
+                            <div class="model-option-name">${model.name}${model.recommended ? `<span class="model-rec-tag">${recLabel}</span>` : ''}</div>
                             <div class="model-option-desc">${desc}</div>
                         </div>
                         ${badge ? `<span class="model-option-badge">${badge}</span>` : ''}
