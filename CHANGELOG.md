@@ -1,5 +1,57 @@
 # SoulLink Changelog
 
+## v0.6.0 — 2026-02-23
+
+### New Features
+- **AI Image Generation in Chat**
+  - AI companion can autonomously send images (selfies, scenes, etc.) via `[IMAGE: description]` markers
+  - Uses xAI `grok-imagine-image` API ($0.02/image), 20 images/day per user limit
+  - System prompt templates (`system_prompt_template.txt`, `system_prompt_template_custom.txt`) include `[IMAGE:]` usage instructions
+  - Backend detects `[IMAGE:]` markers, strips from reply, generates image, returns to frontend
+
+- **Character Appearance Consistency**
+  - Auto-extracts visual appearance from persona via Gemini (art style, hair, eyes, clothing, etc.)
+  - Appearance cached in `user.settings.image_appearance` for consistent image generation
+  - Appearance prepended to every image prompt: `Character appearance: {appearance}. Scene: {prompt}`
+  - Custom persona import (`character_parser.py`) now extracts `appearance` field alongside personality
+  - Confirm-persona endpoint saves appearance; clear-persona clears it
+  - Default fallback appearance (anime style) for users without custom persona
+
+- **Image Persistence via Cloudinary**
+  - Generated images uploaded to Cloudinary (free tier: 25 credits ≈ 25 GB storage + bandwidth)
+  - Permanent URLs stored in MongoDB message attachments (`attachments[].url`)
+  - Images survive page refresh — frontend loads from Cloudinary URL in chat history
+  - Folder structure: `soullink/chat_images/{user_id}/{timestamp}`
+
+- **Inline Image Display & Viewer**
+  - Generated images rendered inline in chat bubbles (max-width 280px, rounded corners)
+  - Click-to-zoom fullscreen image viewer overlay
+  - History messages with Cloudinary URL show real images; without URL show placeholder
+
+### Backend Changes
+- **`image_gen.py`** (NEW): Core image generation module
+  - `extract_image_markers()` — regex extraction of `[IMAGE:]` tags (first only)
+  - `_extract_appearance_from_persona()` — Gemini-based appearance extraction
+  - `get_appearance_prefix()` — lazy cache lookup/extraction/fallback
+  - `generate_image()` — xAI API call with 60s timeout
+  - `upload_to_cloudinary()` — base64 → Cloudinary upload with permanent URL
+  - `process_image_markers()` — top-level orchestrator: extract → limit check → appearance → generate → upload
+  - `DEFAULT_APPEARANCE` — generic anime fallback for users without persona
+- **`app_new.py`**: Image processing in chat endpoint (before RENAME detection), image attachments with URL in message save, images in response JSON
+- **`character_parser.py`**: Extraction prompts (ZH/EN) now output `appearance` field; search prompts request detailed appearance
+- **`.env`**: Added `XAI_API_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+
+### Frontend Changes
+- **`index.html`**: CSS for `.generated-images`, `.generated-image`, `.image-viewer-overlay`; `addMessageToUI` 5th param `generatedImages`; `openImageViewer`/`closeImageViewer`; history attachments render real image from URL; confirm-persona passes appearance
+
+### Database Schema
+- `users.settings.image_appearance`: Cached appearance description string
+- `image_gen_usage`: Collection tracking per-user daily image generation count
+- `conversations.messages[].attachments[].url`: Cloudinary permanent URL for generated images
+- `conversations.messages[].attachments[].isGenerated`: Boolean flag for AI-generated image attachments
+
+---
+
 ## v0.5.0 — 2025-02-23
 
 ### New Features
