@@ -377,13 +377,14 @@ class WorkspaceManager:
 
         # 好友模式：将恋人关系替换为好友关系
         if companion_relationship == "friend":
+            # 先替换带斜杠的完整标签（persona 里的格式）
+            system_prompt = system_prompt.replace("女朋友/girlfriend", "好朋友/best friend")
+            system_prompt = system_prompt.replace("男朋友/boyfriend", "好朋友/best friend")
+            # 再替换模板里的单独用法
             system_prompt = system_prompt.replace(f"{user_name} 的女朋友", f"{user_name} 的好朋友（闺蜜）")
             system_prompt = system_prompt.replace(f"{user_name}'s girlfriend", f"{user_name}'s best friend")
             system_prompt = system_prompt.replace(f"{user_name} 的男朋友", f"{user_name} 的好朋友（好兄弟）")
             system_prompt = system_prompt.replace(f"{user_name}'s boyfriend", f"{user_name}'s best friend")
-            # persona 里的也替换
-            system_prompt = system_prompt.replace("女朋友/girlfriend", "好朋友/best friend")
-            system_prompt = system_prompt.replace("男朋友/boyfriend", "好朋友/best friend")
             # 模板中性别确认示例里的"女朋友/男朋友"也替换
             system_prompt = system_prompt.replace("你女朋友还能是男的吗", "我当然是女生啦")
             system_prompt = system_prompt.replace("Your girlfriend's a girl, duh", "I'm a girl, obviously~")
