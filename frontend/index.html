@@ -4478,6 +4478,7 @@
                                     <span class="status-text" id="lore-status-text"></span>
                                     <button class="custom-btn danger" id="lore-clear-btn" onclick="clearLore()" style="display:none;">🗑</button>
                                 </div>
+                                <div class="form-hint" style="font-size: 0.8rem; opacity: 0.7; margin-top: 6px;" data-i18n="settings.custom.lore.hint">💡 The more background info you import, the more accurately the AI embodies the character.</div>
                             </div>
                         </div>
                         <div class="form-hint" data-i18n="settings.custom.hint">Customize personality and import knowledge independently</div>
@@ -4862,6 +4863,7 @@
                 'settings.custom.lore.processing': 'Processing...',
                 'settings.custom.lore.failed': 'Failed — please retry',
                 'settings.custom.lore.cleared': 'Knowledge base cleared',
+                'settings.custom.lore.hint': '💡 The more background info you import, the more accurately the AI embodies the character.',
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
@@ -5043,6 +5045,7 @@
                 'settings.custom.lore.processing': '处理中...',
                 'settings.custom.lore.failed': '失败 — 请重试',
                 'settings.custom.lore.cleared': '知识库已清除',
+                'settings.custom.lore.hint': '💡 导入的背景资料越丰富，AI就越能精准还原角色人设',
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
@@ -7694,9 +7697,13 @@
                 const data = await resp.json();
                 if (data.success) {
                     document.getElementById('lore-status').style.display = 'none';
+                } else {
+                    console.error('[LORE] Clear failed:', data.error);
+                    alert(data.error || 'Failed to clear knowledge base');
                 }
             } catch (e) {
                 console.error('[LORE] Clear error:', e);
+                alert('Network error clearing knowledge base');
             }
         }
 

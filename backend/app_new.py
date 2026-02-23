@@ -1903,30 +1903,35 @@ def clear_lore():
     """清除知识库：从 AnythingLLM 删除向量数据 + 清除 MongoDB 状态"""
     user_id = get_current_user_id()
 
+    # 先尝试从 AnythingLLM 删除向量数据（失败不阻塞 MongoDB 清理）
     try:
-        # 获取当前文档名 + docpath
         user = db.db["users"].find_one({"_id": user_id})
         settings = (user or {}).get("settings", {})
         doc_name = settings.get("custom_lore_doc_name")
-        # 优先使用 doc_location（full docpath），如果没有则 fallback 到 doc_name
         doc_location = settings.get("custom_lore_doc_location") or doc_name
+        logger.info(f"[LORE] Clearing lore for user {user_id}, doc_location={doc_location}")
 
         if doc_location:
-            # 从 AnythingLLM workspace 删除向量数据
             workspace = db.get_workspace_by_user(user_id)
             if workspace and workspace.get("slug"):
-                api = AnythingLLMAPI(
-                    base_url=workspace_manager.anythingllm_base_url,
-                    api_key=workspace_manager.anythingllm_api_key,
-                    workspace_slug=workspace["slug"]
-                )
-                delete_result = api.remove_document_from_workspace(doc_location)
-                if delete_result.get("success"):
-                    logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_location}")
-                else:
-                    logger.warning(f"[LORE] Failed to delete vectors: {delete_result}")
+                try:
+                    api = AnythingLLMAPI(
+                        base_url=workspace_manager.anythingllm_base_url,
+                        api_key=workspace_manager.anythingllm_api_key,
+                        workspace_slug=workspace["slug"]
+                    )
+                    delete_result = api.remove_document_from_workspace(doc_location)
+                    if delete_result.get("success"):
+                        logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_location}")
+                    else:
+                        logger.warning(f"[LORE] Failed to delete vectors (non-blocking): {delete_result}")
+                except Exception as e:
+                    logger.warning(f"[LORE] AnythingLLM delete failed (non-blocking): {e}")
+    except Exception as e:
+        logger.warning(f"[LORE] Error reading user data for lore clear (non-blocking): {e}")
 
-        # 清除 MongoDB 状态
+    # 始终清除 MongoDB 状态（即使 AnythingLLM 删除失败也要清）
+    try:
         db.db["users"].update_one(
             {"_id": user_id},
             {"$unset": {
@@ -1937,12 +1942,13 @@ def clear_lore():
                 "settings.custom_lore_original_filename": "",
             }}
         )
-
         logger.info(f"[LORE] Knowledge base cleared for user {user_id}")
         return jsonify({"success": True})
 
     except Exception as e:
-        logger.error(f"[LORE] Error clearing lore: {e}")
+        import traceback
+        logger.error(f"[LORE] Error clearing MongoDB lore state: {e}")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
