@@ -1473,11 +1473,16 @@ def admin_stats():
 @app.route("/api/admin/ai-health", methods=["GET"])
 @require_admin
 def admin_ai_health():
-    """检测 Gemini / GPT / AnythingLLM 服务是否正常"""
+    """检测各 AI 服务和 AnythingLLM 是否正常"""
     import time
+    import requests as req
     results = {}
 
-    # --- Gemini ---
+    allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
+    allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
+    allm_headers = {"Authorization": f"Bearer {allm_key}"}
+
+    # --- Gemini (直接调 Google API) ---
     try:
         import google.generativeai as genai
         api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
@@ -1493,40 +1498,63 @@ def admin_ai_health():
     except Exception as e:
         results["gemini"] = {"ok": False, "error": str(e)[:100]}
 
-    # --- GPT-4o (via AnythingLLM workspaces) ---
+    # --- GPT-4o (通过 AnythingLLM 查 OpenAI 连通性) ---
     try:
-        import requests as req
-        allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
-        allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
         t0 = time.time()
         r = req.get(
-            f"{allm_url}/api/v1/workspaces",
-            headers={"Authorization": f"Bearer {allm_key}"},
-            timeout=10
+            f"{allm_url}/api/v1/system/custom-models",
+            headers=allm_headers,
+            params={"provider": "openai"},
+            timeout=15
         )
         latency = int((time.time() - t0) * 1000)
         if r.status_code == 200:
-            workspaces = r.json().get("workspaces", [])
-            results["gpt"] = {"ok": True, "latency": latency, "workspaces": len(workspaces)}
+            data = r.json()
+            models = data.get("models", [])
+            has_gpt4o = any("gpt-4o" in (m.get("id") or "") for m in models) if models else False
+            results["gpt"] = {"ok": True, "latency": latency, "models": len(models), "gpt4o_available": has_gpt4o}
         else:
-            results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}"}
+            results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
     except Exception as e:
         results["gpt"] = {"ok": False, "error": str(e)[:100]}
 
-    # --- AnythingLLM ---
+    # --- Grok / xAI (通过 AnythingLLM 查 xAI 连通性) ---
     try:
-        import requests as req
-        allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
-        allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
+        t0 = time.time()
+        r = req.get(
+            f"{allm_url}/api/v1/system/custom-models",
+            headers=allm_headers,
+            params={"provider": "xai"},
+            timeout=15
+        )
+        latency = int((time.time() - t0) * 1000)
+        if r.status_code == 200:
+            data = r.json()
+            models = data.get("models", [])
+            has_grok = any("grok" in (m.get("id") or "") for m in models) if models else False
+            results["grok"] = {"ok": True, "latency": latency, "models": len(models), "grok_available": has_grok}
+        else:
+            results["grok"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
+    except Exception as e:
+        results["grok"] = {"ok": False, "error": str(e)[:100]}
+
+    # --- AnythingLLM (端到端：前端→后端→AnythingLLM) ---
+    try:
         t0 = time.time()
         r = req.get(
             f"{allm_url}/api/v1/auth",
-            headers={"Authorization": f"Bearer {allm_key}"},
+            headers=allm_headers,
             timeout=10
         )
         latency = int((time.time() - t0) * 1000)
         if r.status_code == 200:
-            results["anythingllm"] = {"ok": True, "latency": latency}
+            # 获取 workspace 数量
+            try:
+                r2 = req.get(f"{allm_url}/api/v1/workspaces", headers=allm_headers, timeout=5)
+                ws_count = len(r2.json().get("workspaces", [])) if r2.status_code == 200 else "?"
+            except Exception:
+                ws_count = "?"
+            results["anythingllm"] = {"ok": True, "latency": latency, "workspaces": ws_count, "note": "internal (localhost)"}
         else:
             results["anythingllm"] = {"ok": False, "error": f"HTTP {r.status_code}"}
     except Exception as e:
