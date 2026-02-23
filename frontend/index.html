@@ -4430,6 +4430,9 @@
                                     data-i18n="settings.custom.persona.placeholder" data-i18n-attr="placeholder"
                                     placeholder="Enter a character name to search (e.g., Rem, Ganyu) or describe the personality you want..."></textarea>
                                 <div class="custom-actions">
+                                    <button class="custom-btn secondary" id="btn-search-character" onclick="searchCharacter()">
+                                        🔍 <span data-i18n="settings.custom.persona.search">Search Character</span>
+                                    </button>
                                     <button class="custom-btn primary" id="btn-extract-persona" onclick="smartExtractPersona()">
                                         ✨ <span data-i18n="settings.custom.persona.extract">Extract Personality</span>
                                     </button>
@@ -7340,6 +7343,7 @@
         async function smartExtractPersona() {
             const input = document.getElementById('custom-persona-input');
             const btn = document.getElementById('btn-extract-persona');
+            const searchBtn = document.getElementById('btn-search-character');
             const text = input.value.trim();
             const isZh = state.language === 'zh-CN';
 
@@ -7348,15 +7352,17 @@
                 return;
             }
 
-            // 如果输入较短（<100字符），判定为角色名搜索 → 自动先搜索再提取
+            // 如果输入较短（<100字符），判定为角色名 → 自动先搜索再提取 + 搜索结果自动上传知识库
             // 如果输入较长（>=100字符），判定为已有角色描述 → 直接提取
             const isShortQuery = text.length < 100;
 
             const originalText = btn.querySelector('span').textContent;
             btn.disabled = true;
+            if (searchBtn) searchBtn.disabled = true;
 
             try {
                 let descriptionToExtract = text;
+                let searchResultForLore = null;  // 保存搜索结果用于自动上传知识库
 
                 if (isShortQuery) {
                     // Step 1: 自动搜索角色
@@ -7371,22 +7377,19 @@
                     const searchData = await searchResp.json();
 
                     if (searchData.success && searchData.description) {
-                        // 搜索成功，用搜索结果作为提取输入
                         descriptionToExtract = searchData.description;
-                        // 同时更新文本框让用户看到搜索到的内容
+                        searchResultForLore = searchData.description;  // 保存用于知识库
+                        // 更新文本框让用户看到搜索到的内容
                         input.value = descriptionToExtract;
                         input.style.height = 'auto';
                         input.style.height = Math.min(input.scrollHeight, 300) + 'px';
                     } else {
-                        // 搜索无结果，但输入太短无法直接提取
                         if (text.length < 10) {
                             alert(isZh ? '未找到该角色信息，请尝试更具体的名字或直接粘贴角色描述' : 'Character not found. Try a more specific name or paste a character description directly.');
                             return;
                         }
-                        // 搜索无结果但输入够长，继续尝试提取
                     }
                 } else {
-                    // 长文本直接提取，最小长度检查
                     if (text.length < 10) {
                         alert(isZh ? '请输入至少 10 个字符的角色描述' : 'Please enter at least 10 characters for the character description');
                         input.focus();
@@ -7411,6 +7414,11 @@
                     const previewText = document.getElementById('persona-preview-text');
                     previewText.textContent = data.preview.core_persona;
                     previewCard.classList.add('show');
+
+                    // Step 3: 如果有搜索结果，自动上传到知识库（后台静默执行）
+                    if (searchResultForLore) {
+                        autoUploadSearchToLore(searchResultForLore);
+                    }
                 } else {
                     alert(data.error || (isZh ? '提取失败，请提供更详细的角色描述' : 'Extraction failed, please provide a more detailed description'));
                 }
@@ -7420,6 +7428,43 @@
             } finally {
                 btn.disabled = false;
                 btn.querySelector('span').textContent = originalText;
+                if (searchBtn) searchBtn.disabled = false;
+            }
+        }
+
+        // 自动将搜索到的角色信息上传到知识库（后台静默执行，不阻塞UI）
+        async function autoUploadSearchToLore(searchText) {
+            const isZh = state.language === 'zh-CN';
+            try {
+                console.log('[LORE] Auto-uploading search result to knowledge base...');
+                // 更新知识库状态显示
+                const loreStatus = document.getElementById('lore-status');
+                const loreStatusText = document.getElementById('lore-status-text');
+                const loreClearBtn = document.getElementById('lore-clear-btn');
+                loreStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (isZh ? '自动导入知识库中...' : 'Auto-importing to KB...');
+                loreStatus.className = 'custom-status processing';
+                loreStatus.style.display = 'flex';
+                if (loreClearBtn) loreClearBtn.style.display = 'none';
+
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-lore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: searchText })
+                });
+
+                const data = await resp.json();
+
+                if (data.success) {
+                    console.log('[LORE] Auto-upload successful');
+                    loadCustomStatus();  // 刷新状态显示
+                } else {
+                    console.warn('[LORE] Auto-upload failed:', data.error);
+                    loreStatusText.textContent = '⚠️ ' + (isZh ? '知识库自动导入失败' : 'KB auto-import failed');
+                    loreStatus.className = 'custom-status failed';
+                    if (loreClearBtn) loreClearBtn.style.display = '';
+                }
+            } catch (e) {
+                console.warn('[LORE] Auto-upload error:', e);
             }
         }
 
