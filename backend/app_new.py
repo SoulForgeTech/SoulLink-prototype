@@ -500,7 +500,7 @@ def update_settings():
             if custom_persona:
                 logger.info(f"[STYLE] Custom persona active, skipping persona regen & auto-rename")
             else:
-                pt = user.get("personality_test", {})
+                pt = user.get("personality_test") or {}
                 if pt.get("completed"):
                     # 重新生成 persona
                     logger.info(f"[STYLE] Regenerating persona for subtype={subtype}")

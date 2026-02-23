@@ -533,7 +533,7 @@ class WorkspaceManager:
                     companion_name = custom_name
                 print(f"[MODEL_SWITCH] Using custom_persona for user {user_id}")
             else:
-                pt = user.get("personality_test", {})
+                pt = user.get("personality_test") or {}
                 persona = pt.get("personality_profile") if pt.get("completed") else None
 
             # 加载用户记忆（亲密度等），避免切换模型时丢失
@@ -863,7 +863,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
                     result = self.update_system_prompt(user_id, user_name)
                 else:
                     # 重新生成 persona（使用最新的 generate_personality_profile）
-                    pt = user.get("personality_test", {})
+                    pt = user.get("personality_test") or {}
                     if pt.get("completed") and pt.get("dimensions") and pt.get("tarot_cards"):
                         new_persona = generate_personality_profile(
                             pt["dimensions"], pt["tarot_cards"], language, companion_subtype
