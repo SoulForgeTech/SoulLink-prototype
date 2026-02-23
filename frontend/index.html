@@ -4133,8 +4133,8 @@
     <!-- AI改名弹窗 -->
     <div class="rename-modal-overlay" id="rename-modal">
         <div class="rename-modal">
-            <h3 data-i18n="rename.title">Rename your companion</h3>
-            <p data-i18n="rename.subtitle">Give her a name you like</p>
+            <h3 id="rename-title" data-i18n="rename.title.female">Give her a name</h3>
+            <p id="rename-subtitle" data-i18n="rename.subtitle">Pick a nickname you like</p>
             <input type="text" class="rename-input" id="rename-input"
                    maxlength="20" placeholder=""
                    onkeydown="if(event.key==='Enter')saveCompanionName()">
@@ -4897,8 +4897,9 @@
                 'tarot.results.title': 'Your Soul Cards',
                 'tarot.start.chat': 'Start Chatting →',
                 'tarot.profile.title': 'Your Companion\'s Personality',
-                'rename.title': 'Rename your companion',
-                'rename.subtitle': 'Give her a name you like',
+                'rename.title.female': 'Give her a name',
+                'rename.title.male': 'Give him a name',
+                'rename.subtitle': 'Pick a nickname you like',
                 'rename.cancel': 'Cancel',
                 'rename.save': 'Save',
                 'companion.gender.her': 'Her',
@@ -5090,7 +5091,8 @@
                 'tarot.results.title': '你的灵魂之牌',
                 'tarot.start.chat': '开始聊天 →',
                 'tarot.profile.title': '你的伴侣性格',
-                'rename.title': '给她起个名字',
+                'rename.title.female': '给她起个名字',
+                'rename.title.male': '给他起个名字',
                 'rename.subtitle': '取一个你喜欢的昵称吧',
                 'rename.cancel': '取消',
                 'rename.save': '保存',
@@ -7229,6 +7231,13 @@
             const input = document.getElementById('rename-input');
             const currentName = state.user?.settings?.companion_name || getDefaultCompanionName();
             input.value = currentName;
+            // 根据性别切换标题文案
+            const gender = state.user?.settings?.companion_gender || 'female';
+            const titleEl = document.getElementById('rename-title');
+            const subtitleEl = document.getElementById('rename-subtitle');
+            titleEl.setAttribute('data-i18n', 'rename.title.' + gender);
+            titleEl.textContent = t('rename.title.' + gender);
+            subtitleEl.textContent = t('rename.subtitle');
             modal.classList.add('active');
             setTimeout(() => input.select(), 100);
         }
