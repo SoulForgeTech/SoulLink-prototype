@@ -168,12 +168,17 @@ class AnythingLLMAPI:
             
             document = documents[0]
             document_title = document.get('title', file_name)
-            
+            # CRITICAL: Extract the full docpath — AnythingLLM needs this format
+            # e.g. "custom-documents/filename-UUID.json"
+            document_location = document.get('location', '')
+
             logging.info(f"✅ Document '{file_name}' uploaded to storage")
+            logging.info(f"📂 Document location (docpath): {document_location}")
             logging.debug(f"Document info: {document}")
-            
-            # Step 2: Add document to workspace using SIMPLE FILENAME
-            workspace_response = self.add_document_to_workspace(document_title)
+
+            # Step 2: Add document to workspace using FULL DOCPATH
+            # The update-embeddings API requires the docpath format, not simple filename
+            workspace_response = self.add_document_to_workspace(document_location or document_title)
             
             if workspace_response.get('success'):
                 logging.info(f"✅ Document '{file_name}' added to workspace '{self.workspace_slug}'")
@@ -196,6 +201,7 @@ class AnythingLLMAPI:
                         'upload_info': upload_data,
                         'workspace_info': workspace_response,
                         'document_name': document_title,
+                        'document_location': document_location,  # Full docpath for cleanup
                         'vector_status': vector_info
                     }
                 }
@@ -363,31 +369,21 @@ class AnythingLLMAPI:
     def add_document_to_workspace(self, document_name: str) -> Dict[str, Any]:
         """
         Add an uploaded document to the workspace for vector processing.
-        FIXED: Use simple filename format as discovered in debugging.
+        FIXED: Use the full docpath format from upload response.
+        e.g. "custom-documents/filename-UUID.json"
         """
         url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/update-embeddings"
-        
-        # CRITICAL FIX: Use simple filename, not full path
-        # Based on debug results: working format is just "filename.txt"
-        simple_name = document_name
-        if '/' in document_name:
-            # Extract just the filename if full path was passed
-            simple_name = document_name.split('/')[-1]
-            if simple_name.endswith('.json'):
-                # Remove .json extension to get original filename
-                simple_name = simple_name.replace('.json', '')
-                # Remove UUID part if present
-                if '-' in simple_name:
-                    parts = simple_name.split('-')
-                    if len(parts) > 1 and len(parts[-1]) == 36:  # UUID length
-                        simple_name = '-'.join(parts[:-1])
-        
+
+        # The update-embeddings API requires the full docpath
+        # e.g. "custom-documents/filename-UUID.json"
+        # Do NOT strip the path — pass it as-is from the upload response
+
         payload = {
-            "adds": [simple_name],  # Use simple filename format
+            "adds": [document_name],
             "deletes": []
         }
-        
-        logging.info(f"Adding document '{simple_name}' to workspace '{self.workspace_slug}'...")
+
+        logging.info(f"Adding document '{document_name}' to workspace '{self.workspace_slug}'...")
         
         try:
             response = self._post_request(url, payload=payload)

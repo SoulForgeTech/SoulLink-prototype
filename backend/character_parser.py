@@ -1,6 +1,7 @@
 """
 SoulLink Character Parser — 用 Gemini 从任意文本中提取角色核心性格
 支持各种格式：SillyTavern JSON、纯文本描述、角色卡片等
+支持网络搜索：Gemini + Google Search grounding 搜索已有角色设定
 """
 
 import os
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 # ==================== Gemini API ====================
 
 _gemini_model = None
+_gemini_search_model = None
 
 
 def _get_gemini_model():
@@ -34,6 +36,29 @@ def _get_gemini_model():
     return _gemini_model
 
 
+def _get_gemini_search_model():
+    """延迟初始化带 Google Search grounding 的 Gemini 模型"""
+    global _gemini_search_model
+    if _gemini_search_model is None:
+        try:
+            from google import genai as genai_new
+            from google.genai import types
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+            if not api_key:
+                logger.error("[CHAR_PARSER] GOOGLE_GEMINI_API_KEY not set")
+                return None
+            client = genai_new.Client(api_key=api_key)
+            _gemini_search_model = (client, types)
+            logger.info("[CHAR_PARSER] Gemini Search model initialized (google-genai)")
+        except ImportError:
+            logger.error("[CHAR_PARSER] google-genai package not installed, search unavailable")
+            return None
+        except Exception as e:
+            logger.error(f"[CHAR_PARSER] Failed to init Gemini Search: {e}")
+            return None
+    return _gemini_search_model
+
+
 def _call_gemini(prompt: str) -> Optional[str]:
     """调用 Gemini API"""
     model = _get_gemini_model()
@@ -45,6 +70,29 @@ def _call_gemini(prompt: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"[CHAR_PARSER] Gemini API error: {e}")
         return None
+
+
+def _call_gemini_with_search(prompt: str) -> Optional[str]:
+    """调用 Gemini API with Google Search grounding"""
+    result = _get_gemini_search_model()
+    if not result:
+        # Fallback: 用普通 Gemini（没有搜索，但至少有 AI 知识）
+        logger.warning("[CHAR_PARSER] Search model unavailable, falling back to regular Gemini")
+        return _call_gemini(prompt)
+    try:
+        client, types = result
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            )
+        )
+        return response.text.strip()
+    except Exception as e:
+        logger.warning(f"[CHAR_PARSER] Gemini Search API error: {e}")
+        # Fallback to regular Gemini
+        return _call_gemini(prompt)
 
 
 # ==================== 角色提取 ====================
@@ -101,6 +149,10 @@ def extract_persona_with_ai(raw_text: str) -> Dict:
 
     raw_text = raw_text.strip()
 
+    # 最小长度检查
+    if len(raw_text) < 10:
+        return {"success": False, "error": "描述太短，请提供至少 10 个字符的角色描述"}
+
     # 如果文本太长，截取前 8000 字（Gemini 可以处理更多，但没必要）
     if len(raw_text) > 8000:
         raw_text = raw_text[:8000] + "\n... (文本过长已截断)"
@@ -135,3 +187,73 @@ def extract_persona_with_ai(raw_text: str) -> Dict:
     except json.JSONDecodeError as e:
         logger.warning(f"[CHAR_PARSER] JSON parse error: {e}, raw: {text[:300]}")
         return {"success": False, "error": "AI 返回格式异常，请重试"}
+
+
+# ==================== 网络搜索角色 ====================
+
+SEARCH_PROMPT = """你是一个二次元 / ACG / 影视角色设定专家。用户给你一个角色名或角色描述，请用 Google 搜索这个角色的详细信息。
+
+## 任务
+根据搜索结果，输出这个角色的**详细人物设定描述**，可以直接用于 AI 角色扮演。
+
+## 输出要求
+1. 用中文输出（如果角色有英文/日文名也可以附带）
+2. 包含以下要素（如果搜索到）：
+   - 角色全名 / 别名
+   - 性格特点（详细！这是最重要的）
+   - 说话风格 / 口癖 / 语气词
+   - 外貌特征（简短）
+   - 与主角的关系
+   - 代表性行为 / 经典台词
+   - 情感表达方式
+3. 字数 300-800 字，信息密度高
+4. 不要写成百科格式，要写成**可以直接用于角色扮演的人物描述**
+5. 输出纯文本，不要 JSON，不要 markdown 标记
+
+## 用户输入
+{query}"""
+
+
+def search_character(query: str) -> Dict:
+    """
+    用 Gemini + Google Search 搜索已有角色的详细设定。
+
+    参数:
+        query: 角色名或角色描述（如 "雷姆"、"初音ミク"、"甘雨 原神"）
+
+    返回:
+        {
+            "success": True/False,
+            "description": "搜索到的角色详细描述",
+            "query": "原始搜索词"
+        }
+    """
+    if not query or not query.strip():
+        return {"success": False, "error": "搜索词为空"}
+
+    query = query.strip()
+
+    if len(query) > 200:
+        return {"success": False, "error": "搜索词过长"}
+
+    logger.info(f"[CHAR_PARSER] Searching character: {query}")
+
+    prompt = SEARCH_PROMPT.format(query=query)
+    result = _call_gemini_with_search(prompt)
+
+    if not result:
+        return {"success": False, "error": "搜索失败，请重试"}
+
+    # 清理结果
+    description = result.strip()
+
+    if len(description) < 30:
+        return {"success": False, "error": "未找到相关角色信息"}
+
+    logger.info(f"[CHAR_PARSER] Search result length: {len(description)} chars")
+
+    return {
+        "success": True,
+        "description": description,
+        "query": query
+    }

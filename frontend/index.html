@@ -3218,6 +3218,29 @@
             box-shadow: 0 2px 12px rgba(124, 58, 237, 0.15);
             font-weight: 600;
         }
+        /* 自定义角色性格生效时，subtype 按钮变灰不可选 */
+        .subtype-btn.disabled, .subtype-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+            background: #f1f5f9;
+            border-color: #e2e8f0;
+            color: #a0aec0;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .settings-style-selector .style-override-hint {
+            font-size: 12px;
+            color: #7c3aed;
+            margin-top: 4px;
+            padding: 6px 10px;
+            background: rgba(124, 58, 237, 0.06);
+            border-radius: 8px;
+            display: none;
+        }
+        .settings-style-selector .style-override-hint.show {
+            display: block;
+        }
 
         /* ===== 自定义角色 & 知识库 ===== */
         .custom-character-section {
@@ -4385,6 +4408,9 @@
                             <div class="settings-subtype-row" id="settings-subtype-row">
                                 <!-- 由 JS 动态填充 -->
                             </div>
+                            <div class="style-override-hint" id="style-override-hint">
+                                🎭 自定义角色性格已生效，风格选择已禁用 / Custom persona active, style selection disabled
+                            </div>
                         </div>
                         <div class="form-hint" data-i18n="settings.companion.hint">Changes will update your companion's personality</div>
                     </div>
@@ -4402,8 +4428,11 @@
                                 </div>
                                 <textarea class="custom-textarea" id="custom-persona-input"
                                     data-i18n="settings.custom.persona.placeholder" data-i18n-attr="placeholder"
-                                    placeholder="Describe the personality you want, e.g.: A tsundere cat girl named Xiaoxue who adds 'meow' to sentences..."></textarea>
+                                    placeholder="Enter a character name to search (e.g., Rem, Ganyu) or describe the personality you want..."></textarea>
                                 <div class="custom-actions">
+                                    <button class="custom-btn secondary" id="btn-search-character" onclick="searchCharacter()">
+                                        🔍 <span data-i18n="settings.custom.persona.search">Search Character</span>
+                                    </button>
                                     <button class="custom-btn primary" id="btn-extract-persona" onclick="extractPersona()">
                                         ✨ <span data-i18n="settings.custom.persona.extract">Extract Personality</span>
                                     </button>
@@ -4818,7 +4847,8 @@
                 'settings.custom.optional': 'Optional',
                 'settings.custom.hint': 'Customize personality and import knowledge independently',
                 'settings.custom.persona.title': 'Character Personality',
-                'settings.custom.persona.placeholder': 'Describe the personality you want, e.g.: A tsundere cat girl named Xiaoxue who adds "meow" to sentences...',
+                'settings.custom.persona.placeholder': 'Enter a character name to search (e.g., Rem, Ganyu) or describe the personality you want...',
+                'settings.custom.persona.search': 'Search Character',
                 'settings.custom.persona.extract': 'Extract Personality',
                 'settings.custom.persona.preview': 'AI Extracted Preview:',
                 'settings.custom.persona.confirm': 'Confirm',
@@ -4999,7 +5029,8 @@
                 'settings.custom.optional': '可选',
                 'settings.custom.hint': '角色性格和知识库可独立使用',
                 'settings.custom.persona.title': '角色性格',
-                'settings.custom.persona.placeholder': '描述你想要的角色性格，例如：傲娇猫娘叫小雪，说话带喵，嘴硬心软…',
+                'settings.custom.persona.placeholder': '输入角色名搜索（如：雷姆、甘雨）或描述你想要的角色性格…',
+                'settings.custom.persona.search': '搜索角色',
                 'settings.custom.persona.extract': '提取性格',
                 'settings.custom.persona.preview': 'AI 提取预览：',
                 'settings.custom.persona.confirm': '确认使用',
@@ -7207,6 +7238,31 @@
 
         // 临时存储 Gemini 提取的预览数据
         let _personaPreview = null;
+        let _customPersonaActive = false;  // Track if custom persona is active (disables subtype selector)
+
+        function toggleSubtypeDisabled(disabled) {
+            // 禁用/启用 subtype 按钮（性别按钮保持可用）
+            document.querySelectorAll('#settings-subtype-row .subtype-btn').forEach(btn => {
+                if (disabled) {
+                    btn.classList.add('disabled');
+                    btn.disabled = true;
+                } else {
+                    btn.classList.remove('disabled');
+                    btn.disabled = false;
+                }
+            });
+            // 显示/隐藏提示文字
+            const hint = document.getElementById('style-override-hint');
+            if (hint) {
+                hint.classList.toggle('show', disabled);
+                if (disabled) {
+                    const isZh = state.language === 'zh-CN';
+                    hint.textContent = isZh
+                        ? '🎭 自定义角色性格已生效，风格选择已禁用。清除自定义性格后恢复。'
+                        : '🎭 Custom persona active — style selection disabled. Clear custom persona to re-enable.';
+                }
+            }
+        }
 
         async function loadCustomStatus() {
             try {
@@ -7224,9 +7280,13 @@
                     personaStatusText.textContent = tpl.replace('{name}', name).replace('{date}', date);
                     personaStatus.className = 'custom-status active';
                     personaStatus.style.display = 'flex';
+                    _customPersonaActive = true;
                 } else {
                     personaStatus.style.display = 'none';
+                    _customPersonaActive = false;
                 }
+                // 根据自定义性格状态，切换伴侣风格 subtype 禁用
+                toggleSubtypeDisabled(_customPersonaActive);
 
                 // 知识库状态
                 const loreStatus = document.getElementById('lore-status');
@@ -7270,6 +7330,14 @@
                 return;
             }
 
+            // 前端最小长度检查
+            if (text.length < 10) {
+                const isZh = state.language === 'zh-CN';
+                alert(isZh ? '请输入至少 10 个字符的角色描述' : 'Please enter at least 10 characters for the character description');
+                input.focus();
+                return;
+            }
+
             // 显示加载状态
             const originalText = btn.querySelector('span').textContent;
             btn.disabled = true;
@@ -7292,7 +7360,9 @@
                     previewText.textContent = data.preview.core_persona;
                     previewCard.classList.add('show');
                 } else {
-                    alert(data.error || 'Extraction failed');
+                    // 提取失败 — 不显示预览卡片，直接提示用户
+                    const isZh = state.language === 'zh-CN';
+                    alert(data.error || (isZh ? '提取失败，请提供更详细的角色描述' : 'Extraction failed, please provide a more detailed description'));
                 }
             } catch (e) {
                 console.error('[PERSONA] Extract error:', e);
@@ -7304,12 +7374,86 @@
         }
 
         function editPersonaPreview() {
-            if (!_personaPreview) return;
-            // 把预览文本放回输入框让用户编辑
+            // 隐藏预览卡片，清空输入框让用户重新输入
             const input = document.getElementById('custom-persona-input');
-            input.value = _personaPreview.core_persona;
             document.getElementById('persona-preview-card').classList.remove('show');
+            // 如果有预览内容且内容有效（≥50字），放回输入框供编辑；否则清空
+            if (_personaPreview && _personaPreview.core_persona && _personaPreview.core_persona.length >= 50) {
+                input.value = _personaPreview.core_persona;
+            } else {
+                input.value = '';
+            }
+            _personaPreview = null;
             input.focus();
+        }
+
+        async function searchCharacter() {
+            const input = document.getElementById('custom-persona-input');
+            const btn = document.getElementById('btn-search-character');
+            const query = input.value.trim();
+            const isZh = state.language === 'zh-CN';
+
+            if (!query) {
+                alert(isZh ? '请输入角色名（如：雷姆、初音ミク、甘雨）' : 'Please enter a character name (e.g., Rem, Hatsune Miku, Ganyu)');
+                input.focus();
+                return;
+            }
+
+            // 显示加载状态
+            const originalText = btn.querySelector('span').textContent;
+            btn.disabled = true;
+            btn.querySelector('span').textContent = isZh ? '搜索中...' : 'Searching...';
+            // 同时禁用提取按钮
+            const extractBtn = document.getElementById('btn-extract-persona');
+            if (extractBtn) extractBtn.disabled = true;
+
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/search-character`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await resp.json();
+
+                if (data.success && data.description) {
+                    // 搜索到了 → 填充到文本框，用户可以查看/修改后再点"提取性格"
+                    input.value = data.description;
+                    // 自动调整文本框高度
+                    input.style.height = 'auto';
+                    input.style.height = Math.min(input.scrollHeight, 300) + 'px';
+                    input.focus();
+                    // 提示用户
+                    const hint = isZh
+                        ? '✅ 已找到角色信息，你可以修改后点「提取性格」'
+                        : '✅ Character info found! Edit if needed, then click "Extract Personality"';
+                    // 用一个临时 toast 提示
+                    showSearchToast(hint);
+                } else {
+                    alert(data.error || (isZh ? '未找到相关角色，请尝试更具体的名字' : 'Character not found, try a more specific name'));
+                }
+            } catch (e) {
+                console.error('[PERSONA] Search error:', e);
+                alert(isZh ? '网络错误，请重试' : 'Network error, please retry');
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('span').textContent = originalText;
+                if (extractBtn) extractBtn.disabled = false;
+            }
+        }
+
+        function showSearchToast(msg) {
+            // 简单的 toast 提示
+            let toast = document.getElementById('search-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'search-toast';
+                toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:10001;transition:opacity 0.3s;pointer-events:none;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 3000);
         }
 
         async function confirmPersona() {
@@ -7363,6 +7507,9 @@
                     document.getElementById('persona-status').style.display = 'none';
                     document.getElementById('persona-preview-card').classList.remove('show');
                     _personaPreview = null;
+                    _customPersonaActive = false;
+                    // 恢复伴侣风格 subtype 可选
+                    toggleSubtypeDisabled(false);
                 }
             } catch (e) {
                 console.error('[PERSONA] Clear error:', e);
@@ -7606,11 +7753,12 @@
             const modelChanged = selectedModel && selectedModel !== currentModel;
             if (modelChanged) hasChanges = true;
 
-            // 检测伴侣风格变化
+            // 检测伴侣风格变化（自定义性格激活时只允许改性别，不改 subtype）
             const currentGender = state.user?.settings?.companion_gender || 'female';
             const currentSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
-            const styleChanged = (settingsSelectedGender && settingsSelectedGender !== currentGender) ||
-                                 (settingsSelectedSubtype && settingsSelectedSubtype !== currentSubtype);
+            const genderChanged = settingsSelectedGender && settingsSelectedGender !== currentGender;
+            const subtypeChanged = !_customPersonaActive && settingsSelectedSubtype && settingsSelectedSubtype !== currentSubtype;
+            const styleChanged = genderChanged || subtypeChanged;
             if (styleChanged) hasChanges = true;
 
             if (!hasChanges) {
@@ -7645,8 +7793,10 @@
                 const settingsPayload = {};
                 if (modelChanged) settingsPayload.model = selectedModel;
                 if (styleChanged) {
-                    settingsPayload.companion_gender = settingsSelectedGender;
-                    settingsPayload.companion_subtype = settingsSelectedSubtype;
+                    if (genderChanged) settingsPayload.companion_gender = settingsSelectedGender;
+                    if (subtypeChanged) settingsPayload.companion_subtype = settingsSelectedSubtype;
+                    // 如果只改了性别但 custom persona 激活，也要传性别
+                    if (genderChanged && !subtypeChanged) settingsPayload.companion_gender = settingsSelectedGender;
                 }
 
                 if (Object.keys(settingsPayload).length > 0) {
@@ -8204,9 +8354,11 @@
             if (!row) return;
             const subtypes = SUBTYPES[gender];
             const isZh = state.language === 'zh-CN';
+            const disabledAttr = _customPersonaActive ? ' disabled' : '';
+            const disabledClass = _customPersonaActive ? ' disabled' : '';
             row.innerHTML = subtypes.map(s => `
-                <button class="subtype-btn${s.id === settingsSelectedSubtype ? ' active' : ''}"
-                        onclick="selectSettingsSubtype('${s.id}')">
+                <button class="subtype-btn${s.id === settingsSelectedSubtype ? ' active' : ''}${disabledClass}"
+                        onclick="selectSettingsSubtype('${s.id}')"${disabledAttr}>
                     ${s.icon} ${isZh ? s.name_zh : s.name_en}
                 </button>
             `).join('');

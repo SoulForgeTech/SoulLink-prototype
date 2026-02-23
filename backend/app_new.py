@@ -1609,6 +1609,38 @@ def submit_contact():
 
 # ==================== 自定义角色 & 知识库 ====================
 
+@app.route("/api/user/search-character", methods=["POST"])
+@login_required
+def search_character_api():
+    """用 Gemini + Google Search 搜索已有角色的详细设定"""
+    from character_parser import search_character
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    query = (data.get("query") or "").strip()
+    if not query:
+        return jsonify({"error": "Search query is required"}), 400
+
+    if len(query) > 200:
+        return jsonify({"error": "Query too long (max 200 chars)"}), 400
+
+    result = search_character(query)
+
+    if result.get("success"):
+        return jsonify({
+            "success": True,
+            "description": result.get("description"),
+            "query": result.get("query")
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": result.get("error", "Search failed")
+        }), 500
+
+
 @app.route("/api/user/import-persona", methods=["POST"])
 @login_required
 def import_persona():
@@ -1759,16 +1791,18 @@ def import_lore():
 
         # 先清除旧的知识库文档（如果有）
         user = db.db["users"].find_one({"_id": user_id})
-        old_doc = (user or {}).get("settings", {}).get("custom_lore_doc_name")
-        if old_doc:
+        old_settings = (user or {}).get("settings", {})
+        # 优先用 doc_location (full docpath)，fallback 到 doc_name
+        old_doc_location = old_settings.get("custom_lore_doc_location") or old_settings.get("custom_lore_doc_name")
+        if old_doc_location:
             try:
                 api_cleanup = AnythingLLMAPI(
                     base_url=workspace_manager.anythingllm_base_url,
                     api_key=workspace_manager.anythingllm_api_key,
                     workspace_slug=workspace["slug"]
                 )
-                api_cleanup.remove_document_from_workspace(old_doc)
-                logger.info(f"[LORE] Cleaned up old document: {old_doc}")
+                api_cleanup.remove_document_from_workspace(old_doc_location)
+                logger.info(f"[LORE] Cleaned up old document: {old_doc_location}")
             except Exception as e:
                 logger.warning(f"[LORE] Failed to clean old doc: {e}")
 
@@ -1796,16 +1830,19 @@ def import_lore():
             pass
 
         if result.get("status_code") == 200 and result.get("data", {}).get("success"):
-            # 成功
+            # 成功 — 保存 docpath 用于后续清除向量数据
+            doc_location = result.get("data", {}).get("document_location", doc_name)
             db.db["users"].update_one(
                 {"_id": user_id},
                 {"$set": {
                     "settings.custom_lore_status": "ready",
                     "settings.custom_lore_imported_at": datetime.utcnow().isoformat(),
                     "settings.custom_lore_original_filename": original_filename,
+                    "settings.custom_lore_doc_name": doc_name,
+                    "settings.custom_lore_doc_location": doc_location,  # Full docpath for cleanup
                 }}
             )
-            logger.info(f"[LORE] Knowledge base uploaded for user {user_id}: {doc_name}")
+            logger.info(f"[LORE] Knowledge base uploaded for user {user_id}: {doc_name} (location: {doc_location})")
             return jsonify({
                 "success": True,
                 "status": "ready",
@@ -1869,11 +1906,14 @@ def clear_lore():
     user_id = get_current_user_id()
 
     try:
-        # 获取当前文档名
+        # 获取当前文档名 + docpath
         user = db.db["users"].find_one({"_id": user_id})
-        doc_name = (user or {}).get("settings", {}).get("custom_lore_doc_name")
+        settings = (user or {}).get("settings", {})
+        doc_name = settings.get("custom_lore_doc_name")
+        # 优先使用 doc_location（full docpath），如果没有则 fallback 到 doc_name
+        doc_location = settings.get("custom_lore_doc_location") or doc_name
 
-        if doc_name:
+        if doc_location:
             # 从 AnythingLLM workspace 删除向量数据
             workspace = db.get_workspace_by_user(user_id)
             if workspace and workspace.get("slug"):
@@ -1882,9 +1922,9 @@ def clear_lore():
                     api_key=workspace_manager.anythingllm_api_key,
                     workspace_slug=workspace["slug"]
                 )
-                delete_result = api.remove_document_from_workspace(doc_name)
+                delete_result = api.remove_document_from_workspace(doc_location)
                 if delete_result.get("success"):
-                    logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_name}")
+                    logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_location}")
                 else:
                     logger.warning(f"[LORE] Failed to delete vectors: {delete_result}")
 
@@ -1894,6 +1934,7 @@ def clear_lore():
             {"$unset": {
                 "settings.custom_lore_status": "",
                 "settings.custom_lore_doc_name": "",
+                "settings.custom_lore_doc_location": "",
                 "settings.custom_lore_imported_at": "",
                 "settings.custom_lore_original_filename": "",
             }}
