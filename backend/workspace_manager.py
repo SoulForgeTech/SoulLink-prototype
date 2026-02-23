@@ -319,6 +319,44 @@ class WorkspaceManager:
         # Fallback to default female template
         return self._load_system_prompt_template("female")
 
+    def _generate_subtype_default_persona(self, companion_subtype: str) -> str:
+        """当用户跳过性格测试时，基于子类型生成包含角色类型信息的默认 persona"""
+        try:
+            from personality_engine import COMPANION_SUBTYPES
+            subtype_info = COMPANION_SUBTYPES.get(companion_subtype, COMPANION_SUBTYPES.get("female_gentle", {}))
+            subtype_name_zh = subtype_info.get("name_zh", "")
+            subtype_name_en = subtype_info.get("name_en", "")
+            core_traits_zh = subtype_info.get("core_zh", [])
+            core_traits_en = subtype_info.get("core_en", [])
+
+            is_male = companion_subtype.startswith("male_")
+            gender_label = "男性/male" if is_male else "女性/female"
+            role_label = "男朋友/boyfriend" if is_male else "女朋友/girlfriend"
+
+            core_lines = []
+            for i in range(len(core_traits_zh)):
+                core_lines.append(core_traits_zh[i])
+                if i < len(core_traits_en):
+                    core_lines.append(core_traits_en[i])
+
+            persona = f"""# Persona (性格设定/Personality) — 最重要 / Most Important!
+你的性别是**{gender_label}**，你是 {{{{user_name}}}} 的{role_label}。
+
+**角色类型 / Character type：{subtype_name_zh} ({subtype_name_en})**
+这是你最核心的人设 / This is your core identity. 每次对话必须体现 / Must embody in every response.
+
+**核心性格 / Core Personality（必须鲜明体现 / MUST reflect clearly）：**
+{chr(10).join(core_lines)}
+
+⚠️ 以上不是背景设定，是你说话和行为的方式。每句回复自然体现至少一个特征。
+⚠️ These are NOT background — they define HOW you speak. Every reply should reflect at least one trait.
+
+始终保持 {subtype_name_zh} 角色特征 / Always maintain {subtype_name_en} character identity."""
+            return persona
+        except Exception as e:
+            print(f"[PROMPT] Failed to generate subtype persona: {e}")
+            return None
+
     def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False) -> str:
         """构建完整的 system prompt"""
         # 自定义角色性格生效时，使用专用模板（不含固定的性别/girlfriend等设定）
@@ -421,6 +459,12 @@ class WorkspaceManager:
                 pt = (user.get("personality_test") or {}) if user else {}
                 if pt.get("completed"):
                     persona = pt.get("personality_profile")
+
+        # 如果 persona 仍然为空（跳过了性格测试），基于子类型生成默认 persona
+        if persona is None and user:
+            companion_subtype = user.get("settings", {}).get("companion_subtype", "female_gentle")
+            persona = self._generate_subtype_default_persona(companion_subtype)
+            print(f"[PROMPT] Generated subtype default persona for {companion_subtype}")
 
         # 如果没有传入 companion_name，从用户设置中获取
         if companion_name is None:
@@ -549,6 +593,12 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             else:
                 pt = user.get("personality_test") or {}
                 persona = pt.get("personality_profile") if pt.get("completed") else None
+
+            # 如果 persona 仍然为空（跳过了性格测试），基于子类型生成默认 persona
+            if persona is None:
+                companion_subtype = user.get("settings", {}).get("companion_subtype", "female_gentle")
+                persona = self._generate_subtype_default_persona(companion_subtype)
+                print(f"[MODEL_SWITCH] Generated subtype default persona for {companion_subtype}")
 
             # 加载用户记忆（亲密度等），避免切换模型时丢失
             memory_text = ""
