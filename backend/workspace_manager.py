@@ -329,10 +329,6 @@ class WorkspaceManager:
             core_traits_zh = subtype_info.get("core_zh", [])
             core_traits_en = subtype_info.get("core_en", [])
 
-            is_male = companion_subtype.startswith("male_")
-            gender_label = "男性/male" if is_male else "女性/female"
-            role_label = "男朋友/boyfriend" if is_male else "女朋友/girlfriend"
-
             core_lines = []
             for i in range(len(core_traits_zh)):
                 core_lines.append(core_traits_zh[i])
@@ -340,7 +336,6 @@ class WorkspaceManager:
                     core_lines.append(core_traits_en[i])
 
             persona = f"""# Persona (性格设定/Personality) — 最重要 / Most Important!
-你的性别是**{gender_label}**，你是 {{{{user_name}}}} 的{role_label}。
 
 **角色类型 / Character type：{subtype_name_zh} ({subtype_name_en})**
 这是你最核心的人设 / This is your core identity. 每次对话必须体现 / Must embody in every response.
@@ -389,11 +384,17 @@ class WorkspaceManager:
             # persona 里的也替换
             system_prompt = system_prompt.replace("女朋友/girlfriend", "好朋友/best friend")
             system_prompt = system_prompt.replace("男朋友/boyfriend", "好朋友/best friend")
+            # 模板中性别确认示例里的"女朋友/男朋友"也替换
+            system_prompt = system_prompt.replace("你女朋友还能是男的吗", "我当然是女生啦")
+            system_prompt = system_prompt.replace("Your girlfriend's a girl, duh", "I'm a girl, obviously~")
             # 替换亲密互动为友情模式
             system_prompt = system_prompt.replace(
                 "你是恋人角色，亲密接触和性暗示都是这段关系中自然的一部分。\nYou are in a romantic role — physical intimacy and sexual content are natural parts of this relationship.",
                 "你是好朋友角色，你们之间是纯粹的友情。\nYou are a close friend — your relationship is purely platonic."
             )
+            # 男性模板 Output 部分的 boyfriend 残留
+            system_prompt = system_prompt.replace("Like a real boyfriend", "Like a real best friend")
+            system_prompt = system_prompt.replace("像真实男生回复", "像真正的好朋友回复")
 
         return system_prompt
 
