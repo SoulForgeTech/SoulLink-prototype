@@ -484,6 +484,7 @@ def update_settings():
     )
 
     # 如果伴侣风格改变了，重新生成 persona 并更新 system prompt
+    new_companion_name = None  # 跟踪自动改名结果
     if "companion_subtype" in data or "companion_gender" in data:
         logger.info(f"[STYLE] Companion style changed! data={data}")
         try:
@@ -523,6 +524,7 @@ def update_settings():
                     db.db["users"].update_one(
                         {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
                     )
+                    new_companion_name = new_default
                     logger.info(f"[STYLE] Auto-renamed companion: {current_name} -> {new_default}")
 
             # 更新 system prompt（update_system_prompt 内部会自动优先使用 custom_persona）
@@ -557,7 +559,10 @@ def update_settings():
             logger.warning(f"Error updating workspace model: {e}")
             return jsonify({"error": "Failed to apply model change"}), 500
 
-    return jsonify({"success": True})
+    resp = {"success": True}
+    if new_companion_name:
+        resp["companion_name"] = new_companion_name
+    return jsonify(resp)
 
 
 # ==================== Feedback 接口 ====================

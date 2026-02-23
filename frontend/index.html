@@ -7911,6 +7911,8 @@
                             const respData = await settingsResponse.clone().json().catch(() => null);
                             if (respData && respData.companion_name) {
                                 state.user.settings.companion_name = respData.companion_name;
+                                // 同步更新 UI 显示
+                                document.getElementById('companion-name-display').textContent = respData.companion_name;
                             }
                         }
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
