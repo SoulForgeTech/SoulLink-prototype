@@ -7809,7 +7809,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         core_persona: _personaPreview.core_persona,
-                        name: _personaPreview.name
+                        name: _personaPreview.name,
+                        appearance: _personaPreview.appearance || undefined
                     })
                 });
 
