@@ -8041,8 +8041,8 @@
             const styleChanged = genderChanged || subtypeChanged || relChanged;
             if (styleChanged) hasChanges = true;
 
-            // 切换性别后必须选择风格（自定义性格除外）
-            if (genderChanged && !_customPersonaActive && !settingsSelectedSubtype) {
+            // 有风格相关变更时，必须选择伴侣风格（自定义性格除外）
+            if (styleChanged && !_customPersonaActive && !settingsSelectedSubtype) {
                 const isZh = state.language === 'zh-CN';
                 alert(isZh ? '请选择一个伴侣风格' : 'Please select a companion style');
                 return;
