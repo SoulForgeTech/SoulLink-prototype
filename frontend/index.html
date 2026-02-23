@@ -4194,7 +4194,7 @@
             </div>
             <div class="changelog-body">
 
-                <!-- v0.0.7-beta — 待全量推送自定义角色功能后再取消注释
+                <!-- v0.0.7-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
                         <span class="ver">v0.0.7-beta</span>
@@ -4203,14 +4203,15 @@
                     <ul class="changelog-list">
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v170.1">Custom character persona — enter a character name, AI auto-searches & extracts personality</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v170.2">Multi-file knowledge base — upload up to 10 docs, each independently manageable</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v170.3">Relationship toggle — choose Lover or Friend mode for your companion</span></li>
                         <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v170.4">Knowledge base file list with per-item delete</span></li>
                         <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v170.5">Show estimated wait time during persona extraction</span></li>
                         <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v170.6">Lock settings modal during extraction to prevent accidental close</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v170.7">Switching gender now requires re-selecting companion style</span></li>
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v170.9">Fixed Grok immersion rules lost on style change</span></li>
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v170.10">Fixed blank persona for users who skipped personality test</span></li>
                     </ul>
                 </div>
-                -->
 
                 <!-- v0.0.6-beta -->
                 <div class="changelog-version">
@@ -4989,9 +4990,11 @@
                 'changelog.title': 'Changelog',
                 'changelog.v170.1': 'Custom character persona — enter a character name, AI auto-searches & extracts personality',
                 'changelog.v170.2': 'Multi-file knowledge base — upload up to 10 docs, each independently manageable',
+                'changelog.v170.3': 'Relationship toggle — choose Lover or Friend mode for your companion',
                 'changelog.v170.4': 'Knowledge base file list with per-item delete',
                 'changelog.v170.5': 'Show estimated wait time during persona extraction',
                 'changelog.v170.6': 'Lock settings modal during extraction to prevent accidental close',
+                'changelog.v170.7': 'Switching gender now requires re-selecting companion style',
                 'changelog.v170.9': 'Fixed Grok immersion rules lost on style change',
                 'changelog.v170.10': 'Fixed blank persona for users who skipped personality test',
                 'changelog.v160.1': 'Name your companion during registration — make them truly yours',
@@ -5185,9 +5188,11 @@
                 'changelog.title': '版本日志',
                 'changelog.v170.1': '自定义角色性格 — 输入角色名，AI自动搜索+提取性格',
                 'changelog.v170.2': '多文件知识库 — 最多上传10个文档，支持独立管理',
+                'changelog.v170.3': '关系切换 — 自由选择恋人或朋友模式',
                 'changelog.v170.4': '知识库文件列表，支持逐个删除',
                 'changelog.v170.5': '提取性格时显示预估等待时间',
                 'changelog.v170.6': '提取过程中锁定弹窗，防止误关',
+                'changelog.v170.7': '切换性别后必须重新选择伴侣风格',
                 'changelog.v170.9': '修复切换风格时Grok沉浸规则丢失',
                 'changelog.v170.10': '修复跳过性格测试后默认性格描述为空',
                 'changelog.v160.1': '注册时可给伴侣取名 — 让TA真正属于你',
@@ -7170,7 +7175,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.6-beta';
+        const CURRENT_APP_VERSION = 'v0.0.7-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
