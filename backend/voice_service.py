@@ -26,7 +26,9 @@ DEFAULT_TTS_VOICE_FEMALE = "longanhuan"      # Female, Mandarin/English
 DEFAULT_TTS_VOICE_MALE = "longanyang"        # Male, Mandarin/English
 
 # Default ASR settings
-DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
+# Use paraformer-v2 (non-realtime) for file-based recognition
+# paraformer-realtime-v2 is for streaming, doesn't work well with complete files
+DEFAULT_ASR_MODEL = "paraformer-v2"
 
 # Voice mapping based on companion gender/subtype
 VOICE_MAP = {
@@ -118,20 +120,32 @@ class STTCallback(RecognitionCallback):
 
     def __init__(self):
         self.sentences = []
+        self.partial_text = ""
         self.error = None
+        self.all_events = []
 
     def on_event(self, result: RecognitionResult):
         sentence = result.get_sentence()
+        is_end = result.is_sentence_end()
+        logger.info(f"[STT] on_event: sentence={sentence}, is_sentence_end={is_end}")
+        self.all_events.append({"sentence": sentence, "is_end": is_end})
+
         if sentence and sentence.get("text"):
-            if result.is_sentence_end():
+            if is_end:
                 self.sentences.append(sentence["text"])
+            else:
+                # Keep partial results as fallback
+                self.partial_text = sentence["text"]
 
     def on_error(self, error):
         self.error = str(error)
         logger.error(f"[STT] Recognition error: {error}")
 
     def on_complete(self):
-        logger.info(f"[STT] Recognition complete, {len(self.sentences)} sentences")
+        logger.info(
+            f"[STT] Recognition complete: {len(self.sentences)} sentences, "
+            f"partial='{self.partial_text}', events={len(self.all_events)}"
+        )
 
 
 def recognize_speech(
@@ -174,6 +188,9 @@ def recognize_speech(
         tmp_file.write(audio_data)
         tmp_file.close()
 
+        file_size = os.path.getsize(tmp_file.name)
+        logger.info(f"[STT] Saved temp file: {tmp_file.name}, size={file_size} bytes")
+
         callback = STTCallback()
 
         recognition = Recognition(
@@ -185,22 +202,52 @@ def recognize_speech(
         )
 
         result = recognition.call(tmp_file.name)
+        logger.info(f"[STT] recognition.call() returned: {result}")
 
         if callback.error:
             raise Exception(f"STT error: {callback.error}")
 
-        # Combine all recognized sentences
+        # Try callback sentences first (complete sentences)
         full_text = "".join(callback.sentences)
 
+        # If no complete sentences, use partial text as fallback
+        if not full_text and callback.partial_text:
+            logger.info(f"[STT] No complete sentences, using partial: {callback.partial_text}")
+            full_text = callback.partial_text
+
+        # Also try to extract text from the result object itself
+        if not full_text and result:
+            try:
+                # DashScope result may have output with sentences
+                if hasattr(result, 'output'):
+                    output = result.output
+                    logger.info(f"[STT] result.output: {output}")
+                    if isinstance(output, dict):
+                        if output.get('text'):
+                            full_text = output['text']
+                        elif output.get('sentence'):
+                            sentences = output['sentence']
+                            full_text = ''.join([s.get('text', '') for s in sentences if s.get('text')])
+                elif isinstance(result, dict):
+                    if result.get('text'):
+                        full_text = result['text']
+                    elif result.get('output', {}).get('text'):
+                        full_text = result['output']['text']
+            except Exception as parse_err:
+                logger.warning(f"[STT] Could not parse result object: {parse_err}")
+
         if not full_text:
-            logger.warning("[STT] No text recognized from audio")
+            logger.warning(
+                f"[STT] No text recognized. callback.sentences={callback.sentences}, "
+                f"partial={callback.partial_text}, events={callback.all_events}"
+            )
             return ""
 
-        logger.info(f"[STT] Recognized: {full_text[:100]}...")
+        logger.info(f"[STT] Recognized: {full_text[:200]}")
         return full_text
 
     except Exception as e:
-        logger.error(f"[STT] Recognition failed: {e}")
+        logger.error(f"[STT] Recognition failed: {e}", exc_info=True)
         raise
     finally:
         # Clean up temp file
