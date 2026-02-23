@@ -1726,10 +1726,48 @@ def confirm_persona():
         return jsonify({"error": str(e)}), 500
 
 
+MAX_LORE_DOCS = 10  # 每用户最多知识库文档数
+
+
+def _migrate_lore_fields(user_id, settings):
+    """懒迁移：将旧的单文件 lore 字段转换为新的 docs 数组格式"""
+    if "custom_lore_status" not in settings:
+        return  # 没有旧字段，无需迁移
+    if "custom_lore_docs" in settings:
+        return  # 已经有新字段，无需迁移
+
+    old_status = settings.get("custom_lore_status")
+    migrated_docs = []
+    if old_status in ("ready", "processing"):
+        migrated_docs = [{
+            "id": f"lore_{str(user_id)}_migrated",
+            "doc_name": settings.get("custom_lore_doc_name", f"custom_lore_{str(user_id)}.txt"),
+            "doc_location": settings.get("custom_lore_doc_location", ""),
+            "original_filename": settings.get("custom_lore_original_filename", ""),
+            "imported_at": settings.get("custom_lore_imported_at", ""),
+            "status": old_status,
+        }]
+
+    db.db["users"].update_one(
+        {"_id": user_id},
+        {
+            "$set": {"settings.custom_lore_docs": migrated_docs},
+            "$unset": {
+                "settings.custom_lore_status": "",
+                "settings.custom_lore_doc_name": "",
+                "settings.custom_lore_doc_location": "",
+                "settings.custom_lore_imported_at": "",
+                "settings.custom_lore_original_filename": "",
+            }
+        }
+    )
+    logger.info(f"[LORE] Migrated old lore fields for user {user_id}, docs={len(migrated_docs)}")
+
+
 @app.route("/api/user/import-lore", methods=["POST"])
 @login_required
 def import_lore():
-    """导入知识库资料到 AnythingLLM workspace"""
+    """导入知识库资料到 AnythingLLM workspace（支持多文件，追加模式）"""
     user_id = get_current_user_id()
 
     # 支持两种方式：JSON body（text 字段）或 multipart/form-data（file）
@@ -1762,47 +1800,33 @@ def import_lore():
 
     try:
         import tempfile
+        import time
         from datetime import datetime
 
-        # 生成文档名
-        doc_name = f"custom_lore_{str(user_id)}.txt"
+        # 懒迁移旧字段
+        user = db.db["users"].find_one({"_id": user_id})
+        settings = (user or {}).get("settings", {})
+        _migrate_lore_fields(user_id, settings)
 
-        # 更新状态为 processing
-        db.db["users"].update_one(
-            {"_id": user_id},
-            {"$set": {
-                "settings.custom_lore_status": "processing",
-                "settings.custom_lore_doc_name": doc_name,
-            }}
-        )
+        # 重新读取（迁移后可能变化）
+        user = db.db["users"].find_one({"_id": user_id})
+        existing_docs = (user or {}).get("settings", {}).get("custom_lore_docs", [])
+
+        # 检查数量上限
+        if len(existing_docs) >= MAX_LORE_DOCS:
+            return jsonify({"error": f"Maximum {MAX_LORE_DOCS} documents allowed"}), 400
+
+        # 生成唯一文档名
+        timestamp = int(time.time())
+        doc_id = f"lore_{str(user_id)}_{timestamp}"
+        doc_name = f"{doc_id}.txt"
 
         # 确保用户有 workspace
         workspace_result = workspace_manager.get_or_create_workspace(user_id)
         if not workspace_result["success"]:
-            db.db["users"].update_one(
-                {"_id": user_id},
-                {"$set": {"settings.custom_lore_status": "failed"}}
-            )
             return jsonify({"error": "Failed to get workspace"}), 500
 
         workspace = workspace_result["workspace"]
-
-        # 先清除旧的知识库文档（如果有）
-        user = db.db["users"].find_one({"_id": user_id})
-        old_settings = (user or {}).get("settings", {})
-        # 优先用 doc_location (full docpath)，fallback 到 doc_name
-        old_doc_location = old_settings.get("custom_lore_doc_location") or old_settings.get("custom_lore_doc_name")
-        if old_doc_location:
-            try:
-                api_cleanup = AnythingLLMAPI(
-                    base_url=workspace_manager.anythingllm_base_url,
-                    api_key=workspace_manager.anythingllm_api_key,
-                    workspace_slug=workspace["slug"]
-                )
-                api_cleanup.remove_document_from_workspace(old_doc_location)
-                logger.info(f"[LORE] Cleaned up old document: {old_doc_location}")
-            except Exception as e:
-                logger.warning(f"[LORE] Failed to clean old doc: {e}")
 
         # 写临时文件
         with tempfile.NamedTemporaryFile(
@@ -1828,29 +1852,26 @@ def import_lore():
             pass
 
         if result.get("status_code") == 200 and result.get("data", {}).get("success"):
-            # 成功 — 保存 docpath 用于后续清除向量数据
+            # 成功 — 追加文档到数组
             doc_location = result.get("data", {}).get("document_location", doc_name)
+            new_doc_entry = {
+                "id": doc_id,
+                "doc_name": doc_name,
+                "doc_location": doc_location,
+                "original_filename": original_filename or doc_name,
+                "imported_at": datetime.utcnow().isoformat(),
+                "status": "ready",
+            }
             db.db["users"].update_one(
                 {"_id": user_id},
-                {"$set": {
-                    "settings.custom_lore_status": "ready",
-                    "settings.custom_lore_imported_at": datetime.utcnow().isoformat(),
-                    "settings.custom_lore_original_filename": original_filename,
-                    "settings.custom_lore_doc_name": doc_name,
-                    "settings.custom_lore_doc_location": doc_location,  # Full docpath for cleanup
-                }}
+                {"$push": {"settings.custom_lore_docs": new_doc_entry}}
             )
-            logger.info(f"[LORE] Knowledge base uploaded for user {user_id}: {doc_name} (location: {doc_location})")
+            logger.info(f"[LORE] Knowledge base doc added for user {user_id}: {doc_name} (location: {doc_location})")
             return jsonify({
                 "success": True,
-                "status": "ready",
-                "doc_name": doc_name
+                "doc": new_doc_entry
             })
         else:
-            db.db["users"].update_one(
-                {"_id": user_id},
-                {"$set": {"settings.custom_lore_status": "failed"}}
-            )
             error_msg = result.get("error") or result.get("data", {}).get("error", "Upload failed")
             logger.error(f"[LORE] Upload failed: {error_msg}")
             return jsonify({
@@ -1860,10 +1881,8 @@ def import_lore():
 
     except Exception as e:
         logger.error(f"[LORE] Error importing lore: {e}")
-        db.db["users"].update_one(
-            {"_id": user_id},
-            {"$set": {"settings.custom_lore_status": "failed"}}
-        )
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -1900,54 +1919,71 @@ def clear_persona():
 @app.route("/api/user/clear-lore", methods=["POST"])
 @login_required
 def clear_lore():
-    """清除知识库：从 AnythingLLM 删除向量数据 + 清除 MongoDB 状态"""
+    """清除知识库文档：支持删除单个（传 doc_id）或全部（不传 doc_id）"""
     user_id = get_current_user_id()
+    data = request.get_json() or {}
+    doc_id = data.get("doc_id")  # 可选：指定删除哪个文档
 
-    # 先尝试从 AnythingLLM 删除向量数据（失败不阻塞 MongoDB 清理）
     try:
         user = db.db["users"].find_one({"_id": user_id})
         settings = (user or {}).get("settings", {})
-        doc_name = settings.get("custom_lore_doc_name")
-        doc_location = settings.get("custom_lore_doc_location") or doc_name
-        logger.info(f"[LORE] Clearing lore for user {user_id}, doc_location={doc_location}")
 
-        if doc_location:
-            workspace = db.get_workspace_by_user(user_id)
-            if workspace and workspace.get("slug"):
+        # 懒迁移旧字段
+        _migrate_lore_fields(user_id, settings)
+        # 重新读取
+        user = db.db["users"].find_one({"_id": user_id})
+        docs = (user or {}).get("settings", {}).get("custom_lore_docs", [])
+
+        # 获取 workspace slug
+        workspace = db.get_workspace_by_user(user_id)
+        api = None
+        if workspace and workspace.get("slug"):
+            api = AnythingLLMAPI(
+                base_url=workspace_manager.anythingllm_base_url,
+                api_key=workspace_manager.anythingllm_api_key,
+                workspace_slug=workspace["slug"]
+            )
+
+        if doc_id:
+            # 删除单个文档
+            target_doc = next((d for d in docs if d.get("id") == doc_id), None)
+            if not target_doc:
+                return jsonify({"error": "Document not found"}), 404
+
+            # 从 AnythingLLM 删除（非阻塞）
+            if api and target_doc.get("doc_location"):
                 try:
-                    api = AnythingLLMAPI(
-                        base_url=workspace_manager.anythingllm_base_url,
-                        api_key=workspace_manager.anythingllm_api_key,
-                        workspace_slug=workspace["slug"]
-                    )
-                    delete_result = api.remove_document_from_workspace(doc_location)
-                    if delete_result.get("success"):
-                        logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_location}")
-                    else:
-                        logger.warning(f"[LORE] Failed to delete vectors (non-blocking): {delete_result}")
+                    delete_result = api.remove_document_from_workspace(target_doc["doc_location"])
+                    logger.info(f"[LORE] Deleted doc {doc_id} from AnythingLLM: {delete_result.get('success')}")
                 except Exception as e:
                     logger.warning(f"[LORE] AnythingLLM delete failed (non-blocking): {e}")
-    except Exception as e:
-        logger.warning(f"[LORE] Error reading user data for lore clear (non-blocking): {e}")
 
-    # 始终清除 MongoDB 状态（即使 AnythingLLM 删除失败也要清）
-    try:
-        db.db["users"].update_one(
-            {"_id": user_id},
-            {"$unset": {
-                "settings.custom_lore_status": "",
-                "settings.custom_lore_doc_name": "",
-                "settings.custom_lore_doc_location": "",
-                "settings.custom_lore_imported_at": "",
-                "settings.custom_lore_original_filename": "",
-            }}
-        )
-        logger.info(f"[LORE] Knowledge base cleared for user {user_id}")
+            # 从数组中移除
+            db.db["users"].update_one(
+                {"_id": user_id},
+                {"$pull": {"settings.custom_lore_docs": {"id": doc_id}}}
+            )
+            logger.info(f"[LORE] Removed doc {doc_id} for user {user_id}")
+        else:
+            # 删除全部文档
+            for doc in docs:
+                if api and doc.get("doc_location"):
+                    try:
+                        api.remove_document_from_workspace(doc["doc_location"])
+                    except Exception as e:
+                        logger.warning(f"[LORE] AnythingLLM delete failed for {doc.get('id')}: {e}")
+
+            db.db["users"].update_one(
+                {"_id": user_id},
+                {"$set": {"settings.custom_lore_docs": []}}
+            )
+            logger.info(f"[LORE] Cleared all {len(docs)} docs for user {user_id}")
+
         return jsonify({"success": True})
 
     except Exception as e:
         import traceback
-        logger.error(f"[LORE] Error clearing MongoDB lore state: {e}")
+        logger.error(f"[LORE] Error clearing lore: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -1957,7 +1993,15 @@ def clear_lore():
 def custom_status():
     """获取当前自定义角色和知识库状态"""
     user = get_current_user()
+    user_id = user.get("_id")
     settings = user.get("settings", {})
+
+    # 懒迁移旧的单文件 lore 字段
+    _migrate_lore_fields(user_id, settings)
+    # 重新读取（迁移后可能变化）
+    if "custom_lore_status" in settings and "custom_lore_docs" not in settings:
+        user = db.db["users"].find_one({"_id": user_id})
+        settings = (user or {}).get("settings", {})
 
     return jsonify({
         "persona": {
@@ -1966,10 +2010,8 @@ def custom_status():
             "imported_at": settings.get("custom_persona_imported_at"),
         },
         "lore": {
-            "status": settings.get("custom_lore_status", "none"),
-            "doc_name": settings.get("custom_lore_doc_name"),
-            "imported_at": settings.get("custom_lore_imported_at"),
-            "original_filename": settings.get("custom_lore_original_filename"),
+            "docs": settings.get("custom_lore_docs", []),
+            "max_docs": MAX_LORE_DOCS,
         }
     })
 

@@ -448,12 +448,8 @@ class WorkspaceManager:
                 persona = custom_persona
                 use_custom_template = True  # 使用自定义角色专用模板
                 print(f"[PROMPT] Using custom_persona for user {user_id}")
-                # 如果没有传入 companion_name，使用自定义角色名
-                if companion_name is None:
-                    custom_name = user.get("settings", {}).get("custom_persona_name") if user else None
-                    if custom_name:
-                        companion_name = custom_name
-                        print(f"[PROMPT] Using custom companion_name: {companion_name}")
+                # companion_name 保留用户自己设的昵称，不用角色原名覆盖
+                # persona 里只有性格描述，不含身份声明（"你就是雷姆"之类）
             else:
                 # 回退到性格测试结果
                 pt = (user.get("personality_test") or {}) if user else {}
@@ -586,9 +582,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             if custom_persona:
                 persona = custom_persona
                 use_custom_template = True
-                custom_name = user.get("settings", {}).get("custom_persona_name")
-                if custom_name:
-                    companion_name = custom_name
+                # companion_name 保留用户自己设的昵称，不用角色原名覆盖
                 print(f"[MODEL_SWITCH] Using custom_persona for user {user_id}")
             else:
                 pt = user.get("personality_test") or {}

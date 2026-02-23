@@ -39,7 +39,8 @@ class UserModel:
                 "theme": "dark",
                 "language": "zh-CN",
                 "notifications_enabled": True,
-                "model": "gemini"
+                "model": "gemini",
+                "custom_lore_docs": []
             }
         }
         # 只在有值时才加 google_id，避免 sparse unique 索引冲突
