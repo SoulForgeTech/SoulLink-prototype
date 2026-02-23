@@ -4324,7 +4324,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.6-beta</p>
+                    <p class="about-version">v0.0.7-beta</p>
                 </div>
             </div>
 
@@ -7382,14 +7382,10 @@
             toggleRelationship(settingsSelectedRelationship, true);
 
             // 自定义角色 & 知识库（仅测试用户可见）
-            const TEST_EMAILS = ['test@soullink.com', 'demo@soullink.com', '2579038599@qq.com'];
+            // 自定义角色 & 知识库 — 全量开放
             const customGroup = document.getElementById('custom-character-group');
-            if (TEST_EMAILS.includes(state.user?.email?.toLowerCase())) {
-                customGroup.style.display = '';
-                loadCustomStatus();
-            } else {
-                customGroup.style.display = 'none';
-            }
+            customGroup.style.display = '';
+            loadCustomStatus();
         }
 
         function closeSettingsModal() {
