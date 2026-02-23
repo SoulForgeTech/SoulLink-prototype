@@ -484,7 +484,7 @@ def update_settings():
     )
 
     # 如果伴侣风格改变了，重新生成 persona 并更新 system prompt
-    if "companion_subtype" in data or "companion_gender" in data:
+    if "companion_subtype" in data or "companion_gender" in data or "companion_relationship" in data:
         logger.info(f"[STYLE] Companion style changed! data={data}")
         try:
             from personality_engine import generate_personality_profile, COMPANION_SUBTYPES
