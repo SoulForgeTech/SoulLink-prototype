@@ -2031,6 +2031,155 @@ def custom_status():
     })
 
 
+# ==================== 语音接口 (Voice API) ====================
+
+@app.route("/api/voice/tts", methods=["POST"])
+@login_required
+def voice_tts():
+    """
+    文本转语音 (Text-to-Speech)
+    POST /api/voice/tts
+    Body: { "text": "要合成的文字", "voice": "optional_voice_name" }
+    Returns: audio/mpeg binary data
+    """
+    try:
+        from voice_service import synthesize_speech, check_voice_service_health
+
+        health = check_voice_service_health()
+        if not health["configured"]:
+            return jsonify({"error": "Voice service not configured. DASHSCOPE_API_KEY is missing."}), 503
+
+        data = request.get_json()
+        if not data or not data.get("text"):
+            return jsonify({"error": "Missing 'text' field"}), 400
+
+        text = data["text"].strip()
+        if not text:
+            return jsonify({"error": "Text cannot be empty"}), 400
+
+        # Get user's companion settings for voice selection
+        user = get_current_user()
+        settings = user.get("settings", {})
+        gender = settings.get("companion_gender", "female")
+        subtype = settings.get("companion_subtype", "")
+
+        # Allow optional voice override
+        voice = data.get("voice", None)
+        speech_rate = data.get("speech_rate", 1.0)
+
+        audio_data = synthesize_speech(
+            text=text,
+            voice=voice,
+            gender=gender,
+            subtype=subtype,
+            speech_rate=float(speech_rate),
+        )
+
+        # Return audio as binary response
+        from flask import Response
+        return Response(
+            audio_data,
+            mimetype="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline; filename=tts_output.mp3",
+                "Content-Length": str(len(audio_data)),
+            }
+        )
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"[TTS] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"TTS synthesis failed: {str(e)}"}), 500
+
+
+@app.route("/api/voice/stt", methods=["POST"])
+@login_required
+def voice_stt():
+    """
+    语音转文字 (Speech-to-Text)
+    POST /api/voice/stt
+    Body: multipart/form-data with 'audio' file
+    Optional query params: format (wav/mp3/m4a/webm), sample_rate (16000)
+    Returns: { "success": true, "text": "recognized text" }
+    """
+    try:
+        from voice_service import recognize_speech, check_voice_service_health
+
+        health = check_voice_service_health()
+        if not health["configured"]:
+            return jsonify({"error": "Voice service not configured. DASHSCOPE_API_KEY is missing."}), 503
+
+        # Check for audio file in request
+        if "audio" not in request.files:
+            return jsonify({"error": "No audio file provided. Use 'audio' field in multipart form."}), 400
+
+        audio_file = request.files["audio"]
+        if not audio_file.filename:
+            return jsonify({"error": "Empty audio file"}), 400
+
+        # Read audio data
+        audio_data = audio_file.read()
+        if not audio_data or len(audio_data) < 100:
+            return jsonify({"error": "Audio file is too small or empty"}), 400
+
+        # Determine audio format from filename or request param
+        audio_format = request.form.get("format", "").lower()
+        if not audio_format:
+            filename = audio_file.filename.lower()
+            if filename.endswith(".wav"):
+                audio_format = "wav"
+            elif filename.endswith(".mp3"):
+                audio_format = "mp3"
+            elif filename.endswith(".m4a"):
+                audio_format = "m4a"
+            elif filename.endswith(".webm"):
+                audio_format = "webm"
+            elif filename.endswith(".aac"):
+                audio_format = "aac"
+            elif filename.endswith(".amr"):
+                audio_format = "amr"
+            elif filename.endswith(".opus"):
+                audio_format = "opus"
+            else:
+                audio_format = "wav"  # default
+
+        sample_rate = int(request.form.get("sample_rate", 16000))
+
+        logger.info(f"[STT] Received {len(audio_data)} bytes, format={audio_format}, filename={audio_file.filename}")
+
+        text = recognize_speech(
+            audio_data=audio_data,
+            audio_format=audio_format,
+            sample_rate=sample_rate,
+        )
+
+        return jsonify({
+            "success": True,
+            "text": text,
+        })
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"[STT] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Speech recognition failed: {str(e)}"}), 500
+
+
+@app.route("/api/voice/health", methods=["GET"])
+def voice_health():
+    """语音服务健康检查"""
+    try:
+        from voice_service import check_voice_service_health
+        return jsonify(check_voice_service_health())
+    except ImportError:
+        return jsonify({"configured": False, "error": "voice_service module not found"}), 503
+
+
 # ==================== 启动应用 ====================
 
 if __name__ == "__main__":
