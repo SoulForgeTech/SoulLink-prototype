@@ -484,7 +484,6 @@ def update_settings():
     )
 
     # 如果伴侣风格改变了，重新生成 persona 并更新 system prompt
-    new_companion_name = None  # 跟踪自动改名结果
     if "companion_subtype" in data or "companion_gender" in data:
         logger.info(f"[STYLE] Companion style changed! data={data}")
         try:
@@ -516,16 +515,8 @@ def update_settings():
                 else:
                     logger.info(f"[STYLE] No personality test completed, skipping persona regen")
 
-                # 如果用户使用的是默认名字，自动切换到新子类型的默认名字
-                all_defaults = [s["default_name"] for s in COMPANION_SUBTYPES.values()]
-                current_name = user.get("settings", {}).get("companion_name", "")
-                if current_name in all_defaults or not current_name:
-                    new_default = COMPANION_SUBTYPES.get(subtype, {}).get("default_name", "Companion")
-                    db.db["users"].update_one(
-                        {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
-                    )
-                    new_companion_name = new_default
-                    logger.info(f"[STYLE] Auto-renamed companion: {current_name} -> {new_default}")
+                # 名字始终保持用户自己设置的，切换子类型不自动改名
+                logger.info(f"[STYLE] Keeping user's companion name unchanged")
 
             # 更新 system prompt（update_system_prompt 内部会自动优先使用 custom_persona）
             logger.info(f"[STYLE] Updating system prompt for user {user['name']}")
@@ -559,10 +550,7 @@ def update_settings():
             logger.warning(f"Error updating workspace model: {e}")
             return jsonify({"error": "Failed to apply model change"}), 500
 
-    resp = {"success": True}
-    if new_companion_name:
-        resp["companion_name"] = new_companion_name
-    return jsonify(resp)
+    return jsonify({"success": True})
 
 
 # ==================== Feedback 接口 ====================

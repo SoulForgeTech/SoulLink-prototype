@@ -7907,13 +7907,6 @@
                         if (styleChanged) {
                             state.user.settings.companion_gender = settingsSelectedGender;
                             state.user.settings.companion_subtype = settingsSelectedSubtype;
-                            // 从API响应获取可能更新的companion_name
-                            const respData = await settingsResponse.clone().json().catch(() => null);
-                            if (respData && respData.companion_name) {
-                                state.user.settings.companion_name = respData.companion_name;
-                                // 同步更新 UI 显示
-                                document.getElementById('companion-name-display').textContent = respData.companion_name;
-                            }
                         }
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
                     } else {
