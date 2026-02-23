@@ -3995,7 +3995,7 @@
                 <!-- Register Form -->
                 <form id="register-form" style="display: none;" onsubmit="handleEmailRegister(event)">
                     <div class="form-group">
-                        <label><span data-i18n="register.nickname.label">What should Abigail call you?</span> <span class="required">*</span></label>
+                        <label><span data-i18n="register.nickname.label">What should your companion call you?</span> <span class="required">*</span></label>
                         <input type="text" id="register-name" data-i18n="register.nickname.placeholder" data-i18n-attr="placeholder" placeholder="Your nickname" required minlength="2" maxlength="20">
                         <div class="form-hint" data-i18n="register.nickname.hint">This is how your AI companion will address you</div>
                     </div>
@@ -4089,7 +4089,7 @@
             <h3 data-i18n="rename.title">Rename your companion</h3>
             <p data-i18n="rename.subtitle">Give her a name you like</p>
             <input type="text" class="rename-input" id="rename-input"
-                   maxlength="20" placeholder="Abigail"
+                   maxlength="20" placeholder=""
                    onkeydown="if(event.key==='Enter')saveCompanionName()">
             <div class="rename-btns">
                 <button class="rename-btn-cancel" onclick="closeRenameModal()" data-i18n="rename.cancel">Cancel</button>
@@ -4383,7 +4383,7 @@
                 </div>
                 <div class="settings-form">
                     <div class="form-group">
-                        <label data-i18n="settings.nickname">Nickname (How Abigail calls you)</label>
+                        <label data-i18n="settings.nickname">Nickname (How {companion} calls you)</label>
                         <input type="text" id="settings-name" data-i18n="settings.nickname.placeholder" data-i18n-attr="placeholder" placeholder="Your nickname" maxlength="20">
                     </div>
                     <div class="form-group">
@@ -4396,7 +4396,7 @@
                         <div class="model-selector" id="model-selector">
                             <!-- 由 JS 动态填充 -->
                         </div>
-                        <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers Abigail</div>
+                        <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers {companion}</div>
                     </div>
                     <div class="form-group">
                         <label data-i18n="settings.companion.style">Companion Style</label>
@@ -4430,10 +4430,7 @@
                                     data-i18n="settings.custom.persona.placeholder" data-i18n-attr="placeholder"
                                     placeholder="Enter a character name to search (e.g., Rem, Ganyu) or describe the personality you want..."></textarea>
                                 <div class="custom-actions">
-                                    <button class="custom-btn secondary" id="btn-search-character" onclick="searchCharacter()">
-                                        🔍 <span data-i18n="settings.custom.persona.search">Search Character</span>
-                                    </button>
-                                    <button class="custom-btn primary" id="btn-extract-persona" onclick="extractPersona()">
+                                    <button class="custom-btn primary" id="btn-extract-persona" onclick="smartExtractPersona()">
                                         ✨ <span data-i18n="settings.custom.persona.extract">Extract Personality</span>
                                     </button>
                                 </div>
@@ -4571,7 +4568,7 @@
             <input type="text" id="companion-name-input"
                    style="width: 80%; max-width: 280px; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.15); border-radius: 12px; font-size: 1.1rem; text-align: center; outline: none; transition: border-color 0.2s; background: rgba(255,255,255,0.08); color: #fff; backdrop-filter: blur(10px);"
                    onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'"
-                   placeholder="Abigail" maxlength="20">
+                   placeholder="" maxlength="20">
 
             <!-- 模型选择 -->
             <h3 style="color: #c4c9d4; font-size: 0.95rem; margin: 28px 0 14px; font-weight: 500;" data-i18n="naming.model.title">Choose an AI model</h3>
@@ -4590,7 +4587,7 @@
         <div class="reminder-content">
             <div class="reminder-icon">🔮</div>
             <h3 class="reminder-title" data-i18n="reminder.title">Discover Your Soul Match</h3>
-            <p class="reminder-message" data-i18n="reminder.message">Take a quick personality test so Abigail can truly understand you.</p>
+            <p class="reminder-message" data-i18n="reminder.message">Take a quick personality test so your companion can truly understand you.</p>
             <div class="reminder-buttons">
                 <button class="reminder-btn secondary" onclick="dismissReminder()" data-i18n="reminder.later">Maybe Later</button>
                 <button class="reminder-btn primary" onclick="startPersonalityTest()" data-i18n="reminder.start">Take the Test</button>
@@ -4707,7 +4704,7 @@
                 </div>
 
                 <div class="typing-indicator" id="typing-indicator">
-                    <img class="message-avatar" src="images/avatar.png" alt="Abigail">
+                    <img class="message-avatar" src="images/avatar.png" alt="Companion">
                     <div class="typing-bubble">
                         <div class="typing-dots">
                             <span></span>
@@ -5123,9 +5120,22 @@
             }
         };
 
+        const SUBTYPE_DEFAULTS = {
+            male_ceo: 'Aiden', male_warm: 'Lucian', male_sunshine: 'Leo', male_guardian: 'Gavin',
+            female_gentle: 'Abigail', female_cute: 'Mia', female_cool: 'Serena', female_sweet: 'Luna',
+        };
+
+        function getSubtypeDefaultName(subtype) {
+            return SUBTYPE_DEFAULTS[subtype] || 'Companion';
+        }
+
         function getDefaultCompanionName() {
-            const gender = state.user?.settings?.companion_gender || 'female';
-            return gender === 'male' ? 'Gavin' : 'Abigail';
+            // 优先使用自定义角色名
+            const customName = state.user?.settings?.custom_persona_name;
+            if (customName) return customName;
+            // 其次使用子类型默认名
+            const subtype = state.user?.settings?.companion_subtype || 'female_gentle';
+            return getSubtypeDefaultName(subtype);
         }
 
         function t(key) {
@@ -7281,9 +7291,16 @@
                     personaStatus.className = 'custom-status active';
                     personaStatus.style.display = 'flex';
                     _customPersonaActive = true;
+                    // 同步自定义角色名到 state，确保 UI 显示正确的名字
+                    if (data.persona.name && state.user?.settings) {
+                        state.user.settings.custom_persona_name = data.persona.name;
+                    }
                 } else {
                     personaStatus.style.display = 'none';
                     _customPersonaActive = false;
+                    if (state.user?.settings) {
+                        delete state.user.settings.custom_persona_name;
+                    }
                 }
                 // 根据自定义性格状态，切换伴侣风格 subtype 禁用
                 toggleSubtypeDisabled(_customPersonaActive);
@@ -7320,52 +7337,85 @@
             }
         }
 
-        async function extractPersona() {
+        async function smartExtractPersona() {
             const input = document.getElementById('custom-persona-input');
             const btn = document.getElementById('btn-extract-persona');
             const text = input.value.trim();
+            const isZh = state.language === 'zh-CN';
 
             if (!text) {
                 input.focus();
                 return;
             }
 
-            // 前端最小长度检查
-            if (text.length < 10) {
-                const isZh = state.language === 'zh-CN';
-                alert(isZh ? '请输入至少 10 个字符的角色描述' : 'Please enter at least 10 characters for the character description');
-                input.focus();
-                return;
-            }
+            // 如果输入较短（<100字符），判定为角色名搜索 → 自动先搜索再提取
+            // 如果输入较长（>=100字符），判定为已有角色描述 → 直接提取
+            const isShortQuery = text.length < 100;
 
-            // 显示加载状态
             const originalText = btn.querySelector('span').textContent;
             btn.disabled = true;
-            btn.querySelector('span').textContent = t('settings.custom.persona.extracting') || 'Extracting...';
 
             try {
+                let descriptionToExtract = text;
+
+                if (isShortQuery) {
+                    // Step 1: 自动搜索角色
+                    btn.querySelector('span').textContent = isZh ? '搜索角色中...' : 'Searching character...';
+
+                    const searchResp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/search-character`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: text })
+                    });
+
+                    const searchData = await searchResp.json();
+
+                    if (searchData.success && searchData.description) {
+                        // 搜索成功，用搜索结果作为提取输入
+                        descriptionToExtract = searchData.description;
+                        // 同时更新文本框让用户看到搜索到的内容
+                        input.value = descriptionToExtract;
+                        input.style.height = 'auto';
+                        input.style.height = Math.min(input.scrollHeight, 300) + 'px';
+                    } else {
+                        // 搜索无结果，但输入太短无法直接提取
+                        if (text.length < 10) {
+                            alert(isZh ? '未找到该角色信息，请尝试更具体的名字或直接粘贴角色描述' : 'Character not found. Try a more specific name or paste a character description directly.');
+                            return;
+                        }
+                        // 搜索无结果但输入够长，继续尝试提取
+                    }
+                } else {
+                    // 长文本直接提取，最小长度检查
+                    if (text.length < 10) {
+                        alert(isZh ? '请输入至少 10 个字符的角色描述' : 'Please enter at least 10 characters for the character description');
+                        input.focus();
+                        return;
+                    }
+                }
+
+                // Step 2: 提取性格
+                btn.querySelector('span').textContent = isZh ? '提取性格中...' : 'Extracting personality...';
+
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-persona`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
+                    body: JSON.stringify({ text: descriptionToExtract })
                 });
 
                 const data = await resp.json();
 
                 if (data.success && data.preview) {
                     _personaPreview = data.preview;
-                    // 显示预览卡片
                     const previewCard = document.getElementById('persona-preview-card');
                     const previewText = document.getElementById('persona-preview-text');
                     previewText.textContent = data.preview.core_persona;
                     previewCard.classList.add('show');
                 } else {
-                    // 提取失败 — 不显示预览卡片，直接提示用户
-                    const isZh = state.language === 'zh-CN';
                     alert(data.error || (isZh ? '提取失败，请提供更详细的角色描述' : 'Extraction failed, please provide a more detailed description'));
                 }
             } catch (e) {
-                console.error('[PERSONA] Extract error:', e);
+                console.error('[PERSONA] Smart extract error:', e);
                 alert('Network error, please retry');
             } finally {
                 btn.disabled = false;
@@ -8261,7 +8311,8 @@
             // 根据性别设置默认 placeholder
             const isMale = state.selectedGender === 'male';
             const isZh = state.language === 'zh-CN';
-            input.placeholder = isMale ? (isZh ? '例如：Gavin' : 'e.g. Gavin') : (isZh ? '例如：Abigail' : 'e.g. Abigail');
+            const subtypeDefault = getSubtypeDefaultName(state.selectedSubtype || (isMale ? 'male_ceo' : 'female_gentle'));
+            input.placeholder = isZh ? `例如：${subtypeDefault}` : `e.g. ${subtypeDefault}`;
             input.value = '';
             setTimeout(() => input.focus(), 300);
 
@@ -8309,7 +8360,7 @@
             const input = document.getElementById('companion-name-input');
             const name = input.value.trim();
             // 如果用户没输入，用默认名
-            const companionName = name || (state.selectedGender === 'male' ? 'Gavin' : 'Abigail');
+            const companionName = name || getSubtypeDefaultName(state.selectedSubtype || (state.selectedGender === 'male' ? 'male_ceo' : 'female_gentle'));
             const chosenModel = state._onboardingModel || 'grok';
 
             showLoading(state.language === 'zh-CN' ? '正在设置...' : 'Setting up...');

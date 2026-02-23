@@ -495,32 +495,37 @@ def update_settings():
             language = user.get("settings", {}).get("language", "en")
             logger.info(f"[STYLE] subtype={subtype}, gender={gender}, language={language}")
 
-            pt = user.get("personality_test", {})
-            if pt.get("completed"):
-                # 重新生成 persona
-                logger.info(f"[STYLE] Regenerating persona for subtype={subtype}")
-                new_profile = generate_personality_profile(
-                    pt["dimensions"], pt["tarot_cards"], language, subtype
-                )
-                db.db["users"].update_one(
-                    {"_id": user_id},
-                    {"$set": {"personality_test.personality_profile": new_profile}}
-                )
-                logger.info(f"[STYLE] New persona saved, length={len(new_profile)}")
+            # 如果自定义角色性格生效中，跳过 persona 重新生成和自动改名
+            custom_persona = user.get("settings", {}).get("custom_persona")
+            if custom_persona:
+                logger.info(f"[STYLE] Custom persona active, skipping persona regen & auto-rename")
             else:
-                logger.info(f"[STYLE] No personality test completed, skipping persona regen")
+                pt = user.get("personality_test", {})
+                if pt.get("completed"):
+                    # 重新生成 persona
+                    logger.info(f"[STYLE] Regenerating persona for subtype={subtype}")
+                    new_profile = generate_personality_profile(
+                        pt["dimensions"], pt["tarot_cards"], language, subtype
+                    )
+                    db.db["users"].update_one(
+                        {"_id": user_id},
+                        {"$set": {"personality_test.personality_profile": new_profile}}
+                    )
+                    logger.info(f"[STYLE] New persona saved, length={len(new_profile)}")
+                else:
+                    logger.info(f"[STYLE] No personality test completed, skipping persona regen")
 
-            # 如果用户使用的是默认名字，自动切换到新子类型的默认名字
-            all_defaults = [s["default_name"] for s in COMPANION_SUBTYPES.values()]
-            current_name = user.get("settings", {}).get("companion_name", "Abigail")
-            if current_name in all_defaults or not current_name:
-                new_default = COMPANION_SUBTYPES.get(subtype, {}).get("default_name", "Abigail")
-                db.db["users"].update_one(
-                    {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
-                )
-                logger.info(f"[STYLE] Auto-renamed companion: {current_name} -> {new_default}")
+                # 如果用户使用的是默认名字，自动切换到新子类型的默认名字
+                all_defaults = [s["default_name"] for s in COMPANION_SUBTYPES.values()]
+                current_name = user.get("settings", {}).get("companion_name", "")
+                if current_name in all_defaults or not current_name:
+                    new_default = COMPANION_SUBTYPES.get(subtype, {}).get("default_name", "Companion")
+                    db.db["users"].update_one(
+                        {"_id": user_id}, {"$set": {"settings.companion_name": new_default}}
+                    )
+                    logger.info(f"[STYLE] Auto-renamed companion: {current_name} -> {new_default}")
 
-            # 更新 system prompt
+            # 更新 system prompt（update_system_prompt 内部会自动优先使用 custom_persona）
             logger.info(f"[STYLE] Updating system prompt for user {user['name']}")
             result = workspace_manager.update_system_prompt(user_id, user["name"])
             logger.info(f"[STYLE] update_system_prompt result: {result}")

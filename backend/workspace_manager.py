@@ -117,7 +117,7 @@ class WorkspaceManager:
         # 回退到环境变量
         return os.getenv(
             "ANYTHINGLLM_SYSTEM_PROMPT",
-            "You are Abigail, a caring and empathetic AI companion."
+            "You are a caring and empathetic AI companion."
         )
 
     def _generate_workspace_slug(self, user_id: ObjectId, email: str) -> str:
@@ -294,7 +294,7 @@ class WorkspaceManager:
 - **不轻易妥协**：有自己的想法和态度，不会什么都说好。
 - **Doesn't easily compromise**: Has own thoughts and attitude, won't agree to everything."""
 
-    DEFAULT_COMPANION_NAME = "Abigail"
+    DEFAULT_COMPANION_NAME = "Companion"
 
     # 子类型对应的默认名字
     DEFAULT_COMPANION_NAMES = {
@@ -304,9 +304,28 @@ class WorkspaceManager:
         "female_cool": "Serena", "female_sweet": "Luna",
     }
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None) -> str:
+    def _load_custom_template(self) -> str:
+        """加载自定义角色专用模板"""
+        template_path = os.path.join(os.path.dirname(__file__), "system_prompt_template_custom.txt")
+        try:
+            if os.path.exists(template_path):
+                with open(template_path, "r", encoding="utf-8") as f:
+                    template = f.read().strip()
+                    if template:
+                        print(f"Loaded CUSTOM system prompt template ({len(template)} chars)")
+                        return template
+        except Exception as e:
+            print(f"Failed to load custom template: {e}")
+        # Fallback to default female template
+        return self._load_system_prompt_template("female")
+
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False) -> str:
         """构建完整的 system prompt"""
-        system_prompt_template = self._load_system_prompt_template(companion_gender)
+        # 自定义角色性格生效时，使用专用模板（不含固定的性别/girlfriend等设定）
+        if use_custom_template:
+            system_prompt_template = self._load_custom_template()
+        else:
+            system_prompt_template = self._load_system_prompt_template(companion_gender)
 
         # 先插入 persona（因为 persona 中可能包含 {{user_name}} 占位符）
         default_persona = self.DEFAULT_PERSONA_MALE if companion_gender == "male" else self.DEFAULT_PERSONA
@@ -383,12 +402,20 @@ class WorkspaceManager:
             language = user.get("settings", {}).get("language", "en") if user else "en"
 
         # 如果没有传入 persona，优先使用自定义角色性格，其次性格测试结果
+        use_custom_template = False
         if persona is None:
             # 优先检查自定义角色性格 (custom_persona)
             custom_persona = user.get("settings", {}).get("custom_persona") if user else None
             if custom_persona:
                 persona = custom_persona
+                use_custom_template = True  # 使用自定义角色专用模板
                 print(f"[PROMPT] Using custom_persona for user {user_id}")
+                # 如果没有传入 companion_name，使用自定义角色名
+                if companion_name is None:
+                    custom_name = user.get("settings", {}).get("custom_persona_name") if user else None
+                    if custom_name:
+                        companion_name = custom_name
+                        print(f"[PROMPT] Using custom companion_name: {companion_name}")
             else:
                 # 回退到性格测试结果
                 pt = (user.get("personality_test") or {}) if user else {}
@@ -421,7 +448,7 @@ class WorkspaceManager:
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
+        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template)
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         payload = {
@@ -492,9 +519,22 @@ class WorkspaceManager:
         if user:
             user_name = user.get("name", "Friend")
             language = user.get("settings", {}).get("language", "en")
-            persona = user.get("persona")
             companion_name = user.get("settings", {}).get("companion_name")
             companion_gender = user.get("settings", {}).get("companion_gender", "female")
+
+            # 优先使用自定义角色性格，其次性格测试结果（和 update_system_prompt 逻辑一致）
+            use_custom_template = False
+            custom_persona = user.get("settings", {}).get("custom_persona")
+            if custom_persona:
+                persona = custom_persona
+                use_custom_template = True
+                custom_name = user.get("settings", {}).get("custom_persona_name")
+                if custom_name:
+                    companion_name = custom_name
+                print(f"[MODEL_SWITCH] Using custom_persona for user {user_id}")
+            else:
+                pt = user.get("personality_test", {})
+                persona = pt.get("personality_profile") if pt.get("completed") else None
 
             # 加载用户记忆（亲密度等），避免切换模型时丢失
             memory_text = ""
@@ -505,11 +545,11 @@ class WorkspaceManager:
             except Exception as e:
                 print(f"[MEMORY] Failed to build memory text in model switch: {e}")
 
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text)
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template)
 
             # Grok 专属：角色锚定 + 内容自由
             if model_id == "grok":
-                companion = companion_name or "Abigail"
+                companion = companion_name or self.DEFAULT_COMPANION_NAME
                 system_prompt += f"""
 
 # Immersion Rules
@@ -812,27 +852,33 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             user_id = user["_id"]
             user_name = user.get("name", "Friend")
             try:
-                # 重新生成 persona（使用最新的 generate_personality_profile）
-                pt = user.get("personality_test", {})
                 settings = user.get("settings", {})
                 language = settings.get("language", "en")
                 companion_subtype = settings.get("companion_subtype", "female_gentle")
 
-                if pt.get("completed") and pt.get("dimensions") and pt.get("tarot_cards"):
-                    new_persona = generate_personality_profile(
-                        pt["dimensions"], pt["tarot_cards"], language, companion_subtype
-                    )
-                    # 更新数据库中的 persona
-                    db.db["users"].update_one(
-                        {"_id": user_id},
-                        {"$set": {"personality_test.personality_profile": new_persona}}
-                    )
-                    regenerated += 1
-                    # 用新 persona 更新 system prompt
-                    result = self.update_system_prompt(user_id, user_name, persona=new_persona)
-                else:
-                    # 没有性格测试数据，直接用最新模板同步
+                # 如果用户有自定义角色性格，跳过 persona 重新生成，直接更新模板
+                custom_persona = settings.get("custom_persona")
+                if custom_persona:
+                    print(f"[SYNC] User {user_name}: has custom_persona, skipping regen")
                     result = self.update_system_prompt(user_id, user_name)
+                else:
+                    # 重新生成 persona（使用最新的 generate_personality_profile）
+                    pt = user.get("personality_test", {})
+                    if pt.get("completed") and pt.get("dimensions") and pt.get("tarot_cards"):
+                        new_persona = generate_personality_profile(
+                            pt["dimensions"], pt["tarot_cards"], language, companion_subtype
+                        )
+                        # 更新数据库中的 persona
+                        db.db["users"].update_one(
+                            {"_id": user_id},
+                            {"$set": {"personality_test.personality_profile": new_persona}}
+                        )
+                        regenerated += 1
+                        # 用新 persona 更新 system prompt
+                        result = self.update_system_prompt(user_id, user_name, persona=new_persona)
+                    else:
+                        # 没有性格测试数据，直接用最新模板同步
+                        result = self.update_system_prompt(user_id, user_name)
 
                 if result.get("success"):
                     synced += 1
