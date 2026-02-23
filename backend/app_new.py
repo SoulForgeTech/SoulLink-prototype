@@ -1607,6 +1607,328 @@ def submit_contact():
         return jsonify({"error": "Server error"}), 500
 
 
+# ==================== 自定义角色 & 知识库 ====================
+
+@app.route("/api/user/import-persona", methods=["POST"])
+@login_required
+def import_persona():
+    """用 Gemini 从用户文本中提取角色核心性格（仅预览，不保存）"""
+    from character_parser import extract_persona_with_ai
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "Text is required"}), 400
+
+    if len(text) > 10000:
+        return jsonify({"error": "Text too long (max 10000 chars)"}), 400
+
+    result = extract_persona_with_ai(text)
+
+    if result.get("success"):
+        return jsonify({
+            "success": True,
+            "preview": {
+                "name": result.get("name"),
+                "core_persona": result.get("core_persona")
+            }
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": result.get("error", "AI extraction failed")
+        }), 500
+
+
+@app.route("/api/user/confirm-persona", methods=["POST"])
+@login_required
+def confirm_persona():
+    """确认并保存角色性格到 system prompt"""
+    user_id = get_current_user_id()
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    core_persona = (data.get("core_persona") or "").strip()
+    if not core_persona:
+        return jsonify({"error": "core_persona is required"}), 400
+
+    persona_name = (data.get("name") or "").strip() or None
+
+    try:
+        from datetime import datetime
+
+        # 保存到 user.settings
+        update_fields = {
+            "settings.custom_persona": core_persona,
+            "settings.custom_persona_imported_at": datetime.utcnow().isoformat(),
+        }
+        if persona_name:
+            update_fields["settings.custom_persona_name"] = persona_name
+        else:
+            update_fields["settings.custom_persona_name"] = None
+
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$set": update_fields}
+        )
+
+        # 更新 system prompt（会自动从 user.settings.custom_persona 读取）
+        user = db.db["users"].find_one({"_id": user_id})
+        user_name = user.get("name", "Friend") if user else "Friend"
+        result = workspace_manager.update_system_prompt(user_id, user_name)
+
+        if result.get("success"):
+            logger.info(f"[PERSONA] Custom persona saved for user {user_id}: {persona_name or 'unnamed'}")
+            return jsonify({"success": True})
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to update system prompt")
+            }), 500
+
+    except Exception as e:
+        logger.error(f"[PERSONA] Error saving persona: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/import-lore", methods=["POST"])
+@login_required
+def import_lore():
+    """导入知识库资料到 AnythingLLM workspace"""
+    user_id = get_current_user_id()
+
+    # 支持两种方式：JSON body（text 字段）或 multipart/form-data（file）
+    text_content = None
+    original_filename = None
+
+    if request.content_type and "multipart/form-data" in request.content_type:
+        # 文件上传
+        if "file" in request.files:
+            file = request.files["file"]
+            if file.filename:
+                original_filename = file.filename
+                try:
+                    text_content = file.read().decode("utf-8")
+                except UnicodeDecodeError:
+                    return jsonify({"error": "File must be UTF-8 text"}), 400
+        # 也可能同时有 text 字段
+        if not text_content:
+            text_content = request.form.get("text", "").strip()
+    else:
+        data = request.get_json()
+        if data:
+            text_content = (data.get("text") or "").strip()
+
+    if not text_content:
+        return jsonify({"error": "No content provided (text or file required)"}), 400
+
+    if len(text_content) > 100000:
+        return jsonify({"error": "Content too large (max 100K chars)"}), 400
+
+    try:
+        import tempfile
+        from datetime import datetime
+
+        # 生成文档名
+        doc_name = f"custom_lore_{str(user_id)}.txt"
+
+        # 更新状态为 processing
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$set": {
+                "settings.custom_lore_status": "processing",
+                "settings.custom_lore_doc_name": doc_name,
+            }}
+        )
+
+        # 确保用户有 workspace
+        workspace_result = workspace_manager.get_or_create_workspace(user_id)
+        if not workspace_result["success"]:
+            db.db["users"].update_one(
+                {"_id": user_id},
+                {"$set": {"settings.custom_lore_status": "failed"}}
+            )
+            return jsonify({"error": "Failed to get workspace"}), 500
+
+        workspace = workspace_result["workspace"]
+
+        # 先清除旧的知识库文档（如果有）
+        user = db.db["users"].find_one({"_id": user_id})
+        old_doc = (user or {}).get("settings", {}).get("custom_lore_doc_name")
+        if old_doc:
+            try:
+                api_cleanup = AnythingLLMAPI(
+                    base_url=workspace_manager.anythingllm_base_url,
+                    api_key=workspace_manager.anythingllm_api_key,
+                    workspace_slug=workspace["slug"]
+                )
+                api_cleanup.remove_document_from_workspace(old_doc)
+                logger.info(f"[LORE] Cleaned up old document: {old_doc}")
+            except Exception as e:
+                logger.warning(f"[LORE] Failed to clean old doc: {e}")
+
+        # 写临时文件
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", delete=False,
+            suffix=f"_{doc_name}"
+        ) as tmp:
+            tmp.write(text_content)
+            tmp_path = tmp.name
+
+        # 上传到 AnythingLLM
+        api = AnythingLLMAPI(
+            base_url=workspace_manager.anythingllm_base_url,
+            api_key=workspace_manager.anythingllm_api_key,
+            workspace_slug=workspace["slug"]
+        )
+
+        result = api.upload_document(tmp_path)
+
+        # 清理临时文件
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+        if result.get("status_code") == 200 and result.get("data", {}).get("success"):
+            # 成功
+            db.db["users"].update_one(
+                {"_id": user_id},
+                {"$set": {
+                    "settings.custom_lore_status": "ready",
+                    "settings.custom_lore_imported_at": datetime.utcnow().isoformat(),
+                    "settings.custom_lore_original_filename": original_filename,
+                }}
+            )
+            logger.info(f"[LORE] Knowledge base uploaded for user {user_id}: {doc_name}")
+            return jsonify({
+                "success": True,
+                "status": "ready",
+                "doc_name": doc_name
+            })
+        else:
+            db.db["users"].update_one(
+                {"_id": user_id},
+                {"$set": {"settings.custom_lore_status": "failed"}}
+            )
+            error_msg = result.get("error") or result.get("data", {}).get("error", "Upload failed")
+            logger.error(f"[LORE] Upload failed: {error_msg}")
+            return jsonify({
+                "success": False,
+                "error": str(error_msg)
+            }), 500
+
+    except Exception as e:
+        logger.error(f"[LORE] Error importing lore: {e}")
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$set": {"settings.custom_lore_status": "failed"}}
+        )
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/clear-persona", methods=["POST"])
+@login_required
+def clear_persona():
+    """清除自定义角色性格，恢复默认 persona"""
+    user_id = get_current_user_id()
+
+    try:
+        # 清除 custom_persona 相关字段
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$unset": {
+                "settings.custom_persona": "",
+                "settings.custom_persona_name": "",
+                "settings.custom_persona_imported_at": "",
+            }}
+        )
+
+        # 更新 system prompt（会回退到性格测试 persona 或默认）
+        user = db.db["users"].find_one({"_id": user_id})
+        user_name = user.get("name", "Friend") if user else "Friend"
+        result = workspace_manager.update_system_prompt(user_id, user_name)
+
+        logger.info(f"[PERSONA] Custom persona cleared for user {user_id}")
+        return jsonify({"success": True})
+
+    except Exception as e:
+        logger.error(f"[PERSONA] Error clearing persona: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/clear-lore", methods=["POST"])
+@login_required
+def clear_lore():
+    """清除知识库：从 AnythingLLM 删除向量数据 + 清除 MongoDB 状态"""
+    user_id = get_current_user_id()
+
+    try:
+        # 获取当前文档名
+        user = db.db["users"].find_one({"_id": user_id})
+        doc_name = (user or {}).get("settings", {}).get("custom_lore_doc_name")
+
+        if doc_name:
+            # 从 AnythingLLM workspace 删除向量数据
+            workspace = db.get_workspace_by_user(user_id)
+            if workspace and workspace.get("slug"):
+                api = AnythingLLMAPI(
+                    base_url=workspace_manager.anythingllm_base_url,
+                    api_key=workspace_manager.anythingllm_api_key,
+                    workspace_slug=workspace["slug"]
+                )
+                delete_result = api.remove_document_from_workspace(doc_name)
+                if delete_result.get("success"):
+                    logger.info(f"[LORE] Vector data deleted for user {user_id}: {doc_name}")
+                else:
+                    logger.warning(f"[LORE] Failed to delete vectors: {delete_result}")
+
+        # 清除 MongoDB 状态
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$unset": {
+                "settings.custom_lore_status": "",
+                "settings.custom_lore_doc_name": "",
+                "settings.custom_lore_imported_at": "",
+                "settings.custom_lore_original_filename": "",
+            }}
+        )
+
+        logger.info(f"[LORE] Knowledge base cleared for user {user_id}")
+        return jsonify({"success": True})
+
+    except Exception as e:
+        logger.error(f"[LORE] Error clearing lore: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/custom-status", methods=["GET"])
+@login_required
+def custom_status():
+    """获取当前自定义角色和知识库状态"""
+    user = get_current_user()
+    settings = user.get("settings", {})
+
+    return jsonify({
+        "persona": {
+            "active": bool(settings.get("custom_persona")),
+            "name": settings.get("custom_persona_name"),
+            "imported_at": settings.get("custom_persona_imported_at"),
+        },
+        "lore": {
+            "status": settings.get("custom_lore_status", "none"),
+            "doc_name": settings.get("custom_lore_doc_name"),
+            "imported_at": settings.get("custom_lore_imported_at"),
+            "original_filename": settings.get("custom_lore_original_filename"),
+        }
+    })
+
+
 # ==================== 启动应用 ====================
 
 if __name__ == "__main__":

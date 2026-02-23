@@ -403,3 +403,31 @@ class AnythingLLMAPI:
         except Exception as e:
             logging.error(f"Error adding document to workspace: {e}")
             return {'success': False, 'error': str(e)}
+
+    def remove_document_from_workspace(self, document_name: str) -> Dict[str, Any]:
+        """
+        Remove a document from workspace (deletes vector embeddings).
+        Uses the same update-embeddings endpoint with the 'deletes' array.
+        """
+        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/update-embeddings"
+        payload = {
+            "adds": [],
+            "deletes": [document_name]
+        }
+
+        logging.info(f"Removing document '{document_name}' from workspace '{self.workspace_slug}'...")
+
+        try:
+            response = self._post_request(url, payload=payload)
+
+            if response.get('status_code') == 200:
+                data = response.get('data', {})
+                logging.info(f"✅ Document '{document_name}' removed from workspace")
+                return {'success': True, 'data': data}
+            else:
+                logging.error(f"Failed to remove document from workspace: {response}")
+                return {'success': False, 'error': response}
+
+        except Exception as e:
+            logging.error(f"Error removing document from workspace: {e}")
+            return {'success': False, 'error': str(e)}

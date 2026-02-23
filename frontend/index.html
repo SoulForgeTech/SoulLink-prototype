@@ -3219,6 +3219,202 @@
             font-weight: 600;
         }
 
+        /* ===== 自定义角色 & 知识库 ===== */
+        .custom-character-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .custom-section-block {
+            background: #f8f7ff;
+            border: 1px solid #e8e5f0;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .custom-section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .custom-section-header .icon {
+            font-size: 18px;
+        }
+        .custom-section-header .title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .custom-section-header .optional-tag {
+            font-size: 11px;
+            color: #a0aec0;
+            background: #edf2f7;
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-left: auto;
+        }
+        .custom-textarea {
+            width: 100%;
+            min-height: 80px;
+            max-height: 200px;
+            padding: 10px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            background: #fff;
+            color: #2d3748;
+            transition: border-color 0.2s;
+            line-height: 1.5;
+        }
+        .custom-textarea:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08);
+        }
+        .custom-textarea::placeholder {
+            color: #a0aec0;
+        }
+        .custom-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .custom-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .custom-btn.primary {
+            background: linear-gradient(135deg, #7c3aed, #a78bfa);
+            color: white;
+        }
+        .custom-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+        .custom-btn.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .custom-btn.secondary {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+        .custom-btn.secondary:hover {
+            background: #e2e8f0;
+        }
+        .custom-btn.danger {
+            background: none;
+            color: #e53e3e;
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+        .custom-btn.danger:hover {
+            background: #fff5f5;
+        }
+        .custom-file-btn {
+            padding: 8px 14px;
+            border: 1.5px dashed #cbd5e0;
+            border-radius: 10px;
+            background: #fff;
+            color: #718096;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .custom-file-btn:hover {
+            border-color: #7c3aed;
+            color: #7c3aed;
+            background: #f8f7ff;
+        }
+        /* Preview card */
+        .custom-preview-card {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(167, 139, 250, 0.04));
+            border: 1.5px solid rgba(124, 58, 237, 0.2);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        .custom-preview-card.show {
+            display: block;
+        }
+        .custom-preview-label {
+            font-size: 12px;
+            color: #7c3aed;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .custom-preview-text {
+            font-size: 13px;
+            color: #4a5568;
+            line-height: 1.6;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .custom-preview-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        /* Status display */
+        .custom-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .custom-status.active {
+            background: #f0fff4;
+            color: #38a169;
+            border: 1px solid #c6f6d5;
+        }
+        .custom-status.processing {
+            background: #fffaf0;
+            color: #dd6b20;
+            border: 1px solid #feebc8;
+        }
+        .custom-status.failed {
+            background: #fff5f5;
+            color: #e53e3e;
+            border: 1px solid #fed7d7;
+        }
+        .custom-status .status-text {
+            flex: 1;
+        }
+        .custom-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(124, 58, 237, 0.2);
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* ===== Background Picker ===== */
         .bg-picker-btn {
             margin-left: auto;
@@ -4192,6 +4388,74 @@
                         </div>
                         <div class="form-hint" data-i18n="settings.companion.hint">Changes will update your companion's personality</div>
                     </div>
+
+                    <!-- 自定义角色 & 知识库（仅测试用户可见） -->
+                    <div class="form-group" id="custom-character-group" style="display:none;">
+                        <label data-i18n="settings.custom.title">🔮 Custom Settings</label>
+                        <div class="custom-character-section">
+                            <!-- 角色性格 -->
+                            <div class="custom-section-block" id="custom-persona-block">
+                                <div class="custom-section-header">
+                                    <span class="icon">🎭</span>
+                                    <span class="title" data-i18n="settings.custom.persona.title">Character Personality</span>
+                                    <span class="optional-tag" data-i18n="settings.custom.optional">Optional</span>
+                                </div>
+                                <textarea class="custom-textarea" id="custom-persona-input"
+                                    data-i18n="settings.custom.persona.placeholder" data-i18n-attr="placeholder"
+                                    placeholder="Describe the personality you want, e.g.: A tsundere cat girl named Xiaoxue who adds 'meow' to sentences..."></textarea>
+                                <div class="custom-actions">
+                                    <button class="custom-btn primary" id="btn-extract-persona" onclick="extractPersona()">
+                                        ✨ <span data-i18n="settings.custom.persona.extract">Extract Personality</span>
+                                    </button>
+                                </div>
+                                <!-- 预览卡片 -->
+                                <div class="custom-preview-card" id="persona-preview-card">
+                                    <div class="custom-preview-label" data-i18n="settings.custom.persona.preview">AI Extracted Preview:</div>
+                                    <div class="custom-preview-text" id="persona-preview-text"></div>
+                                    <div class="custom-preview-actions">
+                                        <button class="custom-btn primary" onclick="confirmPersona()">
+                                            ✅ <span data-i18n="settings.custom.persona.confirm">Confirm</span>
+                                        </button>
+                                        <button class="custom-btn secondary" onclick="editPersonaPreview()">
+                                            ✏️ <span data-i18n="settings.custom.persona.edit">Edit</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- 状态 -->
+                                <div class="custom-status active" id="persona-status" style="display:none;">
+                                    <span class="status-text" id="persona-status-text"></span>
+                                    <button class="custom-btn danger" onclick="clearPersona()">🗑</button>
+                                </div>
+                            </div>
+
+                            <!-- 知识库 -->
+                            <div class="custom-section-block" id="custom-lore-block">
+                                <div class="custom-section-header">
+                                    <span class="icon">📚</span>
+                                    <span class="title" data-i18n="settings.custom.lore.title">Knowledge Base</span>
+                                    <span class="optional-tag" data-i18n="settings.custom.optional">Optional</span>
+                                </div>
+                                <textarea class="custom-textarea" id="custom-lore-input"
+                                    data-i18n="settings.custom.lore.placeholder" data-i18n-attr="placeholder"
+                                    placeholder="Paste background materials, world settings, specialized knowledge, etc."></textarea>
+                                <div class="custom-actions">
+                                    <label class="custom-file-btn" for="custom-lore-file">
+                                        📁 <span data-i18n="settings.custom.lore.upload">Upload File</span>
+                                    </label>
+                                    <input type="file" id="custom-lore-file" accept=".txt,.md,.json" style="display:none;" onchange="handleLoreFile(event)">
+                                    <button class="custom-btn primary" id="btn-submit-lore" onclick="submitLore()">
+                                        📤 <span data-i18n="settings.custom.lore.submit">Submit to KB</span>
+                                    </button>
+                                </div>
+                                <!-- 状态 -->
+                                <div class="custom-status" id="lore-status" style="display:none;">
+                                    <span class="status-text" id="lore-status-text"></span>
+                                    <button class="custom-btn danger" id="lore-clear-btn" onclick="clearLore()" style="display:none;">🗑</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-hint" data-i18n="settings.custom.hint">Customize personality and import knowledge independently</div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -4550,6 +4814,28 @@
                 'naming.model.recommended': 'Recommended',
                 'settings.companion.style': 'Companion Style',
                 'settings.companion.hint': 'Changes will update your companion\'s personality',
+                'settings.custom.title': '🔮 Custom Settings',
+                'settings.custom.optional': 'Optional',
+                'settings.custom.hint': 'Customize personality and import knowledge independently',
+                'settings.custom.persona.title': 'Character Personality',
+                'settings.custom.persona.placeholder': 'Describe the personality you want, e.g.: A tsundere cat girl named Xiaoxue who adds "meow" to sentences...',
+                'settings.custom.persona.extract': 'Extract Personality',
+                'settings.custom.persona.preview': 'AI Extracted Preview:',
+                'settings.custom.persona.confirm': 'Confirm',
+                'settings.custom.persona.edit': 'Edit',
+                'settings.custom.persona.extracting': 'Extracting...',
+                'settings.custom.persona.saving': 'Saving...',
+                'settings.custom.persona.active': 'Active: {name} ({date})',
+                'settings.custom.persona.cleared': 'Custom personality cleared',
+                'settings.custom.lore.title': 'Knowledge Base',
+                'settings.custom.lore.placeholder': 'Paste background materials, world settings, specialized knowledge, etc.',
+                'settings.custom.lore.upload': 'Upload File',
+                'settings.custom.lore.submit': 'Submit to KB',
+                'settings.custom.lore.submitting': 'Vectorizing (~15s)...',
+                'settings.custom.lore.ready': 'Ready: {name} ({date})',
+                'settings.custom.lore.processing': 'Processing...',
+                'settings.custom.lore.failed': 'Failed — please retry',
+                'settings.custom.lore.cleared': 'Knowledge base cleared',
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
@@ -4709,6 +4995,28 @@
                 'naming.model.recommended': '推荐',
                 'settings.companion.style': '伴侣风格',
                 'settings.companion.hint': '更改将更新伴侣的性格风格',
+                'settings.custom.title': '🔮 自定义设定',
+                'settings.custom.optional': '可选',
+                'settings.custom.hint': '角色性格和知识库可独立使用',
+                'settings.custom.persona.title': '角色性格',
+                'settings.custom.persona.placeholder': '描述你想要的角色性格，例如：傲娇猫娘叫小雪，说话带喵，嘴硬心软…',
+                'settings.custom.persona.extract': '提取性格',
+                'settings.custom.persona.preview': 'AI 提取预览：',
+                'settings.custom.persona.confirm': '确认使用',
+                'settings.custom.persona.edit': '修改',
+                'settings.custom.persona.extracting': '正在提取...',
+                'settings.custom.persona.saving': '保存中...',
+                'settings.custom.persona.active': '生效中：{name}（{date}）',
+                'settings.custom.persona.cleared': '自定义性格已清除',
+                'settings.custom.lore.title': '知识库',
+                'settings.custom.lore.placeholder': '粘贴背景资料、世界观、专业知识等内容',
+                'settings.custom.lore.upload': '上传文件',
+                'settings.custom.lore.submit': '提交到知识库',
+                'settings.custom.lore.submitting': '正在向量化(约15秒)...',
+                'settings.custom.lore.ready': '已就绪：{name}（{date}）',
+                'settings.custom.lore.processing': '处理中...',
+                'settings.custom.lore.failed': '失败 — 请重试',
+                'settings.custom.lore.cleared': '知识库已清除',
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
@@ -6878,12 +7186,284 @@
             settingsSelectedGender = state.user?.settings?.companion_gender || 'female';
             settingsSelectedSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
             toggleSettingsGender(settingsSelectedGender);
+
+            // 自定义角色 & 知识库（仅测试用户可见）
+            const TEST_EMAILS = ['test@soullink.com', 'demo@soullink.com'];
+            const customGroup = document.getElementById('custom-character-group');
+            if (TEST_EMAILS.includes(state.user?.email?.toLowerCase())) {
+                customGroup.style.display = '';
+                loadCustomStatus();
+            } else {
+                customGroup.style.display = 'none';
+            }
         }
 
         function closeSettingsModal() {
             document.getElementById('settings-modal').classList.add('hidden');
             pendingAvatarData = null;
         }
+
+        // ==================== 自定义角色 & 知识库 ====================
+
+        // 临时存储 Gemini 提取的预览数据
+        let _personaPreview = null;
+
+        async function loadCustomStatus() {
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/custom-status`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                // 角色性格状态
+                const personaStatus = document.getElementById('persona-status');
+                const personaStatusText = document.getElementById('persona-status-text');
+                if (data.persona?.active) {
+                    const name = data.persona.name || '自定义角色';
+                    const date = data.persona.imported_at ? new Date(data.persona.imported_at).toLocaleDateString() : '';
+                    const tpl = t('settings.custom.persona.active') || 'Active: {name} ({date})';
+                    personaStatusText.textContent = tpl.replace('{name}', name).replace('{date}', date);
+                    personaStatus.className = 'custom-status active';
+                    personaStatus.style.display = 'flex';
+                } else {
+                    personaStatus.style.display = 'none';
+                }
+
+                // 知识库状态
+                const loreStatus = document.getElementById('lore-status');
+                const loreStatusText = document.getElementById('lore-status-text');
+                const loreClearBtn = document.getElementById('lore-clear-btn');
+                const loreState = data.lore?.status || 'none';
+
+                if (loreState === 'ready') {
+                    const fname = data.lore.original_filename || data.lore.doc_name || 'document';
+                    const date = data.lore.imported_at ? new Date(data.lore.imported_at).toLocaleDateString() : '';
+                    const tpl = t('settings.custom.lore.ready') || 'Ready: {name} ({date})';
+                    loreStatusText.textContent = '✅ ' + tpl.replace('{name}', fname).replace('{date}', date);
+                    loreStatus.className = 'custom-status active';
+                    loreStatus.style.display = 'flex';
+                    loreClearBtn.style.display = '';
+                } else if (loreState === 'processing') {
+                    loreStatusText.textContent = '⏳ ' + (t('settings.custom.lore.processing') || 'Processing...');
+                    loreStatus.className = 'custom-status processing';
+                    loreStatus.style.display = 'flex';
+                    loreClearBtn.style.display = 'none';
+                } else if (loreState === 'failed') {
+                    loreStatusText.textContent = '❌ ' + (t('settings.custom.lore.failed') || 'Failed — please retry');
+                    loreStatus.className = 'custom-status failed';
+                    loreStatus.style.display = 'flex';
+                    loreClearBtn.style.display = '';
+                } else {
+                    loreStatus.style.display = 'none';
+                }
+            } catch (e) {
+                console.warn('[CUSTOM] Failed to load status:', e);
+            }
+        }
+
+        async function extractPersona() {
+            const input = document.getElementById('custom-persona-input');
+            const btn = document.getElementById('btn-extract-persona');
+            const text = input.value.trim();
+
+            if (!text) {
+                input.focus();
+                return;
+            }
+
+            // 显示加载状态
+            const originalText = btn.querySelector('span').textContent;
+            btn.disabled = true;
+            btn.querySelector('span').textContent = t('settings.custom.persona.extracting') || 'Extracting...';
+
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-persona`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await resp.json();
+
+                if (data.success && data.preview) {
+                    _personaPreview = data.preview;
+                    // 显示预览卡片
+                    const previewCard = document.getElementById('persona-preview-card');
+                    const previewText = document.getElementById('persona-preview-text');
+                    previewText.textContent = data.preview.core_persona;
+                    previewCard.classList.add('show');
+                } else {
+                    alert(data.error || 'Extraction failed');
+                }
+            } catch (e) {
+                console.error('[PERSONA] Extract error:', e);
+                alert('Network error, please retry');
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('span').textContent = originalText;
+            }
+        }
+
+        function editPersonaPreview() {
+            if (!_personaPreview) return;
+            // 把预览文本放回输入框让用户编辑
+            const input = document.getElementById('custom-persona-input');
+            input.value = _personaPreview.core_persona;
+            document.getElementById('persona-preview-card').classList.remove('show');
+            input.focus();
+        }
+
+        async function confirmPersona() {
+            if (!_personaPreview) return;
+
+            const previewCard = document.getElementById('persona-preview-card');
+            const confirmBtn = previewCard.querySelector('.custom-btn.primary');
+            const originalText = confirmBtn.querySelector('span').textContent;
+            confirmBtn.disabled = true;
+            confirmBtn.querySelector('span').textContent = t('settings.custom.persona.saving') || 'Saving...';
+
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/confirm-persona`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        core_persona: _personaPreview.core_persona,
+                        name: _personaPreview.name
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (data.success) {
+                    // 隐藏预览，显示状态
+                    previewCard.classList.remove('show');
+                    document.getElementById('custom-persona-input').value = '';
+                    _personaPreview = null;
+                    loadCustomStatus();
+                } else {
+                    alert(data.error || 'Save failed');
+                }
+            } catch (e) {
+                console.error('[PERSONA] Confirm error:', e);
+                alert('Network error');
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.querySelector('span').textContent = originalText;
+            }
+        }
+
+        async function clearPersona() {
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/clear-persona`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('persona-status').style.display = 'none';
+                    document.getElementById('persona-preview-card').classList.remove('show');
+                    _personaPreview = null;
+                }
+            } catch (e) {
+                console.error('[PERSONA] Clear error:', e);
+            }
+        }
+
+        function handleLoreFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('custom-lore-input').value = e.target.result;
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        async function submitLore() {
+            const input = document.getElementById('custom-lore-input');
+            const btn = document.getElementById('btn-submit-lore');
+            const fileInput = document.getElementById('custom-lore-file');
+            const text = input.value.trim();
+
+            if (!text) {
+                input.focus();
+                return;
+            }
+
+            // 显示加载状态
+            const originalText = btn.querySelector('span').textContent;
+            btn.disabled = true;
+            btn.querySelector('span').textContent = t('settings.custom.lore.submitting') || 'Vectorizing (~15s)...';
+
+            // 更新状态显示
+            const loreStatus = document.getElementById('lore-status');
+            const loreStatusText = document.getElementById('lore-status-text');
+            loreStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (t('settings.custom.lore.submitting') || 'Vectorizing (~15s)...');
+            loreStatus.className = 'custom-status processing';
+            loreStatus.style.display = 'flex';
+            document.getElementById('lore-clear-btn').style.display = 'none';
+
+            try {
+                // 检查是否有文件上传
+                const file = fileInput.files[0];
+                let resp;
+
+                if (file) {
+                    // 用 multipart/form-data 上传文件
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-lore`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    // 用 JSON 上传文本
+                    resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-lore`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                }
+
+                const data = await resp.json();
+
+                if (data.success) {
+                    input.value = '';
+                    fileInput.value = '';
+                    loadCustomStatus();
+                } else {
+                    loreStatusText.textContent = '❌ ' + (data.error || 'Upload failed');
+                    loreStatus.className = 'custom-status failed';
+                    document.getElementById('lore-clear-btn').style.display = '';
+                }
+            } catch (e) {
+                console.error('[LORE] Submit error:', e);
+                loreStatusText.textContent = '❌ Network error';
+                loreStatus.className = 'custom-status failed';
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('span').textContent = originalText;
+            }
+        }
+
+        async function clearLore() {
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/clear-lore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('lore-status').style.display = 'none';
+                }
+            } catch (e) {
+                console.error('[LORE] Clear error:', e);
+            }
+        }
+
+        // ==================== End 自定义角色 & 知识库 ====================
 
         function selectPresetAvatar(src) {
             // 更新预览

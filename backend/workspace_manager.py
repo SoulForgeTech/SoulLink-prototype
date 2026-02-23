@@ -382,11 +382,18 @@ class WorkspaceManager:
         if language is None:
             language = user.get("settings", {}).get("language", "en") if user else "en"
 
-        # 如果没有传入 persona，从用户的性格测试结果中获取
+        # 如果没有传入 persona，优先使用自定义角色性格，其次性格测试结果
         if persona is None:
-            pt = (user.get("personality_test") or {}) if user else {}
-            if pt.get("completed"):
-                persona = pt.get("personality_profile")
+            # 优先检查自定义角色性格 (custom_persona)
+            custom_persona = user.get("settings", {}).get("custom_persona") if user else None
+            if custom_persona:
+                persona = custom_persona
+                print(f"[PROMPT] Using custom_persona for user {user_id}")
+            else:
+                # 回退到性格测试结果
+                pt = (user.get("personality_test") or {}) if user else {}
+                if pt.get("completed"):
+                    persona = pt.get("personality_profile")
 
         # 如果没有传入 companion_name，从用户设置中获取
         if companion_name is None:
