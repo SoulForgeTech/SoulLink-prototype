@@ -4157,7 +4157,7 @@
             </div>
             <div class="changelog-body">
 
-                <!-- v0.0.7-beta -->
+                <!-- v0.0.7-beta — 待全量推送自定义角色功能后再取消注释
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
                         <span class="ver">v0.0.7-beta</span>
@@ -4173,6 +4173,7 @@
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v170.10">Fixed blank persona for users who skipped personality test</span></li>
                     </ul>
                 </div>
+                -->
 
                 <!-- v0.0.6-beta -->
                 <div class="changelog-version">
@@ -4285,7 +4286,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.7-beta</p>
+                    <p class="about-version">v0.0.6-beta</p>
                 </div>
             </div>
 
@@ -7122,7 +7123,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.7-beta';
+        const CURRENT_APP_VERSION = 'v0.0.6-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
