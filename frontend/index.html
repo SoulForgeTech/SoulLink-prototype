@@ -3191,6 +3191,7 @@
             display: flex;
             gap: 10px;
             margin-top: 8px;
+            margin-bottom: 8px;
         }
         .rel-btn {
             flex: 1;
@@ -3244,6 +3245,15 @@
             color: #7c3aed;
             box-shadow: 0 2px 12px rgba(124, 58, 237, 0.15);
             font-weight: 600;
+        }
+        /* 切换性别后需要重新选择风格 */
+        .subtype-btn.highlight-pick {
+            border-color: #f6ad55;
+            animation: subtypePulse 1.5s ease-in-out 2;
+        }
+        @keyframes subtypePulse {
+            0%, 100% { border-color: #f6ad55; }
+            50% { border-color: #ed8936; box-shadow: 0 0 8px rgba(237, 137, 54, 0.3); }
         }
         /* 自定义角色性格生效时，subtype 按钮变灰不可选 */
         .subtype-btn.disabled, .subtype-btn:disabled {
@@ -8031,6 +8041,13 @@
             const styleChanged = genderChanged || subtypeChanged || relChanged;
             if (styleChanged) hasChanges = true;
 
+            // 切换性别后必须选择风格（自定义性格除外）
+            if (genderChanged && !_customPersonaActive && !settingsSelectedSubtype) {
+                const isZh = state.language === 'zh-CN';
+                alert(isZh ? '请选择一个伴侣风格' : 'Please select a companion style');
+                return;
+            }
+
             if (!hasChanges) {
                 closeSettingsModal();
                 return;
@@ -8063,11 +8080,15 @@
                 const settingsPayload = {};
                 if (modelChanged) settingsPayload.model = selectedModel;
                 if (styleChanged) {
-                    if (genderChanged) settingsPayload.companion_gender = settingsSelectedGender;
+                    if (genderChanged) {
+                        settingsPayload.companion_gender = settingsSelectedGender;
+                        // 性别变了，subtype 也必须一起更新
+                        if (!_customPersonaActive && settingsSelectedSubtype) {
+                            settingsPayload.companion_subtype = settingsSelectedSubtype;
+                        }
+                    }
                     if (subtypeChanged) settingsPayload.companion_subtype = settingsSelectedSubtype;
                     if (relChanged) settingsPayload.companion_relationship = settingsSelectedRelationship;
-                    // 如果只改了性别但 custom persona 激活，也要传性别
-                    if (genderChanged && !subtypeChanged) settingsPayload.companion_gender = settingsSelectedGender;
                 }
 
                 if (Object.keys(settingsPayload).length > 0) {
@@ -8618,10 +8639,15 @@
         }
 
         function toggleSettingsGender(gender) {
+            const prevGender = settingsSelectedGender;
             settingsSelectedGender = gender;
             document.querySelectorAll('.settings-style-selector .gender-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.settings-style-selector .gender-btn[data-gender="${gender}"]`);
             if (btn) btn.classList.add('active');
+            // 切换性别时，如果当前 subtype 不属于新性别，清空选择强制用户重新选
+            if (prevGender && prevGender !== gender && settingsSelectedSubtype && !settingsSelectedSubtype.startsWith(gender + '_')) {
+                settingsSelectedSubtype = null;
+            }
             renderSettingsSubtypes(gender);
         }
 
@@ -8632,8 +8658,9 @@
             const isZh = state.language === 'zh-CN';
             const disabledAttr = _customPersonaActive ? ' disabled' : '';
             const disabledClass = _customPersonaActive ? ' disabled' : '';
+            const needsSelection = !_customPersonaActive && !settingsSelectedSubtype;
             row.innerHTML = subtypes.map(s => `
-                <button class="subtype-btn${s.id === settingsSelectedSubtype ? ' active' : ''}${disabledClass}"
+                <button class="subtype-btn${s.id === settingsSelectedSubtype ? ' active' : ''}${needsSelection ? ' highlight-pick' : ''}${disabledClass}"
                         onclick="selectSettingsSubtype('${s.id}')"${disabledAttr}>
                     ${s.icon} ${isZh ? s.name_zh : s.name_en}
                 </button>
