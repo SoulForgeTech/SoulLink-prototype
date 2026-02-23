@@ -231,15 +231,23 @@
 
     <script>
         const B = window.location.origin;
-        let adminSecret = '';
+        let adminSecret = sessionStorage.getItem('adminSecret') || '';
 
         function getToken() { return document.getElementById('global-token').value.trim(); }
+
+        // 页面加载时自动恢复登录态
+        if (adminSecret) {
+            fetch(B+'/api/admin/stats',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>{
+                if(r.ok){document.getElementById('auth-gate').classList.add('hidden');document.getElementById('main-content').classList.remove('hidden');loadStats();checkHealth()}
+                else{sessionStorage.removeItem('adminSecret');adminSecret=''}
+            }).catch(()=>{sessionStorage.removeItem('adminSecret');adminSecret=''});
+        }
 
         function authenticate() {
             adminSecret = document.getElementById('admin-secret').value;
             if (!adminSecret) return;
             fetch(B+'/api/admin/stats',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>{
-                if(r.ok){document.getElementById('auth-gate').classList.add('hidden');document.getElementById('main-content').classList.remove('hidden');loadStats();checkHealth()}
+                if(r.ok){sessionStorage.setItem('adminSecret',adminSecret);document.getElementById('auth-gate').classList.add('hidden');document.getElementById('main-content').classList.remove('hidden');loadStats();checkHealth()}
                 else alert('Invalid admin secret')
             }).catch(()=>alert('Connection failed'));
         }
