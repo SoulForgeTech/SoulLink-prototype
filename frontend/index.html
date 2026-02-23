@@ -3425,6 +3425,53 @@
         .custom-status .status-text {
             flex: 1;
         }
+        /* Lore document list */
+        .lore-docs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .lore-doc-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px;
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #38a169;
+        }
+        .lore-doc-item .doc-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .lore-doc-item .doc-date {
+            color: #718096;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .lore-doc-item .doc-delete-btn {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .lore-doc-item .doc-delete-btn:hover {
+            opacity: 1;
+            background: #fff5f5;
+        }
         .custom-spinner {
             display: inline-block;
             width: 14px;
@@ -4476,10 +4523,11 @@
                                         📤 <span data-i18n="settings.custom.lore.submit">Submit to KB</span>
                                     </button>
                                 </div>
-                                <!-- 状态 -->
-                                <div class="custom-status" id="lore-status" style="display:none;">
-                                    <span class="status-text" id="lore-status-text"></span>
-                                    <button class="custom-btn danger" id="lore-clear-btn" onclick="clearLore()" style="display:none;">🗑</button>
+                                <!-- 文档列表 -->
+                                <div id="lore-docs-list" class="lore-docs-list" style="display:none;"></div>
+                                <!-- 上传进度（临时显示） -->
+                                <div class="custom-status" id="lore-upload-status" style="display:none;">
+                                    <span class="status-text" id="lore-upload-status-text"></span>
                                 </div>
                                 <div class="form-hint" style="font-size: 0.8rem; opacity: 0.7; margin-top: 6px;" data-i18n="settings.custom.lore.hint">💡 The more background info you import, the more accurately the AI embodies the character.</div>
                             </div>
@@ -4868,6 +4916,9 @@
                 'settings.custom.lore.failed': 'Failed — please retry',
                 'settings.custom.lore.cleared': 'Knowledge base cleared',
                 'settings.custom.lore.hint': '💡 The more background info you import, the more accurately the AI embodies the character.',
+                'settings.custom.lore.doc_count': '{count}/{max} documents',
+                'settings.custom.lore.limit_reached': 'Maximum documents reached',
+                'settings.custom.lore.delete_confirm': 'Remove this document from knowledge base?',
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
@@ -5051,6 +5102,9 @@
                 'settings.custom.lore.failed': '失败 — 请重试',
                 'settings.custom.lore.cleared': '知识库已清除',
                 'settings.custom.lore.hint': '💡 导入的背景资料越丰富，AI就越能精准还原角色人设',
+                'settings.custom.lore.doc_count': '{count}/{max} 个文档',
+                'settings.custom.lore.limit_reached': '已达文档上限',
+                'settings.custom.lore.delete_confirm': '确定从知识库移除此文档？',
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
@@ -7313,33 +7367,41 @@
                 // 根据自定义性格状态，切换伴侣风格 subtype 禁用
                 toggleSubtypeDisabled(_customPersonaActive);
 
-                // 知识库状态
-                const loreStatus = document.getElementById('lore-status');
-                const loreStatusText = document.getElementById('lore-status-text');
-                const loreClearBtn = document.getElementById('lore-clear-btn');
-                const loreState = data.lore?.status || 'none';
+                // 知识库文档列表
+                const docsList = document.getElementById('lore-docs-list');
+                const loreDocs = data.lore?.docs || [];
+                const maxDocs = data.lore?.max_docs || 10;
 
-                if (loreState === 'ready') {
-                    const fname = data.lore.original_filename || data.lore.doc_name || 'document';
-                    const date = data.lore.imported_at ? new Date(data.lore.imported_at).toLocaleDateString() : '';
-                    const tpl = t('settings.custom.lore.ready') || 'Ready: {name} ({date})';
-                    loreStatusText.textContent = '✅ ' + tpl.replace('{name}', fname).replace('{date}', date);
-                    loreStatus.className = 'custom-status active';
-                    loreStatus.style.display = 'flex';
-                    loreClearBtn.style.display = '';
-                } else if (loreState === 'processing') {
-                    loreStatusText.textContent = '⏳ ' + (t('settings.custom.lore.processing') || 'Processing...');
-                    loreStatus.className = 'custom-status processing';
-                    loreStatus.style.display = 'flex';
-                    loreClearBtn.style.display = 'none';
-                } else if (loreState === 'failed') {
-                    loreStatusText.textContent = '❌ ' + (t('settings.custom.lore.failed') || 'Failed — please retry');
-                    loreStatus.className = 'custom-status failed';
-                    loreStatus.style.display = 'flex';
-                    loreClearBtn.style.display = '';
+                if (loreDocs.length > 0) {
+                    docsList.innerHTML = loreDocs.map(doc => {
+                        const fname = doc.original_filename || doc.doc_name || 'document';
+                        const date = doc.imported_at ? new Date(doc.imported_at).toLocaleDateString() : '';
+                        const icon = doc.status === 'ready' ? '✅' : doc.status === 'processing' ? '⏳' : '❌';
+                        return `<div class="lore-doc-item" data-doc-id="${doc.id}">
+                            <span>${icon}</span>
+                            <span class="doc-name" title="${fname}">${fname}</span>
+                            <span class="doc-date">${date}</span>
+                            <button class="doc-delete-btn" onclick="clearLore('${doc.id}')" title="Delete">🗑</button>
+                        </div>`;
+                    }).join('');
+                    docsList.style.display = '';
                 } else {
-                    loreStatus.style.display = 'none';
+                    docsList.style.display = 'none';
+                    docsList.innerHTML = '';
                 }
+
+                // 到上限时禁用提交按钮
+                const submitLoreBtn = document.getElementById('btn-submit-lore');
+                if (loreDocs.length >= maxDocs) {
+                    submitLoreBtn.disabled = true;
+                    submitLoreBtn.title = t('settings.custom.lore.limit_reached') || 'Maximum documents reached';
+                } else {
+                    submitLoreBtn.disabled = false;
+                    submitLoreBtn.title = '';
+                }
+
+                // 隐藏上传进度
+                document.getElementById('lore-upload-status').style.display = 'none';
             } catch (e) {
                 console.warn('[CUSTOM] Failed to load status:', e);
             }
@@ -7450,14 +7512,12 @@
             const isZh = state.language === 'zh-CN';
             try {
                 console.log('[LORE] Auto-uploading search result to knowledge base...');
-                // 更新知识库状态显示
-                const loreStatus = document.getElementById('lore-status');
-                const loreStatusText = document.getElementById('lore-status-text');
-                const loreClearBtn = document.getElementById('lore-clear-btn');
-                loreStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (isZh ? '自动导入知识库中...' : 'Auto-importing to KB...');
-                loreStatus.className = 'custom-status processing';
-                loreStatus.style.display = 'flex';
-                if (loreClearBtn) loreClearBtn.style.display = 'none';
+                // 上传进度指示
+                const uploadStatus = document.getElementById('lore-upload-status');
+                const uploadStatusText = document.getElementById('lore-upload-status-text');
+                uploadStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (isZh ? '自动导入知识库中...' : 'Auto-importing to KB...');
+                uploadStatus.className = 'custom-status processing';
+                uploadStatus.style.display = 'flex';
 
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-lore`, {
                     method: 'POST',
@@ -7469,12 +7529,11 @@
 
                 if (data.success) {
                     console.log('[LORE] Auto-upload successful');
-                    loadCustomStatus();  // 刷新状态显示
+                    loadCustomStatus();  // 刷新文档列表
                 } else {
                     console.warn('[LORE] Auto-upload failed:', data.error);
-                    loreStatusText.textContent = '⚠️ ' + (isZh ? '知识库自动导入失败' : 'KB auto-import failed');
-                    loreStatus.className = 'custom-status failed';
-                    if (loreClearBtn) loreClearBtn.style.display = '';
+                    uploadStatusText.textContent = '⚠️ ' + (isZh ? '知识库自动导入失败' : 'KB auto-import failed');
+                    uploadStatus.className = 'custom-status failed';
                 }
             } catch (e) {
                 console.warn('[LORE] Auto-upload error:', e);
@@ -7657,13 +7716,12 @@
             btn.disabled = true;
             btn.querySelector('span').textContent = t('settings.custom.lore.submitting') || 'Vectorizing (~15s)...';
 
-            // 更新状态显示
-            const loreStatus = document.getElementById('lore-status');
-            const loreStatusText = document.getElementById('lore-status-text');
-            loreStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (t('settings.custom.lore.submitting') || 'Vectorizing (~15s)...');
-            loreStatus.className = 'custom-status processing';
-            loreStatus.style.display = 'flex';
-            document.getElementById('lore-clear-btn').style.display = 'none';
+            // 上传进度指示
+            const uploadStatus = document.getElementById('lore-upload-status');
+            const uploadStatusText = document.getElementById('lore-upload-status-text');
+            uploadStatusText.innerHTML = '<span class="custom-spinner"></span> ' + (t('settings.custom.lore.submitting') || 'Vectorizing (~15s)...');
+            uploadStatus.className = 'custom-status processing';
+            uploadStatus.style.display = 'flex';
 
             try {
                 // 检查是否有文件上传
@@ -7692,39 +7750,52 @@
                 if (data.success) {
                     input.value = '';
                     fileInput.value = '';
-                    loadCustomStatus();
+                    loadCustomStatus();  // 刷新文档列表
                 } else {
-                    loreStatusText.textContent = '❌ ' + (data.error || 'Upload failed');
-                    loreStatus.className = 'custom-status failed';
-                    document.getElementById('lore-clear-btn').style.display = '';
+                    uploadStatusText.textContent = '❌ ' + (data.error || 'Upload failed');
+                    uploadStatus.className = 'custom-status failed';
                 }
             } catch (e) {
                 console.error('[LORE] Submit error:', e);
-                loreStatusText.textContent = '❌ Network error';
-                loreStatus.className = 'custom-status failed';
+                uploadStatusText.textContent = '❌ Network error';
+                uploadStatus.className = 'custom-status failed';
             } finally {
                 btn.disabled = false;
                 btn.querySelector('span').textContent = originalText;
             }
         }
 
-        async function clearLore() {
+        async function clearLore(docId) {
+            // 确认删除
+            const confirmMsg = t('settings.custom.lore.delete_confirm') || 'Remove this document from knowledge base?';
+            if (!confirm(confirmMsg)) return;
+
             try {
+                // 立即禁用该删除按钮（防止重复点击）
+                if (docId) {
+                    const item = document.querySelector(`.lore-doc-item[data-doc-id="${docId}"] .doc-delete-btn`);
+                    if (item) { item.disabled = true; item.textContent = '⏳'; }
+                }
+
+                const body = docId ? { doc_id: docId } : {};
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/clear-lore`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
                 });
 
                 const data = await resp.json();
                 if (data.success) {
-                    document.getElementById('lore-status').style.display = 'none';
+                    loadCustomStatus();  // 刷新文档列表
                 } else {
                     console.error('[LORE] Clear failed:', data.error);
                     alert(data.error || 'Failed to clear knowledge base');
+                    loadCustomStatus();  // 恢复 UI
                 }
             } catch (e) {
                 console.error('[LORE] Clear error:', e);
                 alert('Network error clearing knowledge base');
+                loadCustomStatus();
             }
         }
 
