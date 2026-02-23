@@ -1200,6 +1200,45 @@
             color: inherit;
             opacity: 0.8;
         }
+        /* AI 生成图片 */
+        .generated-images {
+            margin-top: 10px;
+        }
+        .generated-image {
+            max-width: 280px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .generated-image:hover {
+            transform: scale(1.02);
+        }
+        .generated-image-placeholder {
+            font-size: 12px;
+            color: #999;
+            padding: 4px 0;
+        }
+        /* 图片全屏查看器 */
+        .image-viewer-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .image-viewer-overlay.active {
+            display: flex;
+        }
+        .image-viewer-overlay img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
 
         /* 加载动画 - typing indicator 带头像 */
         .typing-indicator {
@@ -6513,7 +6552,7 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function addMessageToUI(text, isUser, useTypewriter = false, attachments = []) {
+        function addMessageToUI(text, isUser, useTypewriter = false, attachments = [], generatedImages = []) {
             const container = document.getElementById('messages-container');
             const typingIndicator = document.getElementById('typing-indicator');
             const welcomeMsg = document.getElementById('welcome-message');
@@ -6544,6 +6583,12 @@
                         img.src = att.dataUrl;
                         img.alt = att.name;
                         attDiv.appendChild(img);
+                    } else if (att.isGenerated) {
+                        // 历史消息中的 AI 生成图片占位符
+                        const tag = document.createElement('span');
+                        tag.className = 'generated-image-placeholder';
+                        tag.textContent = '🎨 ' + (att.prompt || 'Generated image');
+                        attDiv.appendChild(tag);
                     } else {
                         const tag = document.createElement('span');
                         tag.className = 'message-attachment-file';
@@ -6556,6 +6601,24 @@
 
             container.insertBefore(messageDiv, typingIndicator);
 
+            // 追加 AI 生成图片的辅助函数
+            function appendGeneratedImages() {
+                if (generatedImages && generatedImages.length > 0) {
+                    const imgDiv = document.createElement('div');
+                    imgDiv.className = 'generated-images';
+                    generatedImages.forEach(img => {
+                        const imgEl = document.createElement('img');
+                        imgEl.className = 'generated-image';
+                        imgEl.src = 'data:image/png;base64,' + img.b64;
+                        imgEl.alt = img.prompt || 'Generated image';
+                        imgEl.onclick = () => openImageViewer(imgEl.src);
+                        imgDiv.appendChild(imgEl);
+                    });
+                    contentDiv.appendChild(imgDiv);
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+
             if (useTypewriter && !isUser) {
                 // 打字机效果：先逐字显示，完成后转为markdown渲染
                 typewriterEffect(contentDiv, text, () => {
@@ -6563,6 +6626,7 @@
                     const attEl = contentDiv.querySelector('.message-attachments');
                     contentDiv.innerHTML = renderMarkdown(text);
                     if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
+                    appendGeneratedImages();
                     container.scrollTop = container.scrollHeight;
                 });
             } else if (!isUser) {
@@ -6570,6 +6634,7 @@
                 const attEl = contentDiv.querySelector('.message-attachments');
                 contentDiv.innerHTML = renderMarkdown(text);
                 if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
+                appendGeneratedImages();
                 container.scrollTop = container.scrollHeight;
             } else {
                 // 用户消息：纯文本
@@ -6577,6 +6642,17 @@
                 contentDiv.appendChild(textNode);
                 container.scrollTop = container.scrollHeight;
             }
+        }
+
+        // 图片全屏查看器
+        function openImageViewer(src) {
+            const overlay = document.getElementById('image-viewer');
+            const img = document.getElementById('image-viewer-img');
+            img.src = src;
+            overlay.classList.add('active');
+        }
+        function closeImageViewer() {
+            document.getElementById('image-viewer').classList.remove('active');
         }
 
         // 打字机效果函数
@@ -6739,8 +6815,8 @@
                         addThinkingBubble(data.thinking);
                     }
 
-                    // 添加 AI 回复（使用打字机效果）
-                    addMessageToUI(data.reply, false, true);
+                    // 添加 AI 回复（使用打字机效果 + 生成图片）
+                    addMessageToUI(data.reply, false, true, [], data.images || []);
 
                     // 检测 AI 是否接受了改名
                     if (data.companionNameChanged) {
@@ -8835,5 +8911,10 @@
             });
         })();
     </script>
+
+    <!-- 图片全屏查看器 -->
+    <div class="image-viewer-overlay" id="image-viewer" onclick="closeImageViewer()">
+        <img id="image-viewer-img" src="" alt="Full size image">
+    </div>
 </body>
 </html>
