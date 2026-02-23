@@ -4440,10 +4440,13 @@
                                     <div class="custom-preview-text" id="persona-preview-text"></div>
                                     <div class="custom-preview-actions">
                                         <button class="custom-btn primary" onclick="confirmPersona()">
-                                            ✅ <span data-i18n="settings.custom.persona.confirm">Confirm</span>
+                                            ✅ <span data-i18n="settings.custom.persona.confirm">Use</span>
                                         </button>
                                         <button class="custom-btn secondary" onclick="editPersonaPreview()">
                                             ✏️ <span data-i18n="settings.custom.persona.edit">Edit</span>
+                                        </button>
+                                        <button class="custom-btn secondary" onclick="cancelPersonaPreview()" style="opacity:0.7;">
+                                            ❌ <span data-i18n="settings.custom.persona.cancel">Cancel</span>
                                         </button>
                                     </div>
                                 </div>
@@ -4848,8 +4851,9 @@
                 'settings.custom.persona.placeholder': 'Enter a character name (e.g., Rem, Ganyu) or describe personality. To rename, tap the name next to the avatar.',
                 'settings.custom.persona.extract': 'Extract Personality',
                 'settings.custom.persona.preview': 'AI Extracted Preview:',
-                'settings.custom.persona.confirm': 'Confirm',
+                'settings.custom.persona.confirm': 'Use',
                 'settings.custom.persona.edit': 'Edit',
+                'settings.custom.persona.cancel': 'Cancel',
                 'settings.custom.persona.extracting': 'Extracting...',
                 'settings.custom.persona.saving': 'Saving...',
                 'settings.custom.persona.active': 'Active: {name} ({date})',
@@ -5030,8 +5034,9 @@
                 'settings.custom.persona.placeholder': '输入角色名搜索（如：雷姆、甘雨）或描述你想要的角色性格。改名请在上方头像框旁边改',
                 'settings.custom.persona.extract': '提取性格',
                 'settings.custom.persona.preview': 'AI 提取预览：',
-                'settings.custom.persona.confirm': '确认使用',
+                'settings.custom.persona.confirm': '使用',
                 'settings.custom.persona.edit': '修改',
+                'settings.custom.persona.cancel': '取消',
                 'settings.custom.persona.extracting': '正在提取...',
                 'settings.custom.persona.saving': '保存中...',
                 'settings.custom.persona.active': '生效中：{name}（{date}）',
@@ -7241,6 +7246,7 @@
         }
 
         function closeSettingsModal() {
+            if (_extracting) return;  // 提取进行中不允许关闭
             document.getElementById('settings-modal').classList.add('hidden');
             pendingAvatarData = null;
         }
@@ -7250,6 +7256,7 @@
         // 临时存储 Gemini 提取的预览数据
         let _personaPreview = null;
         let _customPersonaActive = false;  // Track if custom persona is active (disables subtype selector)
+        let _extracting = false;  // 提取进行中时禁止关闭设置弹窗
 
         function toggleSubtypeDisabled(disabled) {
             // 禁用/启用 subtype 按钮（性别按钮保持可用）
@@ -7357,6 +7364,10 @@
             const originalText = btn.querySelector('span').textContent;
             btn.disabled = true;
             if (searchBtn) searchBtn.disabled = true;
+            _extracting = true;
+            // 禁用取消和保存按钮，防止用户中途退出
+            document.querySelectorAll('#settings-modal .modal-footer .modal-btn').forEach(b => b.disabled = true);
+            document.querySelector('#settings-modal .modal-close-btn').style.display = 'none';
 
             try {
                 let descriptionToExtract = text;
@@ -7424,9 +7435,13 @@
                 console.error('[PERSONA] Smart extract error:', e);
                 alert('Network error, please retry');
             } finally {
+                _extracting = false;
                 btn.disabled = false;
                 btn.querySelector('span').textContent = originalText;
                 if (searchBtn) searchBtn.disabled = false;
+                // 恢复取消和保存按钮
+                document.querySelectorAll('#settings-modal .modal-footer .modal-btn').forEach(b => b.disabled = false);
+                document.querySelector('#settings-modal .modal-close-btn').style.display = '';
             }
         }
 
@@ -7478,6 +7493,12 @@
             }
             _personaPreview = null;
             input.focus();
+        }
+
+        function cancelPersonaPreview() {
+            // 取消提取结果，隐藏预览卡片，不应用任何更改
+            document.getElementById('persona-preview-card').classList.remove('show');
+            _personaPreview = null;
         }
 
         async function searchCharacter() {
@@ -7815,6 +7836,7 @@
         }
 
         async function saveSettings() {
+            if (_extracting) return;  // 提取进行中不允许保存
             const newName = document.getElementById('settings-name').value.trim();
 
             if (!newName || newName.length < 2) {
