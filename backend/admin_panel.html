@@ -274,21 +274,21 @@
 
         function checkAIHealth() {
             fetch(B+'/api/admin/ai-health',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>r.json()).then(d=>{
-                // Gemini — direct API call
+                // Gemini — direct API call with latency
                 setHealth('gemini', d.gemini?.ok, d.gemini?.ok ? d.gemini.latency+'ms (direct API)' : d.gemini?.error||'Error');
-                // GPT-4o — via AnythingLLM custom-models
+                // GPT-4o — direct API or AnythingLLM key status
                 if(d.gpt?.ok){
-                    const extra = d.gpt.gpt4o_available ? ' ✓ gpt-4o' : ' ('+d.gpt.models+' models)';
-                    setHealth('gpt', true, d.gpt.latency+'ms'+extra);
+                    if(d.gpt.latency) setHealth('gpt', true, d.gpt.latency+'ms (direct API)');
+                    else setHealth('gpt', true, '✓ '+(d.gpt.model||'configured')+' · '+(d.gpt.note||''));
                 } else { setHealth('gpt', false, d.gpt?.error||'Error'); }
-                // Grok — via AnythingLLM custom-models
+                // Grok — direct API or AnythingLLM key status
                 if(d.grok?.ok){
-                    const extra = d.grok.grok_available ? ' ✓ grok' : ' ('+d.grok.models+' models)';
-                    setHealth('grok', true, d.grok.latency+'ms'+extra);
+                    if(d.grok.latency) setHealth('grok', true, d.grok.latency+'ms (direct API)');
+                    else setHealth('grok', true, '✓ configured · '+(d.grok.note||''));
                 } else { setHealth('grok', false, d.grok?.error||'Error'); }
                 // AnythingLLM — localhost
                 if(d.anythingllm?.ok){
-                    setHealth('allm', true, d.anythingllm.latency+'ms (localhost) · '+d.anythingllm.workspaces+' ws');
+                    setHealth('allm', true, d.anythingllm.latency+'ms · '+d.anythingllm.workspaces+' ws'+(d.anythingllm.note?' · '+d.anythingllm.note:''));
                 } else { setHealth('allm', false, d.anythingllm?.error||'Error'); }
             }).catch(()=>{
                 setHealth('gemini', false, 'Request failed');

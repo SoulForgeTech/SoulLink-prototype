@@ -1498,43 +1498,67 @@ def admin_ai_health():
     except Exception as e:
         results["gemini"] = {"ok": False, "error": str(e)[:100]}
 
-    # --- GPT-4o (通过 AnythingLLM 查 OpenAI 连通性) ---
+    # --- 通过 AnythingLLM /api/v1/system 获取 LLM provider 配置状态 ---
+    allm_system = None
     try:
-        t0 = time.time()
-        r = req.get(
-            f"{allm_url}/api/v1/system/custom-models",
-            headers=allm_headers,
-            params={"provider": "openai"},
-            timeout=15
-        )
-        latency = int((time.time() - t0) * 1000)
+        r = req.get(f"{allm_url}/api/v1/system", headers=allm_headers, timeout=10)
         if r.status_code == 200:
-            data = r.json()
-            models = data.get("models", [])
-            has_gpt4o = any("gpt-4o" in (m.get("id") or "") for m in models) if models else False
-            results["gpt"] = {"ok": True, "latency": latency, "models": len(models), "gpt4o_available": has_gpt4o}
+            allm_system = r.json().get("settings", {})
+    except Exception:
+        pass
+
+    # --- GPT-4o (直接调 OpenAI API 测延迟) ---
+    try:
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if not openai_key and allm_system:
+            # 后端没有直接的 key，从 AnythingLLM 配置状态判断
+            if allm_system.get("OpenAiKey"):
+                model_pref = allm_system.get("OpenAiModelPref", "gpt-4o")
+                results["gpt"] = {"ok": True, "model": model_pref, "note": "key in AnythingLLM"}
+            else:
+                results["gpt"] = {"ok": False, "error": "OpenAI key not configured"}
+        elif openai_key:
+            t0 = time.time()
+            r = req.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+                json={"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
+                timeout=15
+            )
+            latency = int((time.time() - t0) * 1000)
+            if r.status_code == 200:
+                results["gpt"] = {"ok": True, "latency": latency}
+            else:
+                results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
         else:
-            results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
+            results["gpt"] = {"ok": False, "error": "No API key available"}
     except Exception as e:
         results["gpt"] = {"ok": False, "error": str(e)[:100]}
 
-    # --- Grok / xAI (通过 AnythingLLM 查 xAI 连通性) ---
+    # --- Grok / xAI (直接调 xAI API 测延迟) ---
     try:
-        t0 = time.time()
-        r = req.get(
-            f"{allm_url}/api/v1/system/custom-models",
-            headers=allm_headers,
-            params={"provider": "xai"},
-            timeout=15
-        )
-        latency = int((time.time() - t0) * 1000)
-        if r.status_code == 200:
-            data = r.json()
-            models = data.get("models", [])
-            has_grok = any("grok" in (m.get("id") or "") for m in models) if models else False
-            results["grok"] = {"ok": True, "latency": latency, "models": len(models), "grok_available": has_grok}
+        xai_key = os.getenv("XAI_API_KEY")
+        if not xai_key and allm_system:
+            # 后端没有直接的 key，从 AnythingLLM 配置状态判断
+            if allm_system.get("XAIApiKey"):
+                results["grok"] = {"ok": True, "note": "key in AnythingLLM"}
+            else:
+                results["grok"] = {"ok": False, "error": "xAI key not configured"}
+        elif xai_key:
+            t0 = time.time()
+            r = req.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {xai_key}", "Content-Type": "application/json"},
+                json={"model": "grok-3-mini-fast", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
+                timeout=15
+            )
+            latency = int((time.time() - t0) * 1000)
+            if r.status_code == 200:
+                results["grok"] = {"ok": True, "latency": latency}
+            else:
+                results["grok"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
         else:
-            results["grok"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
+            results["grok"] = {"ok": False, "error": "No API key available"}
     except Exception as e:
         results["grok"] = {"ok": False, "error": str(e)[:100]}
 
