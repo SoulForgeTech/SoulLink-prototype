@@ -282,22 +282,15 @@
 
         function checkAIHealth() {
             fetch(B+'/api/admin/ai-health',{headers:{'X-Admin-Secret':adminSecret}}).then(r=>r.json()).then(d=>{
-                // Gemini — direct API call with latency
-                setHealth('gemini', d.gemini?.ok, d.gemini?.ok ? d.gemini.latency+'ms (direct API)' : d.gemini?.error||'Error');
-                // GPT-4o — direct API or AnythingLLM key status
-                if(d.gpt?.ok){
-                    if(d.gpt.latency) setHealth('gpt', true, d.gpt.latency+'ms (direct API)');
-                    else setHealth('gpt', true, '✓ '+(d.gpt.model||'configured')+' · '+(d.gpt.note||''));
-                } else { setHealth('gpt', false, d.gpt?.error||'Error'); }
-                // Grok — direct API or AnythingLLM key status
-                if(d.grok?.ok){
-                    if(d.grok.latency) setHealth('grok', true, d.grok.latency+'ms (direct API)');
-                    else setHealth('grok', true, '✓ configured · '+(d.grok.note||''));
-                } else { setHealth('grok', false, d.grok?.error||'Error'); }
-                // AnythingLLM — localhost
-                if(d.anythingllm?.ok){
-                    setHealth('allm', true, d.anythingllm.latency+'ms · '+d.anythingllm.workspaces+' ws'+(d.anythingllm.note?' · '+d.anythingllm.note:''));
-                } else { setHealth('allm', false, d.anythingllm?.error||'Error'); }
+                // Gemini / GPT-4o / Grok — 端到端 via AnythingLLM workspace chat
+                ['gemini','gpt','grok'].forEach(k=>{
+                    const id = k === 'gpt' ? 'gpt' : k;
+                    if(d[k]?.ok) setHealth(id, true, d[k].latency+'ms');
+                    else setHealth(id, false, d[k]?.error||'Error');
+                });
+                // AnythingLLM
+                if(d.anythingllm?.ok) setHealth('allm', true, d.anythingllm.latency+'ms · '+d.anythingllm.workspaces+' ws');
+                else setHealth('allm', false, d.anythingllm?.error||'Error');
             }).catch(()=>{
                 setHealth('gemini', false, 'Request failed');
                 setHealth('gpt', false, 'Request failed');

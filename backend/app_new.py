@@ -1473,112 +1473,67 @@ def admin_stats():
 @app.route("/api/admin/ai-health", methods=["GET"])
 @require_admin
 def admin_ai_health():
-    """检测各 AI 服务和 AnythingLLM 是否正常"""
+    """通过 AnythingLLM workspace chat 端到端测试各 AI 服务延迟"""
     import time
     import requests as req
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     results = {}
 
     allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
     allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
-    allm_headers = {"Authorization": f"Bearer {allm_key}"}
+    allm_headers = {
+        "Authorization": f"Bearer {allm_key}",
+        "Content-Type": "application/json",
+    }
 
-    # --- Gemini (直接调 Google API) ---
-    try:
-        import google.generativeai as genai
-        api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
-        if not api_key:
-            results["gemini"] = {"ok": False, "error": "API key not set"}
-        else:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash")
-            t0 = time.time()
-            resp = model.generate_content("Hi", generation_config={"max_output_tokens": 5})
-            latency = int((time.time() - t0) * 1000)
-            results["gemini"] = {"ok": True, "latency": latency}
-    except Exception as e:
-        results["gemini"] = {"ok": False, "error": str(e)[:100]}
+    # 专用健康检测 workspace（每个绑定了对应 provider/model）
+    HEALTH_WORKSPACES = {
+        "gemini":  "soullink_test",       # gemini / gemini-2.5-flash
+        "gpt":     "health-check-gpt",    # openai / gpt-4o
+        "grok":    "health-check-grok",   # xai / grok-3-mini-fast
+    }
 
-    # --- 通过 AnythingLLM /api/v1/system 获取 LLM provider 配置状态 ---
-    allm_system = None
-    try:
-        r = req.get(f"{allm_url}/api/v1/system", headers=allm_headers, timeout=10)
-        if r.status_code == 200:
-            allm_system = r.json().get("settings", {})
-    except Exception:
-        pass
-
-    # --- GPT-4o (直接调 OpenAI API 测延迟) ---
-    try:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key and allm_system:
-            # 后端没有直接的 key，从 AnythingLLM 配置状态判断
-            if allm_system.get("OpenAiKey"):
-                model_pref = allm_system.get("OpenAiModelPref", "gpt-4o")
-                results["gpt"] = {"ok": True, "model": model_pref, "note": "key in AnythingLLM"}
-            else:
-                results["gpt"] = {"ok": False, "error": "OpenAI key not configured"}
-        elif openai_key:
+    def _chat_health(name, slug):
+        """向指定 workspace 发一条 chat，测端到端延迟"""
+        try:
             t0 = time.time()
             r = req.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-                json={"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
-                timeout=15
+                f"{allm_url}/api/v1/workspace/{slug}/chat",
+                headers=allm_headers,
+                json={"message": "say ok", "mode": "chat"},
+                timeout=30,
             )
             latency = int((time.time() - t0) * 1000)
             if r.status_code == 200:
-                results["gpt"] = {"ok": True, "latency": latency}
+                data = r.json()
+                text = data.get("textResponse", "")
+                if text:
+                    return {name: {"ok": True, "latency": latency}}
+                else:
+                    return {name: {"ok": False, "error": "Empty response", "latency": latency}}
             else:
-                results["gpt"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
-        else:
-            results["gpt"] = {"ok": False, "error": "No API key available"}
-    except Exception as e:
-        results["gpt"] = {"ok": False, "error": str(e)[:100]}
+                return {name: {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}}
+        except Exception as e:
+            return {name: {"ok": False, "error": str(e)[:120]}}
 
-    # --- Grok / xAI (直接调 xAI API 测延迟) ---
-    try:
-        xai_key = os.getenv("XAI_API_KEY")
-        if not xai_key and allm_system:
-            # 后端没有直接的 key，从 AnythingLLM 配置状态判断
-            if allm_system.get("XAIApiKey"):
-                results["grok"] = {"ok": True, "note": "key in AnythingLLM"}
-            else:
-                results["grok"] = {"ok": False, "error": "xAI key not configured"}
-        elif xai_key:
-            t0 = time.time()
-            r = req.post(
-                "https://api.x.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {xai_key}", "Content-Type": "application/json"},
-                json={"model": "grok-3-mini-fast", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
-                timeout=15
-            )
-            latency = int((time.time() - t0) * 1000)
-            if r.status_code == 200:
-                results["grok"] = {"ok": True, "latency": latency}
-            else:
-                results["grok"] = {"ok": False, "error": f"HTTP {r.status_code}", "latency": latency}
-        else:
-            results["grok"] = {"ok": False, "error": "No API key available"}
-    except Exception as e:
-        results["grok"] = {"ok": False, "error": str(e)[:100]}
+    # 并行测试 Gemini / GPT-4o / Grok
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(_chat_health, name, slug) for name, slug in HEALTH_WORKSPACES.items()]
+        for f in as_completed(futures):
+            results.update(f.result())
 
-    # --- AnythingLLM (端到端：前端→后端→AnythingLLM) ---
+    # --- AnythingLLM 本身（auth 检测 + workspace 数量）---
     try:
         t0 = time.time()
-        r = req.get(
-            f"{allm_url}/api/v1/auth",
-            headers=allm_headers,
-            timeout=10
-        )
+        r = req.get(f"{allm_url}/api/v1/auth", headers=allm_headers, timeout=10)
         latency = int((time.time() - t0) * 1000)
         if r.status_code == 200:
-            # 获取 workspace 数量
             try:
                 r2 = req.get(f"{allm_url}/api/v1/workspaces", headers=allm_headers, timeout=5)
                 ws_count = len(r2.json().get("workspaces", [])) if r2.status_code == 200 else "?"
             except Exception:
                 ws_count = "?"
-            results["anythingllm"] = {"ok": True, "latency": latency, "workspaces": ws_count, "note": "internal (localhost)"}
+            results["anythingllm"] = {"ok": True, "latency": latency, "workspaces": ws_count}
         else:
             results["anythingllm"] = {"ok": False, "error": f"HTTP {r.status_code}"}
     except Exception as e:
