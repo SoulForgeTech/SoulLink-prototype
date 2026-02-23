@@ -7364,7 +7364,7 @@
 
                 if (isShortQuery) {
                     // Step 1: 自动搜索角色
-                    btn.querySelector('span').textContent = isZh ? '搜索角色中...' : 'Searching character...';
+                    btn.querySelector('span').textContent = isZh ? '搜索角色中（约10秒）...' : 'Searching character (~10s)...';
 
                     const searchResp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/search-character`, {
                         method: 'POST',
@@ -7396,7 +7396,7 @@
                 }
 
                 // Step 2: 提取性格
-                btn.querySelector('span').textContent = isZh ? '提取性格中...' : 'Extracting personality...';
+                btn.querySelector('span').textContent = isZh ? '提取性格中（约5秒）...' : 'Extracting personality (~5s)...';
 
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-persona`, {
                     method: 'POST',
