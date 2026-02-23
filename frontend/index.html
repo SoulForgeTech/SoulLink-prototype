@@ -6951,8 +6951,8 @@
                 name: 'Grok 4.1 Fast Reasoning',
                 iconClass: 'grok-icon',
                 svg: `<svg viewBox="0 0 512 510" xmlns="http://www.w3.org/2000/svg"><path d="M213.2 306l179-180v.2l51.7-51.8c-.9 1.3-1.9 2.6-2.8 3.9-39.3 54.2-58.5 80.6-43.1 146.9l-.1-.1c10.6 45.1-.7 95.1-37.4 131.8-46.2 46.3-120.2 56.6-181.1 14.9l42.5-19.7c38.9 15.3 81.4 8.6 111.9-22 30.6-30.6 37.4-75.2 22.1-112.3-2.9-7-11.7-8.8-17.8-4.3L213.2 306zm-25.8 22.4l-.03.03L68.1 435.2c7.6-10.4 17-20.3 26.3-30.1 26.4-27.8 52.7-55.4 36.7-94.3-21.4-52.1-9-113.2 30.7-152.9 41.2-41.3 102-51.7 152.7-30.8 11.2 4.2 21 10.1 28.6 15.6l-42.4 19.6c-39.4-16.6-84.6-5.3-112.2 22.3-37.3 37.3-44.8 102-1.1 143.8z" fill="#fff"/></svg>`,
-                desc_en: 'Intimate · Open',
-                desc_zh: '更亲密 · 更开放',
+                desc_en: 'Intimate · Roleplay · Open',
+                desc_zh: '更亲密 · 角色扮演 · 更开放',
                 badge_en: 'Limited Free',
                 badge_zh: '限时免费',
                 hasThinking: false,
@@ -7531,7 +7531,7 @@
                     const searchResp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/search-character`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query: text })
+                        body: JSON.stringify({ query: text, language: state.language })
                     });
 
                     const searchData = await searchResp.json();
@@ -7563,7 +7563,7 @@
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/import-persona`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: descriptionToExtract })
+                    body: JSON.stringify({ text: descriptionToExtract, language: state.language })
                 });
 
                 const data = await resp.json();
@@ -7673,7 +7673,7 @@
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/user/search-character`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
+                    body: JSON.stringify({ query, language: state.language })
                 });
 
                 const data = await resp.json();

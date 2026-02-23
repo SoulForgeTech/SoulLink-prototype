@@ -1631,7 +1631,11 @@ def search_character_api():
     if len(query) > 200:
         return jsonify({"error": "Query too long (max 200 chars)"}), 400
 
-    result = search_character(query)
+    # 获取用户语言偏好：优先前端传入，其次数据库设置
+    user = get_current_user()
+    language = data.get("language") or user.get("settings", {}).get("language", "en")
+
+    result = search_character(query, language=language)
 
     if result.get("success"):
         return jsonify({
@@ -1663,7 +1667,11 @@ def import_persona():
     if len(text) > 10000:
         return jsonify({"error": "Text too long (max 10000 chars)"}), 400
 
-    result = extract_persona_with_ai(text)
+    # 获取用户语言偏好：优先前端传入，其次数据库设置
+    user = get_current_user()
+    language = data.get("language") or user.get("settings", {}).get("language", "en")
+
+    result = extract_persona_with_ai(text, language=language)
 
     if result.get("success"):
         return jsonify({
