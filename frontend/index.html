@@ -3187,6 +3187,33 @@
             color: #7c3aed;
             box-shadow: 0 2px 12px rgba(124, 58, 237, 0.15);
         }
+        .settings-relationship-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .rel-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            color: #4a5568;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .rel-btn:hover {
+            border-color: #b8c0ff;
+            background: #f8f8ff;
+        }
+        .rel-btn.active {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
+            border-color: #7c3aed;
+            color: #7c3aed;
+        }
         .settings-subtype-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -4470,6 +4497,10 @@
                                 <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">💃 <span data-i18n="companion.gender.her">Her</span></button>
                                 <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">🕺 <span data-i18n="companion.gender.him">Him</span></button>
                             </div>
+                            <div class="settings-relationship-row" id="settings-relationship-row">
+                                <button class="rel-btn active" data-rel="lover" onclick="toggleRelationship('lover')">💕 <span data-i18n="companion.rel.lover">Lover</span></button>
+                                <button class="rel-btn" data-rel="friend" onclick="toggleRelationship('friend')">🤝 <span data-i18n="companion.rel.friend">Bestie</span></button>
+                            </div>
                             <div class="settings-subtype-row" id="settings-subtype-row">
                                 <!-- 由 JS 动态填充 -->
                             </div>
@@ -4904,6 +4935,8 @@
                 'rename.save': 'Save',
                 'companion.gender.her': 'Her',
                 'companion.gender.him': 'Him',
+                'companion.rel.lover': 'Lover',
+                'companion.rel.friend': 'Bestie',
                 'naming.title': 'Give your companion a name',
                 'naming.subtitle': 'You can always change it later in settings',
                 'naming.confirm': 'Start Chatting ✨',
@@ -5098,6 +5131,8 @@
                 'rename.save': '保存',
                 'companion.gender.her': '她',
                 'companion.gender.him': '他',
+                'companion.rel.lover': '恋人',
+                'companion.rel.friend': '闺蜜/基友',
                 'naming.title': '给你的伴侣取个名字吧',
                 'naming.subtitle': '之后可以随时在设置中修改',
                 'naming.confirm': '开始聊天 ✨',
@@ -7327,7 +7362,9 @@
             // 初始化伴侣风格选择器
             settingsSelectedGender = state.user?.settings?.companion_gender || 'female';
             settingsSelectedSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
+            settingsSelectedRelationship = state.user?.settings?.companion_relationship || 'lover';
             toggleSettingsGender(settingsSelectedGender);
+            toggleRelationship(settingsSelectedRelationship, true);
 
             // 自定义角色 & 知识库（仅测试用户可见）
             const TEST_EMAILS = ['test@soullink.com', 'demo@soullink.com', '2579038599@qq.com'];
@@ -7989,7 +8026,9 @@
             const currentSubtype = state.user?.settings?.companion_subtype || 'female_gentle';
             const genderChanged = settingsSelectedGender && settingsSelectedGender !== currentGender;
             const subtypeChanged = !_customPersonaActive && settingsSelectedSubtype && settingsSelectedSubtype !== currentSubtype;
-            const styleChanged = genderChanged || subtypeChanged;
+            const currentRel = state.user?.settings?.companion_relationship || 'lover';
+            const relChanged = settingsSelectedRelationship && settingsSelectedRelationship !== currentRel;
+            const styleChanged = genderChanged || subtypeChanged || relChanged;
             if (styleChanged) hasChanges = true;
 
             if (!hasChanges) {
@@ -8026,6 +8065,7 @@
                 if (styleChanged) {
                     if (genderChanged) settingsPayload.companion_gender = settingsSelectedGender;
                     if (subtypeChanged) settingsPayload.companion_subtype = settingsSelectedSubtype;
+                    if (relChanged) settingsPayload.companion_relationship = settingsSelectedRelationship;
                     // 如果只改了性别但 custom persona 激活，也要传性别
                     if (genderChanged && !subtypeChanged) settingsPayload.companion_gender = settingsSelectedGender;
                 }
@@ -8048,6 +8088,7 @@
                         if (styleChanged) {
                             state.user.settings.companion_gender = settingsSelectedGender;
                             state.user.settings.companion_subtype = settingsSelectedSubtype;
+                            if (relChanged) state.user.settings.companion_relationship = settingsSelectedRelationship;
                         }
                         localStorage.setItem('soullink_user', JSON.stringify(state.user));
                     } else {
@@ -8567,6 +8608,14 @@
 
         let settingsSelectedGender = null;
         let settingsSelectedSubtype = null;
+        let settingsSelectedRelationship = null;
+
+        function toggleRelationship(rel, silent) {
+            settingsSelectedRelationship = rel;
+            document.querySelectorAll('.rel-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`.rel-btn[data-rel="${rel}"]`);
+            if (btn) btn.classList.add('active');
+        }
 
         function toggleSettingsGender(gender) {
             settingsSelectedGender = gender;

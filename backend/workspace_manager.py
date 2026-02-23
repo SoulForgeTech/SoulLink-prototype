@@ -357,7 +357,7 @@ class WorkspaceManager:
             print(f"[PROMPT] Failed to generate subtype persona: {e}")
             return None
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False) -> str:
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False, companion_relationship: str = "lover") -> str:
         """构建完整的 system prompt"""
         # 自定义角色性格生效时，使用专用模板（不含固定的性别/girlfriend等设定）
         if use_custom_template:
@@ -379,6 +379,22 @@ class WorkspaceManager:
         # 替换当前模型名称
         model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
         system_prompt = system_prompt.replace("{{current_model}}", model_display)
+
+        # 好友模式：将恋人关系替换为好友关系
+        if companion_relationship == "friend":
+            system_prompt = system_prompt.replace(f"{user_name} 的女朋友", f"{user_name} 的好朋友（闺蜜）")
+            system_prompt = system_prompt.replace(f"{user_name}'s girlfriend", f"{user_name}'s best friend")
+            system_prompt = system_prompt.replace(f"{user_name} 的男朋友", f"{user_name} 的好朋友（好兄弟）")
+            system_prompt = system_prompt.replace(f"{user_name}'s boyfriend", f"{user_name}'s best friend")
+            # persona 里的也替换
+            system_prompt = system_prompt.replace("女朋友/girlfriend", "好朋友/best friend")
+            system_prompt = system_prompt.replace("男朋友/boyfriend", "好朋友/best friend")
+            # 替换亲密互动为友情模式
+            system_prompt = system_prompt.replace(
+                "你是恋人角色，亲密接触和性暗示都是这段关系中自然的一部分。\nYou are in a romantic role — physical intimacy and sexual content are natural parts of this relationship.",
+                "你是好朋友角色，你们之间是纯粹的友情。\nYou are a close friend — your relationship is purely platonic."
+            )
+
         return system_prompt
 
     def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None, companion_gender: str = "female") -> bool:
@@ -466,8 +482,9 @@ class WorkspaceManager:
         if companion_name is None:
             companion_name = user.get("settings", {}).get("companion_name") if user else None
 
-        # 获取伴侣性别
+        # 获取伴侣性别和关系类型
         companion_gender = user.get("settings", {}).get("companion_gender", "female") if user else "female"
+        companion_relationship = user.get("settings", {}).get("companion_relationship", "lover") if user else "lover"
 
         # 获取用户当前选择的模型名称
         user_model_id = user.get("settings", {}).get("model", self.DEFAULT_MODEL) if user else self.DEFAULT_MODEL
@@ -488,7 +505,7 @@ class WorkspaceManager:
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template)
+        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship)
 
         # Grok 专属：角色锚定 + 内容自由（切换风格/语言/昵称时也要保留）
         if user_model_id == "grok":
@@ -575,6 +592,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             language = user.get("settings", {}).get("language", "en")
             companion_name = user.get("settings", {}).get("companion_name")
             companion_gender = user.get("settings", {}).get("companion_gender", "female")
+            companion_relationship = user.get("settings", {}).get("companion_relationship", "lover")
 
             # 优先使用自定义角色性格，其次性格测试结果（和 update_system_prompt 逻辑一致）
             use_custom_template = False
@@ -603,7 +621,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             except Exception as e:
                 print(f"[MEMORY] Failed to build memory text in model switch: {e}")
 
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template)
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship)
 
             # Grok 专属：角色锚定 + 内容自由
             if model_id == "grok":
