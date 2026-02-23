@@ -1214,9 +1214,13 @@
             transform: scale(1.02);
         }
         .generated-image-placeholder {
+            display: inline-block;
             font-size: 12px;
-            color: #999;
-            padding: 4px 0;
+            color: #888;
+            background: rgba(0,0,0,0.04);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 4px;
         }
         /* 图片全屏查看器 */
         .image-viewer-overlay {
@@ -6583,11 +6587,19 @@
                         img.src = att.dataUrl;
                         img.alt = att.name;
                         attDiv.appendChild(img);
+                    } else if (att.isGenerated && att.url) {
+                        // 历史消息中有 Cloudinary URL 的 AI 生成图片 — 显示真实图片
+                        const img = document.createElement('img');
+                        img.src = att.url;
+                        img.alt = att.prompt || 'AI Generated Image';
+                        img.className = 'generated-image';
+                        img.onclick = () => openImageViewer(img.src);
+                        attDiv.appendChild(img);
                     } else if (att.isGenerated) {
-                        // 历史消息中的 AI 生成图片占位符
+                        // 历史消息无 URL 的 AI 生成图片 — 显示占位符
                         const tag = document.createElement('span');
                         tag.className = 'generated-image-placeholder';
-                        tag.textContent = '🎨 ' + (att.prompt || 'Generated image');
+                        tag.textContent = '🖼️ AI Generated Image';
                         attDiv.appendChild(tag);
                     } else {
                         const tag = document.createElement('span');
@@ -6609,7 +6621,8 @@
                     generatedImages.forEach(img => {
                         const imgEl = document.createElement('img');
                         imgEl.className = 'generated-image';
-                        imgEl.src = 'data:image/png;base64,' + img.b64;
+                        // 优先使用 Cloudinary URL，其次 base64
+                        imgEl.src = img.url || ('data:image/png;base64,' + img.b64);
                         imgEl.alt = img.prompt || 'Generated image';
                         imgEl.onclick = () => openImageViewer(imgEl.src);
                         imgDiv.appendChild(imgEl);
