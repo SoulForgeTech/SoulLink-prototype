@@ -7051,12 +7051,12 @@
                     // AI 文字回复
                     addMessageToUI(chatData.reply, false, true, [], chatData.images || []);
 
-                    // 如果后端返回了 AI 语音，自动播放
-                    if (chatData.reply_audio_url) {
-                        const fullUrl = chatData.reply_audio_url.startsWith('http')
-                            ? chatData.reply_audio_url
-                            : CONFIG.API_BASE_URL + chatData.reply_audio_url;
-                        setTimeout(() => playAudioUrl(fullUrl), 500);
+                    // 如果后端返回了 AI 语音 base64，实时播放（不存储）
+                    if (chatData.reply_audio_b64) {
+                        setTimeout(() => {
+                            const audioDataUrl = 'data:audio/mp3;base64,' + chatData.reply_audio_b64;
+                            playAudioUrl(audioDataUrl);
+                        }, 500);
                     }
                 } else {
                     hideTyping();
@@ -7137,12 +7137,12 @@
                     body: JSON.stringify({ text })
                 });
                 const data = await resp.json();
-                if (data.success && data.audio_url) {
+                if (data.success && data.audio_b64) {
                     btnEl.classList.remove('loading');
                     btnEl.classList.add('playing');
-                    const fullUrl = data.audio_url.startsWith('http') ? data.audio_url : CONFIG.API_BASE_URL + data.audio_url;
                     if (_currentAudio) { _currentAudio.pause(); }
-                    const audio = new Audio(fullUrl);
+                    // 实时播放 base64 音频，不存储
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio_b64);
                     _currentAudio = audio;
                     audio.play().catch(e => console.error(e));
                     audio.onended = () => { btnEl.classList.remove('playing'); _currentAudio = null; };
