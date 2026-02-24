@@ -6990,8 +6990,6 @@
 
             if (blob.size < 200) { console.warn('Voice too short'); return; }
 
-            // 显示 typing
-            showTyping();
             state.isLoading = true;
 
             try {
@@ -7012,8 +7010,9 @@
                 const userAudioUrl = uploadData.audio_url;
                 const audioDuration = uploadData.duration || duration;
 
-                // 2) 添加用户语音气泡
+                // 2) 先添加用户语音气泡，再显示 AI typing
                 addVoiceMessageToUI(true, userAudioUrl, audioDuration, sttText);
+                showTyping();
 
                 // 3) 发送到 /api/chat (type: voice)
                 if (!state.currentConversationId) {
