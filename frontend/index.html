@@ -6698,12 +6698,12 @@
                         addThinkingBubble(msg.thinking);
                     }
                     // 语音消息特殊渲染
-                    if (msg.type === 'voice' && msg.audio_url) {
-                        addVoiceMessageToUI(msg.role === 'user', msg.audio_url, msg.audio_duration || 0, msg.role === 'user' ? msg.content : '');
-                        // AI 语音回复同时显示文字
-                        if (msg.role === 'assistant') {
-                            addMessageToUI(msg.content, false, false, msg.attachments || []);
-                        }
+                    if (msg.type === 'voice' && msg.audio_url && msg.role === 'user') {
+                        // 用户语音：显示语音气泡
+                        addVoiceMessageToUI(true, msg.audio_url, msg.audio_duration || 0, msg.content || '');
+                    } else if (msg.type === 'voice' && msg.role === 'assistant') {
+                        // AI 语音回复：只显示文字（带🔊按钮），不显示额外的语音气泡
+                        addMessageToUI(msg.content, false, false, msg.attachments || []);
                     } else {
                         addMessageToUI(msg.content, msg.role === 'user', false, msg.attachments || []);
                     }
