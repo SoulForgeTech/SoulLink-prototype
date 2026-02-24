@@ -63,6 +63,50 @@ def get_voice_for_companion(gender: str, subtype: str = None) -> str:
     return get_voice_config(gender, subtype)["voice"]
 
 
+def extract_voice_style_from_persona(persona: str, gender: str = "female") -> str:
+    """
+    Analyze persona text using Gemini and return the best matching voice subtype.
+    Result should be one of the VOICE_MAP keys (e.g., 'female_gentle', 'male_ceo').
+    Cached in user settings as 'voice_style' for subsequent calls.
+    """
+    if not persona or len(persona.strip()) < 20:
+        return f"{gender}_gentle" if gender == "female" else f"{gender}_warm"
+
+    # Build the prompt for Gemini
+    female_types = "female_gentle(温柔姐姐), female_cold(高冷御姐), female_cute(可爱学妹), female_cheerful(元气少女)"
+    male_types = "male_ceo(霸总), male_warm(暖男), male_classmate(学长), male_badboy(坏男孩)"
+    type_options = female_types if gender == "female" else male_types
+
+    prompt = f"""Analyze this character persona and determine which voice style best matches.
+Choose exactly ONE from these options: {type_options}
+
+Character persona:
+{persona[:1500]}
+
+Reply with ONLY the type key (e.g., female_gentle or male_warm). No explanation."""
+
+    try:
+        from memory_engine import _call_gemini
+        result = _call_gemini(prompt)
+        if result:
+            result = result.strip().lower().replace(" ", "_")
+            # Validate it's a known key
+            if result in VOICE_MAP:
+                logger.info(f"[VOICE] Extracted voice style from persona: {result}")
+                return result
+            # Try partial match
+            for key in VOICE_MAP:
+                if key in result or result in key:
+                    logger.info(f"[VOICE] Matched voice style: {result} → {key}")
+                    return key
+        logger.warning(f"[VOICE] Could not parse Gemini result: {result}")
+    except Exception as e:
+        logger.warning(f"[VOICE] Failed to extract voice style: {e}")
+
+    # Fallback
+    return f"{gender}_gentle" if gender == "female" else f"{gender}_warm"
+
+
 # ==================== TTS (Text-to-Speech) ====================
 
 # Regex patterns to strip action/emotion descriptions from AI text before TTS

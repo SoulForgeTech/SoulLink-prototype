@@ -1043,10 +1043,33 @@ def chat():
         reply_audio_duration = None
         if msg_type == "voice":
             try:
-                from voice_service import synthesize_speech
+                from voice_service import synthesize_speech, extract_voice_style_from_persona
                 settings = user.get("settings", {})
                 gender = settings.get("companion_gender", "female")
                 subtype = settings.get("companion_subtype", "")
+
+                # 自定义 persona 用户：自动分析语音风格并缓存
+                custom_persona = settings.get("custom_persona", "")
+                if custom_persona and subtype not in (
+                    "female_gentle", "female_cold", "female_cute", "female_cheerful",
+                    "male_ceo", "male_warm", "male_classmate", "male_badboy",
+                ):
+                    cached_style = settings.get("voice_style", "")
+                    if cached_style:
+                        subtype = cached_style
+                    else:
+                        # 首次：用 Gemini 分析 persona → 缓存到 DB
+                        voice_style = extract_voice_style_from_persona(custom_persona, gender)
+                        subtype = voice_style
+                        try:
+                            db.db["users"].update_one(
+                                {"_id": user_id},
+                                {"$set": {"settings.voice_style": voice_style}}
+                            )
+                            logger.info(f"[VOICE] Cached voice_style='{voice_style}' for user {user_id}")
+                        except Exception:
+                            pass
+
                 # Truncate for TTS (max 2000 chars)
                 tts_text = reply[:2000] if len(reply) > 2000 else reply
                 tts_audio = synthesize_speech(text=tts_text, gender=gender, subtype=subtype)
@@ -1780,7 +1803,10 @@ def confirm_persona():
 
         db.db["users"].update_one(
             {"_id": user_id},
-            {"$set": update_fields}
+            {
+                "$set": update_fields,
+                "$unset": {"settings.voice_style": "", "settings.image_appearance": ""}
+            }
         )
 
         # 更新 system prompt（会自动从 user.settings.custom_persona 读取）
@@ -1969,13 +1995,15 @@ def clear_persona():
     user_id = get_current_user_id()
 
     try:
-        # 清除 custom_persona 相关字段
+        # 清除 custom_persona 及相关缓存
         db.db["users"].update_one(
             {"_id": user_id},
             {"$unset": {
                 "settings.custom_persona": "",
                 "settings.custom_persona_name": "",
                 "settings.custom_persona_imported_at": "",
+                "settings.voice_style": "",
+                "settings.image_appearance": "",
             }}
         )
 
@@ -2149,10 +2177,32 @@ def voice_tts():
             return jsonify({"error": "Text cannot be empty"}), 400
 
         # Get user's companion settings for voice selection
+        from voice_service import extract_voice_style_from_persona
         user = get_current_user()
+        user_id = get_current_user_id()
         settings = user.get("settings", {})
         gender = settings.get("companion_gender", "female")
         subtype = settings.get("companion_subtype", "")
+
+        # 自定义 persona：自动分析语音风格
+        custom_persona = settings.get("custom_persona", "")
+        if custom_persona and subtype not in (
+            "female_gentle", "female_cold", "female_cute", "female_cheerful",
+            "male_ceo", "male_warm", "male_classmate", "male_badboy",
+        ):
+            cached_style = settings.get("voice_style", "")
+            if cached_style:
+                subtype = cached_style
+            else:
+                voice_style = extract_voice_style_from_persona(custom_persona, gender)
+                subtype = voice_style
+                try:
+                    db.db["users"].update_one(
+                        {"_id": user_id},
+                        {"$set": {"settings.voice_style": voice_style}}
+                    )
+                except Exception:
+                    pass
 
         # Allow optional voice override
         voice = data.get("voice", None)
