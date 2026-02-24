@@ -1062,6 +1062,128 @@
             fill: white;
         }
 
+        /* 语音按钮 */
+        .voice-btn {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            background: none;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            color: #9ca3db;
+        }
+        .voice-btn:hover { background: rgba(156,163,219,0.1); }
+        .voice-btn svg { width: 22px; height: 22px; fill: currentColor; }
+        .voice-btn.recording {
+            color: #e53e3e;
+            animation: voicePulse 1s ease-in-out infinite;
+        }
+        @keyframes voicePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        /* 录音提示条 */
+        .voice-recording-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: rgba(229,62,62,0.08);
+            border-radius: 12px;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+        .voice-recording-bar .rec-dot {
+            width: 10px; height: 10px;
+            background: #e53e3e;
+            border-radius: 50%;
+            animation: recBlink 1s ease-in-out infinite;
+        }
+        @keyframes recBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .voice-recording-bar .rec-duration {
+            font-variant-numeric: tabular-nums;
+            min-width: 36px;
+        }
+        .voice-recording-bar .rec-cancel {
+            background: none; border: none; cursor: pointer;
+            color: #a0aec0; font-size: 16px; padding: 2px 6px;
+        }
+        .voice-recording-bar .rec-cancel:hover { color: #e53e3e; }
+        .voice-recording-bar .rec-send {
+            margin-left: auto;
+            background: linear-gradient(135deg, #9ca3db 0%, #b8a4d4 100%);
+            color: white; border: none; border-radius: 16px;
+            padding: 4px 14px; cursor: pointer; font-size: 13px;
+        }
+
+        /* 语音消息气泡 */
+        .voice-message {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(156,163,219,0.12);
+            border-radius: 18px;
+            cursor: pointer;
+            min-width: 120px;
+            transition: background 0.2s;
+        }
+        .voice-message:hover { background: rgba(156,163,219,0.2); }
+        .voice-message .vm-play-btn {
+            width: 28px; height: 28px; min-width: 28px;
+            background: linear-gradient(135deg, #9ca3db 0%, #b8a4d4 100%);
+            border: none; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .voice-message .vm-play-btn svg { width: 14px; height: 14px; fill: white; }
+        .voice-message .vm-bars {
+            display: flex; align-items: center; gap: 2px; height: 20px;
+        }
+        .voice-message .vm-bars span {
+            width: 3px; border-radius: 2px;
+            background: #9ca3db; opacity: 0.5;
+        }
+        .voice-message.playing .vm-bars span {
+            animation: vmBarAnim 0.8s ease-in-out infinite alternate;
+            opacity: 0.8;
+        }
+        .voice-message.playing .vm-bars span:nth-child(2) { animation-delay: 0.1s; }
+        .voice-message.playing .vm-bars span:nth-child(3) { animation-delay: 0.2s; }
+        .voice-message.playing .vm-bars span:nth-child(4) { animation-delay: 0.3s; }
+        .voice-message.playing .vm-bars span:nth-child(5) { animation-delay: 0.15s; }
+        @keyframes vmBarAnim {
+            0% { height: 6px; }
+            100% { height: 18px; }
+        }
+        .voice-message .vm-duration {
+            font-size: 12px; color: #718096; min-width: 28px;
+        }
+
+        /* AI 消息 TTS 按钮 */
+        .tts-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px;
+            background: none; border: none; border-radius: 50%;
+            cursor: pointer; color: #a0aec0; transition: all 0.2s;
+            margin-left: 4px; vertical-align: middle;
+        }
+        .tts-btn:hover { background: rgba(156,163,219,0.1); color: #9ca3db; }
+        .tts-btn svg { width: 16px; height: 16px; fill: currentColor; }
+        .tts-btn.playing { color: #9ca3db; }
+        .tts-btn.loading { opacity: 0.5; cursor: wait; }
+
         /* 附件上传按钮 */
         .attach-btn {
             width: 32px;
@@ -4889,6 +5011,13 @@
             <div class="input-container">
                 <input type="file" id="file-input" multiple accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.txt,.md,.csv,.json" style="display:none" onchange="handleFileSelect(event)">
                 <div class="file-preview-bar" id="file-preview-bar"></div>
+                <!-- 录音提示条 -->
+                <div class="voice-recording-bar" id="voice-recording-bar" style="display:none">
+                    <button class="rec-cancel" onclick="cancelVoiceRecording()">&#10005;</button>
+                    <span class="rec-dot"></span>
+                    <span class="rec-duration" id="recording-duration">0:00</span>
+                    <button class="rec-send" onclick="sendVoiceRecording()" data-i18n="voice.send">Send</button>
+                </div>
                 <div class="input-wrapper" id="input-wrapper">
                     <div class="drag-overlay" data-i18n="chat.drop.hint">Drop files here</div>
                     <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach file">
@@ -4901,6 +5030,9 @@
                         rows="1"
                         onkeydown="handleKeyDown(event)"
                     ></textarea>
+                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()" title="Voice message">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                    </button>
                     <button class="send-btn" id="send-btn" onclick="sendMessage()">
                         <svg viewBox="0 0 24 24">
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -5043,6 +5175,7 @@
                 'companion.avatar.reset': 'Reset to Default',
                 'sidebar.about': 'About & Feedback',
                 'sidebar.changelog': 'Changelog',
+                'voice.send': 'Send',
                 'changelog.title': 'Changelog',
                 'changelog.v180.1': 'AI image generation — your companion can now send selfies & scene photos',
                 'changelog.v180.2': 'Character appearance matching — images auto-match your character\'s look',
@@ -5244,6 +5377,7 @@
                 'companion.avatar.reset': '恢复默认头像',
                 'sidebar.about': '关于与反馈',
                 'sidebar.changelog': '版本日志',
+                'voice.send': '发送',
                 'changelog.title': '版本日志',
                 'changelog.v180.1': 'AI发图 — 伴侣现在可以发自拍和场景照片啦',
                 'changelog.v180.2': '角色外观匹配 — 图片自动符合你的角色形象',
@@ -6563,7 +6697,16 @@
                     if (msg.role === 'assistant' && msg.thinking) {
                         addThinkingBubble(msg.thinking);
                     }
-                    addMessageToUI(msg.content, msg.role === 'user', false, msg.attachments || []);
+                    // 语音消息特殊渲染
+                    if (msg.type === 'voice' && msg.audio_url) {
+                        addVoiceMessageToUI(msg.role === 'user', msg.audio_url, msg.audio_duration || 0, msg.role === 'user' ? msg.content : '');
+                        // AI 语音回复同时显示文字
+                        if (msg.role === 'assistant') {
+                            addMessageToUI(msg.content, false, false, msg.attachments || []);
+                        }
+                    } else {
+                        addMessageToUI(msg.content, msg.role === 'user', false, msg.attachments || []);
+                    }
                     prevMsg = msg;
                 });
             }
@@ -6651,6 +6794,19 @@
                 }
             }
 
+            // AI 消息 TTS 按钮辅助函数
+            function appendTTSButton() {
+                if (!isUser && text && text.length > 0) {
+                    const ttsBtn = document.createElement('button');
+                    ttsBtn.className = 'tts-btn';
+                    ttsBtn.title = 'Listen';
+                    ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    const safeText = text.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+                    ttsBtn.onclick = function() { requestAndPlayTTS(text, this); };
+                    contentDiv.appendChild(ttsBtn);
+                }
+            }
+
             if (useTypewriter && !isUser) {
                 // 打字机效果：先逐字显示，完成后转为markdown渲染
                 typewriterEffect(contentDiv, text, () => {
@@ -6659,6 +6815,7 @@
                     contentDiv.innerHTML = renderMarkdown(text);
                     if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
                     appendGeneratedImages();
+                    appendTTSButton();
                     container.scrollTop = container.scrollHeight;
                 });
             } else if (!isUser) {
@@ -6667,6 +6824,7 @@
                 contentDiv.innerHTML = renderMarkdown(text);
                 if (attEl) contentDiv.insertBefore(attEl, contentDiv.firstChild);
                 appendGeneratedImages();
+                appendTTSButton();
                 container.scrollTop = container.scrollHeight;
             } else {
                 // 用户消息：纯文本
@@ -6739,6 +6897,253 @@
 
         function hideTyping() {
             document.getElementById('typing-indicator').classList.remove('visible');
+        }
+
+        // ==================== 语音功能 (Voice) ====================
+        let _voiceRecorder = null;
+        let _voiceChunks = [];
+        let _voiceStream = null;
+        let _voiceTimer = null;
+        let _voiceSeconds = 0;
+        let _isRecording = false;
+        let _currentAudio = null; // 当前播放中的 Audio 对象
+
+        function toggleVoiceRecording() {
+            if (_isRecording) {
+                // 已经在录音，点击停止并发送
+                sendVoiceRecording();
+            } else {
+                startVoiceRecording();
+            }
+        }
+
+        async function startVoiceRecording() {
+            try {
+                _voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // 优先 webm/opus，Safari 不支持则 fallback mp4
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                    ? 'audio/webm;codecs=opus'
+                    : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+                _voiceRecorder = mimeType
+                    ? new MediaRecorder(_voiceStream, { mimeType })
+                    : new MediaRecorder(_voiceStream);
+                _voiceChunks = [];
+                _voiceRecorder.ondataavailable = e => { if (e.data.size > 0) _voiceChunks.push(e.data); };
+                _voiceRecorder.start(100); // 每100ms一个chunk
+                _isRecording = true;
+                _voiceSeconds = 0;
+
+                // UI
+                document.getElementById('voice-btn').classList.add('recording');
+                document.getElementById('voice-recording-bar').style.display = 'flex';
+                document.getElementById('recording-duration').textContent = '0:00';
+                _voiceTimer = setInterval(() => {
+                    _voiceSeconds++;
+                    const m = Math.floor(_voiceSeconds / 60);
+                    const s = _voiceSeconds % 60;
+                    document.getElementById('recording-duration').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+                    // 最长60秒自动发送
+                    if (_voiceSeconds >= 60) sendVoiceRecording();
+                }, 1000);
+            } catch (err) {
+                console.error('Mic permission denied:', err);
+                alert('Please allow microphone access to send voice messages.');
+            }
+        }
+
+        function _stopRecordingCleanup() {
+            if (_voiceTimer) { clearInterval(_voiceTimer); _voiceTimer = null; }
+            if (_voiceRecorder && _voiceRecorder.state !== 'inactive') _voiceRecorder.stop();
+            if (_voiceStream) { _voiceStream.getTracks().forEach(t => t.stop()); _voiceStream = null; }
+            _isRecording = false;
+            document.getElementById('voice-btn').classList.remove('recording');
+            document.getElementById('voice-recording-bar').style.display = 'none';
+        }
+
+        function cancelVoiceRecording() {
+            _stopRecordingCleanup();
+            _voiceChunks = [];
+        }
+
+        async function sendVoiceRecording() {
+            if (!_voiceRecorder || _voiceChunks.length === 0) { cancelVoiceRecording(); return; }
+            const duration = _voiceSeconds;
+            _stopRecordingCleanup();
+
+            // 等一下让最后的数据写入
+            await new Promise(r => setTimeout(r, 200));
+
+            const mimeType = _voiceRecorder.mimeType || 'audio/webm';
+            const blob = new Blob(_voiceChunks, { type: mimeType });
+            _voiceChunks = [];
+
+            if (blob.size < 200) { console.warn('Voice too short'); return; }
+
+            // 显示 typing
+            showTyping();
+            state.isLoading = true;
+
+            try {
+                // 1) 上传语音 → 获得 text + audio_url
+                const formData = new FormData();
+                const ext = mimeType.includes('mp4') ? '.m4a' : '.webm';
+                formData.append('audio', blob, `voice${ext}`);
+                formData.append('format', ext.replace('.', ''));
+
+                const uploadResp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadResp.json();
+                if (!uploadData.success) throw new Error(uploadData.error || 'Upload failed');
+
+                const sttText = uploadData.text || '';
+                const userAudioUrl = uploadData.audio_url;
+                const audioDuration = uploadData.duration || duration;
+
+                // 2) 添加用户语音气泡
+                addVoiceMessageToUI(true, userAudioUrl, audioDuration, sttText);
+
+                // 3) 发送到 /api/chat (type: voice)
+                if (!state.currentConversationId) {
+                    try {
+                        const createResp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ title: 'New Chat' })
+                        });
+                        if (createResp.ok) {
+                            const cd = await createResp.json();
+                            state.currentConversationId = cd.conversation.id;
+                        }
+                    } catch(e) { console.error(e); }
+                }
+
+                const chatResp = await authFetch(`${CONFIG.API_BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: sttText || '[Voice message]',
+                        conversation_id: state.currentConversationId,
+                        show_thinking: true,
+                        type: 'voice',
+                        audio_url: userAudioUrl,
+                        audio_duration: audioDuration
+                    })
+                });
+                const chatData = await chatResp.json();
+                hideTyping();
+
+                if (chatData.success) {
+                    if (chatData.conversation_id) state.currentConversationId = chatData.conversation_id;
+                    if (chatData.thinking) addThinkingBubble(chatData.thinking);
+
+                    // AI 文字回复
+                    addMessageToUI(chatData.reply, false, true, [], chatData.images || []);
+
+                    // 如果后端返回了 AI 语音，自动播放
+                    if (chatData.reply_audio_url) {
+                        const fullUrl = chatData.reply_audio_url.startsWith('http')
+                            ? chatData.reply_audio_url
+                            : CONFIG.API_BASE_URL + chatData.reply_audio_url;
+                        setTimeout(() => playAudioUrl(fullUrl), 500);
+                    }
+                } else {
+                    hideTyping();
+                    addMessageToUI(chatData.error || 'Error', false);
+                }
+            } catch (err) {
+                console.error('Voice send error:', err);
+                hideTyping();
+            } finally {
+                state.isLoading = false;
+            }
+        }
+
+        // 语音消息气泡
+        function addVoiceMessageToUI(isUser, audioUrl, duration, transcriptText) {
+            const container = document.getElementById('messages-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            document.getElementById('welcome-message').style.display = 'none';
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            const avatarSrc = isUser
+                ? (state.user?.avatar_url || 'images/avatar.png')
+                : (state.user?.settings?.companion_avatar || 'images/avatar.png');
+
+            const durStr = duration ? `${Math.floor(duration/60)}:${Math.floor(duration%60).toString().padStart(2,'0')}` : '0:00';
+            const fullUrl = audioUrl.startsWith('http') ? audioUrl : CONFIG.API_BASE_URL + audioUrl;
+
+            messageDiv.innerHTML = `
+                <img class="message-avatar" src="${avatarSrc}" alt="Avatar">
+                <div class="message-content">
+                    <div class="voice-message" onclick="playVoiceMessage(this, '${fullUrl}')">
+                        <button class="vm-play-btn">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <div class="vm-bars"><span style="height:8px"></span><span style="height:14px"></span><span style="height:10px"></span><span style="height:16px"></span><span style="height:12px"></span><span style="height:8px"></span><span style="height:14px"></span></div>
+                        <span class="vm-duration">${durStr}</span>
+                    </div>
+                    ${transcriptText ? `<div style="font-size:12px;color:#718096;margin-top:4px">${transcriptText}</div>` : ''}
+                </div>
+            `;
+            container.insertBefore(messageDiv, typingIndicator);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 播放语音消息
+        function playVoiceMessage(el, audioUrl) {
+            // 如果已有播放中的音频，先停止
+            if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+            // 移除其他 playing 状态
+            document.querySelectorAll('.voice-message.playing').forEach(vm => vm.classList.remove('playing'));
+
+            el.classList.add('playing');
+            const audio = new Audio(audioUrl);
+            _currentAudio = audio;
+            audio.play().catch(e => console.error('Audio play error:', e));
+            audio.onended = () => { el.classList.remove('playing'); _currentAudio = null; };
+            audio.onerror = () => { el.classList.remove('playing'); _currentAudio = null; };
+        }
+
+        // 通用音频播放
+        function playAudioUrl(url) {
+            if (_currentAudio) { _currentAudio.pause(); }
+            const audio = new Audio(url);
+            _currentAudio = audio;
+            audio.play().catch(e => console.error('Audio play error:', e));
+            audio.onended = () => { _currentAudio = null; };
+        }
+
+        // TTS：点击 AI 消息的喇叭按钮
+        async function requestAndPlayTTS(text, btnEl) {
+            if (btnEl.classList.contains('loading')) return;
+            btnEl.classList.add('loading');
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/tts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await resp.json();
+                if (data.success && data.audio_url) {
+                    btnEl.classList.remove('loading');
+                    btnEl.classList.add('playing');
+                    const fullUrl = data.audio_url.startsWith('http') ? data.audio_url : CONFIG.API_BASE_URL + data.audio_url;
+                    if (_currentAudio) { _currentAudio.pause(); }
+                    const audio = new Audio(fullUrl);
+                    _currentAudio = audio;
+                    audio.play().catch(e => console.error(e));
+                    audio.onended = () => { btnEl.classList.remove('playing'); _currentAudio = null; };
+                    audio.onerror = () => { btnEl.classList.remove('playing'); _currentAudio = null; };
+                } else {
+                    btnEl.classList.remove('loading');
+                }
+            } catch(e) {
+                console.error('TTS error:', e);
+                btnEl.classList.remove('loading');
+            }
         }
 
         // ==================== 消息发送 ====================
