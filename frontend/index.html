@@ -4916,6 +4916,24 @@
         </div>
     </div>
 
+    <!-- 伴侣关系选择 - 第1.5步：恋人/朋友 -->
+    <div id="relationship-selection-page" class="personality-page">
+        <div class="style-selection-container">
+            <h2 class="style-selection-title" id="relationship-selection-title">Choose Your Relationship</h2>
+            <p class="style-selection-subtitle" id="relationship-selection-subtitle">What kind of companion do you want?</p>
+            <div class="gender-cards">
+                <div class="gender-card" onclick="selectRelationship('lover')">
+                    <div class="gender-icon">💕</div>
+                    <h3 data-i18n="companion.rel.lover">Lover</h3>
+                </div>
+                <div class="gender-card" onclick="selectRelationship('friend')">
+                    <div class="gender-icon">🤝</div>
+                    <h3 data-i18n="companion.rel.friend">Friend</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 伴侣风格选择 - 第2步：子类型 -->
     <div id="subtype-selection-page" class="personality-page">
         <div class="style-selection-container">
@@ -9143,7 +9161,21 @@
         function selectGender(gender) {
             state.selectedGender = gender;
             document.getElementById('gender-selection-page').classList.remove('active');
-            showSubtypeSelection(gender);
+            showRelationshipSelection();
+        }
+
+        function showRelationshipSelection() {
+            const page = document.getElementById('relationship-selection-page');
+            page.classList.add('active');
+            const isZh = state.language === 'zh-CN';
+            document.getElementById('relationship-selection-title').textContent = isZh ? '选择你们的关系' : 'Choose Your Relationship';
+            document.getElementById('relationship-selection-subtitle').textContent = isZh ? '你希望 TA 是你的...？' : 'You want them to be your...?';
+        }
+
+        function selectRelationship(rel) {
+            state.selectedRelationship = rel;
+            document.getElementById('relationship-selection-page').classList.remove('active');
+            showSubtypeSelection(state.selectedGender);
         }
 
         function showSubtypeSelection(gender) {
@@ -9177,7 +9209,8 @@
                     },
                     body: JSON.stringify({
                         companion_gender: gender,
-                        companion_subtype: subtypeId
+                        companion_subtype: subtypeId,
+                        companion_relationship: state.selectedRelationship || 'lover'
                     })
                 });
                 hideLoading();
@@ -9185,6 +9218,7 @@
                     if (!state.user.settings) state.user.settings = {};
                     state.user.settings.companion_gender = gender;
                     state.user.settings.companion_subtype = subtypeId;
+                    state.user.settings.companion_relationship = state.selectedRelationship || 'lover';
                     localStorage.setItem('soullink_user', JSON.stringify(state.user));
                 }
             } catch (err) {
