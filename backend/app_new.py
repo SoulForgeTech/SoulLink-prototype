@@ -6,7 +6,8 @@ SoulLink Backend - 支持多用户的版本
 import os
 import json
 import logging
-from flask import Flask, request, jsonify
+import uuid
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from bson import ObjectId
 from dotenv import load_dotenv
@@ -690,7 +691,11 @@ def chat():
         conversation_id = data.get("conversation_id")
         show_thinking = data.get("show_thinking", False)
         attachments = data.get("attachments")  # [{name, mime, contentString}]
-        logger.info(f"Message: {user_message[:50]}... | show_thinking={show_thinking} | attachments={len(attachments) if attachments else 0}")
+        # Voice message fields
+        msg_type = data.get("type", "text")  # "text" or "voice"
+        user_audio_url = data.get("audio_url")  # user's voice audio URL
+        user_audio_duration = data.get("audio_duration")  # seconds
+        logger.info(f"Message: {user_message[:50]}... | type={msg_type} | show_thinking={show_thinking} | attachments={len(attachments) if attachments else 0}")
 
         # 确保用户有 workspace
         logger.info("Getting or creating workspace...")
@@ -751,7 +756,10 @@ def chat():
         user_id,
         "user",
         user_message,
-        attachments=attachment_meta
+        attachments=attachment_meta,
+        msg_type=msg_type if msg_type != "text" else None,
+        audio_url=user_audio_url,
+        audio_duration=float(user_audio_duration) if user_audio_duration else None
     )
 
     # 调用 AnythingLLM
@@ -1020,6 +1028,28 @@ def chat():
         # 从 full_response 中获取 sources
         sources = full_response.get("data", {}).get("sources", [])
 
+        # Auto-generate TTS for AI reply if user sent voice message
+        reply_audio_url = None
+        reply_audio_duration = None
+        if msg_type == "voice":
+            try:
+                from voice_service import synthesize_speech
+                settings = user.get("settings", {})
+                gender = settings.get("companion_gender", "female")
+                subtype = settings.get("companion_subtype", "")
+                # Truncate for TTS (max 2000 chars)
+                tts_text = reply[:2000] if len(reply) > 2000 else reply
+                tts_audio = synthesize_speech(text=tts_text, gender=gender, subtype=subtype)
+                if tts_audio:
+                    reply_audio_url = _save_audio_file(tts_audio, prefix="ai")
+                    # Estimate duration: ~150 chars/min for Chinese, ~120 words/min for English
+                    # rough estimate: len(tts_audio) bytes / (16000 * 2) for 16kHz 16bit, but MP3 is compressed
+                    # Better: just estimate from text length
+                    reply_audio_duration = round(max(1.0, len(tts_text) * 0.15), 1)
+                    logger.info(f"[Chat] Auto-TTS generated: {reply_audio_url}, est_duration={reply_audio_duration}s")
+            except Exception as tts_err:
+                logger.warning(f"[Chat] Auto-TTS for reply failed (non-fatal): {tts_err}")
+
         # 保存 AI 回复（保存清理后的版本，含 thinking）
         db.add_message_to_conversation(
             conversation["_id"],
@@ -1027,7 +1057,10 @@ def chat():
             "assistant",
             reply,
             sources,
-            thinking=thinking_content if thinking_content else None
+            thinking=thinking_content if thinking_content else None,
+            msg_type="voice" if reply_audio_url else None,
+            audio_url=reply_audio_url,
+            audio_duration=reply_audio_duration
         )
 
         # 更新统计
@@ -1039,6 +1072,9 @@ def chat():
             "sources": sources,
             "conversation_id": str(conversation["_id"])
         }
+        if reply_audio_url:
+            result["reply_audio_url"] = reply_audio_url
+            result["reply_audio_duration"] = reply_audio_duration
         if thinking_content and show_thinking:
             result["thinking"] = thinking_content
         if companion_name_changed:
@@ -2033,6 +2069,36 @@ def custom_status():
 
 # ==================== 语音接口 (Voice API) ====================
 
+# Voice uploads directory
+VOICE_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", "voice")
+os.makedirs(VOICE_UPLOAD_DIR, exist_ok=True)
+
+
+def _save_audio_file(audio_data: bytes, prefix: str = "tts") -> str:
+    """Save audio bytes to uploads/voice/ and return the relative URL path."""
+    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.mp3"
+    filepath = os.path.join(VOICE_UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(audio_data)
+    logger.info(f"[Voice] Saved {len(audio_data)} bytes to {filepath}")
+    return f"/uploads/voice/{filename}"
+
+
+def _detect_audio_format(filename: str) -> str:
+    """Detect audio format from filename extension."""
+    filename = filename.lower()
+    for ext in [".wav", ".mp3", ".m4a", ".webm", ".aac", ".amr", ".opus"]:
+        if filename.endswith(ext):
+            return ext[1:]  # remove the dot
+    return "wav"
+
+
+@app.route("/uploads/voice/<filename>")
+def serve_voice_file(filename):
+    """Serve voice audio files from uploads directory."""
+    return send_from_directory(VOICE_UPLOAD_DIR, filename)
+
+
 @app.route("/api/voice/tts", methods=["POST"])
 @login_required
 def voice_tts():
@@ -2040,7 +2106,7 @@ def voice_tts():
     文本转语音 (Text-to-Speech)
     POST /api/voice/tts
     Body: { "text": "要合成的文字", "voice": "optional_voice_name" }
-    Returns: audio/mpeg binary data
+    Returns: { "success": true, "audio_url": "/uploads/voice/tts_xxx.mp3" }
     """
     try:
         from voice_service import synthesize_speech, check_voice_service_health
@@ -2075,16 +2141,14 @@ def voice_tts():
             speech_rate=float(speech_rate),
         )
 
-        # Return audio as binary response
-        from flask import Response
-        return Response(
-            audio_data,
-            mimetype="audio/mpeg",
-            headers={
-                "Content-Disposition": "inline; filename=tts_output.mp3",
-                "Content-Length": str(len(audio_data)),
-            }
-        )
+        # Save to file and return URL
+        audio_url = _save_audio_file(audio_data, prefix="tts")
+
+        return jsonify({
+            "success": True,
+            "audio_url": audio_url,
+            "size": len(audio_data),
+        })
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -2093,6 +2157,88 @@ def voice_tts():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"TTS synthesis failed: {str(e)}"}), 500
+
+
+@app.route("/api/voice/upload", methods=["POST"])
+@login_required
+def voice_upload():
+    """
+    上传语音消息 (Upload voice recording + STT)
+    POST /api/voice/upload
+    Body: multipart/form-data with 'audio' file
+    Optional: format, sample_rate
+    Returns: { "success": true, "audio_url": "...", "text": "...", "duration": ... }
+    """
+    try:
+        from voice_service import recognize_speech, check_voice_service_health
+        import wave
+        import io
+
+        health = check_voice_service_health()
+        if not health["configured"]:
+            return jsonify({"error": "Voice service not configured. DASHSCOPE_API_KEY is missing."}), 503
+
+        if "audio" not in request.files:
+            return jsonify({"error": "No audio file provided. Use 'audio' field in multipart form."}), 400
+
+        audio_file = request.files["audio"]
+        if not audio_file.filename:
+            return jsonify({"error": "Empty audio file"}), 400
+
+        audio_data = audio_file.read()
+        if not audio_data or len(audio_data) < 100:
+            return jsonify({"error": "Audio file is too small or empty"}), 400
+
+        audio_format = request.form.get("format", "").lower()
+        if not audio_format:
+            audio_format = _detect_audio_format(audio_file.filename)
+
+        sample_rate = int(request.form.get("sample_rate", 16000))
+
+        logger.info(f"[VoiceUpload] Received {len(audio_data)} bytes, format={audio_format}, filename={audio_file.filename}")
+
+        # Calculate duration from WAV header if possible
+        duration = 0.0
+        if audio_format == "wav":
+            try:
+                with wave.open(io.BytesIO(audio_data), "rb") as wf:
+                    frames = wf.getnframes()
+                    rate = wf.getframerate()
+                    if rate > 0:
+                        duration = round(frames / rate, 1)
+            except Exception as e:
+                logger.warning(f"[VoiceUpload] Could not read WAV duration: {e}")
+
+        # Save the uploaded audio file
+        audio_url = _save_audio_file(audio_data, prefix="user")
+
+        # Run STT to get text transcription
+        text = ""
+        try:
+            text = recognize_speech(
+                audio_data=audio_data,
+                audio_format=audio_format,
+                sample_rate=sample_rate,
+            )
+        except Exception as stt_err:
+            logger.warning(f"[VoiceUpload] STT failed (non-fatal): {stt_err}")
+            # STT failure is non-fatal — the voice message is still saved
+
+        return jsonify({
+            "success": True,
+            "audio_url": audio_url,
+            "text": text,
+            "duration": duration,
+            "size": len(audio_data),
+        })
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"[VoiceUpload] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Voice upload failed: {str(e)}"}), 500
 
 
 @app.route("/api/voice/stt", methods=["POST"])
@@ -2128,23 +2274,7 @@ def voice_stt():
         # Determine audio format from filename or request param
         audio_format = request.form.get("format", "").lower()
         if not audio_format:
-            filename = audio_file.filename.lower()
-            if filename.endswith(".wav"):
-                audio_format = "wav"
-            elif filename.endswith(".mp3"):
-                audio_format = "mp3"
-            elif filename.endswith(".m4a"):
-                audio_format = "m4a"
-            elif filename.endswith(".webm"):
-                audio_format = "webm"
-            elif filename.endswith(".aac"):
-                audio_format = "aac"
-            elif filename.endswith(".amr"):
-                audio_format = "amr"
-            elif filename.endswith(".opus"):
-                audio_format = "opus"
-            else:
-                audio_format = "wav"  # default
+            audio_format = _detect_audio_format(audio_file.filename)
 
         sample_rate = int(request.form.get("sample_rate", 16000))
 

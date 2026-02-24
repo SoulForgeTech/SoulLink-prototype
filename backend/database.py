@@ -200,10 +200,16 @@ class MongoDB:
         content: str,
         sources: Optional[List[Dict]] = None,
         thinking: Optional[str] = None,
-        attachments: Optional[List[Dict]] = None
+        attachments: Optional[List[Dict]] = None,
+        msg_type: Optional[str] = None,
+        audio_url: Optional[str] = None,
+        audio_duration: Optional[float] = None
     ) -> bool:
         """向对话添加消息"""
-        message = ConversationModel.create_message(role, content, sources, thinking=thinking, attachments=attachments)
+        message = ConversationModel.create_message(
+            role, content, sources, thinking=thinking, attachments=attachments,
+            msg_type=msg_type, audio_url=audio_url, audio_duration=audio_duration
+        )
         result = self.db[ConversationModel.collection_name].update_one(
             {"_id": conv_id, "user_id": user_id},
             {

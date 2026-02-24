@@ -88,7 +88,10 @@ class ConversationModel:
         content: str,
         sources: Optional[List[Dict]] = None,
         thinking: Optional[str] = None,
-        attachments: Optional[List[Dict]] = None
+        attachments: Optional[List[Dict]] = None,
+        msg_type: Optional[str] = None,  # "text" or "voice"
+        audio_url: Optional[str] = None,
+        audio_duration: Optional[float] = None
     ) -> Dict[str, Any]:
         """创建消息对象"""
         msg = {
@@ -102,6 +105,13 @@ class ConversationModel:
             msg["thinking"] = thinking
         if attachments:
             msg["attachments"] = attachments  # [{name, mime, isImage}]
+        # Voice message fields
+        if msg_type and msg_type != "text":
+            msg["type"] = msg_type
+        if audio_url:
+            msg["audio_url"] = audio_url
+        if audio_duration is not None:
+            msg["audio_duration"] = audio_duration
         return msg
 
     @staticmethod
