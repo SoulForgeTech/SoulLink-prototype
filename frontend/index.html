@@ -5769,17 +5769,12 @@
                 updateModelIndicator();
                 // 更新 companion 头像
                 if (typeof updateCompanionAvatars === 'function') updateCompanionAvatars();
-                // 语音按钮：仅测试用户开放（测试阶段）
+                // 语音按钮 & 设置开关：全量开放
                 const voiceBtn = document.getElementById('voice-btn');
-                const uEmail = (state.user.email || '').toLowerCase();
-                const isVoiceUser = uEmail === 'test@soullink.com'
-                    || uEmail === 'alphonse@soulforgetech.com'
-                    || uEmail === 'jq12@rice.edu';
-                voiceBtn.style.display = isVoiceUser ? '' : 'none';
-                // 设置页面中显示语音开关
+                voiceBtn.style.display = '';
                 const voiceSettingGroup = document.getElementById('voice-tts-setting-group');
                 if (voiceSettingGroup) {
-                    voiceSettingGroup.style.display = isVoiceUser ? '' : 'none';
+                    voiceSettingGroup.style.display = '';
                 }
                 // 恢复 checkbox 状态
                 const ttsCheckbox = document.getElementById('voice-tts-checkbox');
@@ -6907,11 +6902,7 @@
             // AI 消息 TTS 按钮辅助函数（仅语音开启时可见）
             function appendTTSButton() {
                 if (!isVoiceTTSEnabled()) return; // 设置中关闭则不显示
-                const _uEmail = (state.user?.email || '').toLowerCase();
-                const _isVoice = _uEmail === 'test@soullink.com'
-                    || _uEmail === 'alphonse@soulforgetech.com'
-                    || _uEmail === 'jq12@rice.edu';
-                if (!isUser && text && text.length > 0 && _isVoice) {
+                if (!isUser && text && text.length > 0) {
                     const ttsBtn = document.createElement('button');
                     ttsBtn.className = 'tts-btn';
                     ttsBtn.title = 'Listen';
