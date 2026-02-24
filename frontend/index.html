@@ -6892,8 +6892,9 @@
                 }
             }
 
-            // AI 消息 TTS 按钮辅助函数（仅语音测试用户可见）
+            // AI 消息 TTS 按钮辅助函数（仅语音开启时可见）
             function appendTTSButton() {
+                if (!isVoiceTTSEnabled()) return; // 设置中关闭则不显示
                 const _uEmail = (state.user?.email || '').toLowerCase();
                 const _isVoice = _uEmail === 'test@soullink.com'
                     || _uEmail === 'alphonse@soulforgetech.com'
