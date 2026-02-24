@@ -5,6 +5,7 @@ SoulLink Voice Service - 语音合成 (TTS) 和语音识别 (STT)
 
 import os
 import io
+import re
 import uuid
 import json
 import logging
@@ -58,6 +59,52 @@ def get_voice_for_companion(gender: str, subtype: str = None) -> str:
 
 # ==================== TTS (Text-to-Speech) ====================
 
+# Regex patterns to strip action/emotion descriptions from AI text before TTS
+# Matches: （轻轻抱抱你）(smiles) *blushes* etc.
+_ACTION_PATTERNS = [
+    re.compile(r'\uff08[^\uff09]*\uff09'),       # Chinese fullwidth parens （...）
+    re.compile(r'\([^)]*\)'),                     # ASCII parens (...)
+    re.compile(r'\*[^*]+\*'),                     # Asterisk actions *...*
+]
+# Emoji cleanup — remove standalone emoji clusters (keep if inside text)
+_EMOJI_PATTERN = re.compile(
+    r'[\U0001F600-\U0001F64F'   # emoticons
+    r'\U0001F300-\U0001F5FF'    # symbols & pictographs
+    r'\U0001F680-\U0001F6FF'    # transport & map
+    r'\U0001F900-\U0001F9FF'    # supplemental
+    r'\U0001FA00-\U0001FA6F'    # chess symbols
+    r'\U0001FA70-\U0001FAFF'    # symbols extended
+    r'\u2600-\u26FF'            # misc symbols
+    r'\u2700-\u27BF'            # dingbats
+    r'\uFE00-\uFE0F'           # variation selectors
+    r'\u200D'                   # zero width joiner
+    r']+',
+    flags=re.UNICODE,
+)
+
+
+def _clean_text_for_tts(text: str) -> str:
+    """
+    Remove action descriptions, emojis, and stage directions from text
+    before sending to TTS. Keeps only the spoken dialogue.
+
+    Examples:
+        "（轻轻抱抱你）你好呀～" → "你好呀～"
+        "(smiles) Hello there! 😊" → "Hello there!"
+        "*blushes* 嗯...我也喜欢你" → "嗯...我也喜欢你"
+    """
+    cleaned = text
+    for pattern in _ACTION_PATTERNS:
+        cleaned = pattern.sub('', cleaned)
+    # Remove emojis
+    cleaned = _EMOJI_PATTERN.sub('', cleaned)
+    # Clean up leftover whitespace
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+    # Remove leading/trailing punctuation artifacts
+    cleaned = cleaned.strip('～~，,。. ')
+    return cleaned
+
+
 def synthesize_speech(
     text: str,
     voice: str = None,
@@ -82,6 +129,15 @@ def synthesize_speech(
     """
     if not text or not text.strip():
         raise ValueError("Text cannot be empty")
+
+    # Clean action descriptions and emojis before synthesis
+    original_text = text
+    text = _clean_text_for_tts(text)
+    if text != original_text:
+        logger.info(f"[TTS] Cleaned text: '{original_text[:80]}' → '{text[:80]}'")
+
+    if not text:
+        raise ValueError("Text is empty after cleaning action descriptions")
 
     # Truncate very long text
     if len(text) > 2000:
