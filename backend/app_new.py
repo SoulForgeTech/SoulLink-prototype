@@ -34,6 +34,7 @@ from auth import (
 )
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
+from image_gen import process_image_markers
 from personality_engine import (
     get_questions,
     calculate_dimensions,
@@ -972,6 +973,15 @@ def chat():
                 "error": error_msg
             }), 500
 
+        # 检测 AI 回复中的图片生成标记 [IMAGE:...]
+        generated_images = []
+        try:
+            reply, generated_images = process_image_markers(reply, user_id, db)
+            if generated_images:
+                logger.info(f"[IMAGE_GEN] Generated {len(generated_images)} image(s) for user {user_id}")
+        except Exception as e:
+            logger.warning(f"[IMAGE_GEN] Error processing image markers: {e}")
+
         # 检测 AI 回复中的改名标记 [RENAME:xxx]
         import re
         logger.info(f"[RENAME DEBUG] Raw AI reply: {repr(reply)}")
@@ -1050,7 +1060,16 @@ def chat():
             except Exception as tts_err:
                 logger.warning(f"[Chat] Auto-TTS for reply failed (non-fatal): {tts_err}")
 
-        # 保存 AI 回复（保存清理后的版本，含 thinking）
+        # 保存 AI 回复（保存清理后的版本，含 thinking + 图片元数据 + Cloudinary URL）
+        image_attachments = [
+            {
+                "name": f"generated_{i}.png", "mime": "image/png",
+                "isImage": True, "isGenerated": True,
+                "prompt": img["prompt"],
+                **({"url": img["url"]} if img.get("url") else {})
+            }
+            for i, img in enumerate(generated_images)
+        ] if generated_images else None
         db.add_message_to_conversation(
             conversation["_id"],
             user_id,
@@ -1058,6 +1077,7 @@ def chat():
             reply,
             sources,
             thinking=thinking_content if thinking_content else None,
+            attachments=image_attachments,
             msg_type="voice" if reply_audio_url else None,
             audio_url=reply_audio_url,
             audio_duration=reply_audio_duration
@@ -1079,6 +1099,11 @@ def chat():
             result["thinking"] = thinking_content
         if companion_name_changed:
             result["companionNameChanged"] = companion_name_changed
+        if generated_images:
+            result["images"] = [
+                {"b64": img["b64"], "prompt": img["prompt"], **({"url": img["url"]} if img.get("url") else {})}
+                for img in generated_images
+            ]
 
         # 异步提取记忆（不阻塞响应）
         import threading
