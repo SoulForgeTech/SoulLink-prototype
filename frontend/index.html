@@ -1207,12 +1207,8 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 12px 16px; background: rgba(156,163,219,0.06);
             border-radius: 12px; gap: 12px;
+            font-size: 14px; color: #4a5568;
         }
-        .voice-tts-desc {
-            display: flex; flex-direction: column; gap: 2px;
-            font-size: 14px; color: #2d3748;
-        }
-        .voice-tts-sub { font-size: 11px; color: #a0aec0; }
         /* iOS 风格 toggle switch */
         .toggle-switch {
             position: relative; display: inline-block;
@@ -4748,12 +4744,9 @@
                     </div>
                     <!-- AI 语音回复开关 — 仅语音测试用户可见 -->
                     <div class="form-group" id="voice-tts-setting-group" style="display:none;">
-                        <label>🔊 AI 语音回复</label>
+                        <label data-i18n="settings.voice.title">🔊 AI Voice Reply</label>
                         <div class="voice-tts-setting-row">
-                            <div class="voice-tts-desc">
-                                <span>发送语音消息时，AI 自动语音回复</span>
-                                <span class="voice-tts-sub">When sending voice, AI auto-replies with voice</span>
-                            </div>
+                            <span data-i18n="settings.voice.desc">AI auto-replies with voice when you send voice messages</span>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="voice-tts-checkbox" onchange="onVoiceTTSToggle(this.checked)">
                                 <span class="toggle-slider"></span>
@@ -5171,6 +5164,8 @@
                 'settings.email.hint': 'Email cannot be changed',
                 'settings.model': 'AI Model',
                 'settings.model.hint': 'Choose the AI model that powers {companion}',
+                'settings.voice.title': '🔊 AI Voice Reply',
+                'settings.voice.desc': 'AI auto-replies with voice when you send voice messages',
                 'settings.cancel': 'Cancel',
                 'settings.save': 'Save Changes',
                 'sidebar.newchat': 'New Chat',
@@ -5373,6 +5368,8 @@
                 'settings.email.hint': '邮箱不能修改',
                 'settings.model': 'AI 模型',
                 'settings.model.hint': '选择驱动 {companion} 的AI模型',
+                'settings.voice.title': '🔊 AI 语音回复',
+                'settings.voice.desc': '发送语音消息时，AI 自动语音回复',
                 'settings.cancel': '取消',
                 'settings.save': '保存修改',
                 'sidebar.newchat': '新对话',
@@ -7014,6 +7011,26 @@
         // AI 语音回复 toggle（设置页面）
         function onVoiceTTSToggle(checked) {
             localStorage.setItem('voiceAutoTTS', checked ? 'true' : 'false');
+            // 热更新：立即添加或移除所有 AI 消息上的 TTS 按钮
+            if (checked) {
+                // 给所有 AI 消息添加 TTS 按钮
+                document.querySelectorAll('.message.assistant .message-content').forEach(contentDiv => {
+                    if (contentDiv.querySelector('.tts-btn')) return; // 已有
+                    const text = contentDiv.textContent?.trim();
+                    if (!text) return;
+                    const ttsBtn = document.createElement('button');
+                    ttsBtn.className = 'tts-btn';
+                    ttsBtn.title = 'Listen';
+                    ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    ttsBtn.onclick = function() { requestAndPlayTTS(text, this); };
+                    contentDiv.appendChild(ttsBtn);
+                });
+            } else {
+                // 移除所有 TTS 按钮
+                document.querySelectorAll('.tts-btn').forEach(btn => btn.remove());
+                // 停止正在播放的 TTS
+                if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+            }
         }
         function isVoiceTTSEnabled() {
             return localStorage.getItem('voiceAutoTTS') === 'true'; // 默认关闭
