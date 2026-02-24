@@ -24,37 +24,43 @@ dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 # Default TTS settings
 DEFAULT_TTS_MODEL = "cosyvoice-v3-flash"
-DEFAULT_TTS_VOICE_FEMALE = "longanhuan"      # Female, Mandarin/English
+DEFAULT_TTS_VOICE_FEMALE = "longhua_v3"      # Female, social companion style
 DEFAULT_TTS_VOICE_MALE = "longanyang"        # Male, Mandarin/English
 
 # Default ASR settings
 DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
 
-# Voice mapping based on companion gender/subtype
+# Voice mapping based on companion gender/subtype (cosyvoice-v3-flash compatible voices)
+# Each entry: { "voice": voice_name, "rate": speech_rate, "pitch": pitch, "volume": volume }
 VOICE_MAP = {
-    # Female voices
-    "female_gentle": "longanhuan",        # 温柔姐姐 - gentle female
-    "female_cold": "longxiaoxia_v2",      # 高冷御姐 - cool female
-    "female_cute": "longxiaomeng_v2",     # 可爱学妹 - cute female
-    "female_cheerful": "longlaotie_v2",   # 元气少女 - cheerful female
-    # Male voices
-    "male_ceo": "longanyang",             # 霸总 - authoritative male
-    "male_warm": "longshu_v2",            # 暖男 - warm male
-    "male_classmate": "longanyang",       # 学长 - senior male
-    "male_badboy": "longanyang",          # 坏男孩 - bad boy male
+    # Female voices — using v3 compatible voices
+    "female_gentle":   {"voice": "longhua_v3",      "rate": 0.9,  "pitch": 1.05, "volume": 55},   # 温柔姐姐 - social companion, warm tone
+    "female_cold":     {"voice": "longxiaoxia_v3",  "rate": 0.95, "pitch": 0.95, "volume": 50},   # 高冷御姐 - voice assistant, cool tone
+    "female_cute":     {"voice": "longantai_v3",    "rate": 1.05, "pitch": 1.1,  "volume": 60},   # 可爱学妹 - social companion, lively
+    "female_cheerful": {"voice": "longanhuan",      "rate": 1.05, "pitch": 1.08, "volume": 60},   # 元气少女 - cheerful energetic girl
+    # Male voices — using v3 compatible voices
+    "male_ceo":        {"voice": "longze_v3",       "rate": 0.85, "pitch": 0.9,  "volume": 55},   # 霸总 - social companion, deep & authoritative
+    "male_warm":       {"voice": "longcheng_v3",    "rate": 0.92, "pitch": 1.0,  "volume": 55},   # 暖男 - social companion, warm
+    "male_classmate":  {"voice": "longzhe_v3",      "rate": 1.0,  "pitch": 1.0,  "volume": 50},   # 学长 - social companion
+    "male_badboy":     {"voice": "longanyang",      "rate": 1.05, "pitch": 0.95, "volume": 55},   # 坏男孩 - slightly fast, lower pitch
     # Fallbacks
-    "female": "longanhuan",
-    "male": "longanyang",
+    "female": {"voice": "longhua_v3",    "rate": 0.95, "pitch": 1.0, "volume": 55},
+    "male":   {"voice": "longanyang",    "rate": 0.95, "pitch": 1.0, "volume": 55},
 }
 
 
-def get_voice_for_companion(gender: str, subtype: str = None) -> str:
-    """Get the best voice for the companion based on gender and subtype."""
+def get_voice_config(gender: str, subtype: str = None) -> dict:
+    """Get the voice config (voice name + prosody params) for the companion."""
     if subtype and subtype in VOICE_MAP:
         return VOICE_MAP[subtype]
     if gender in VOICE_MAP:
         return VOICE_MAP[gender]
-    return DEFAULT_TTS_VOICE_FEMALE
+    return {"voice": DEFAULT_TTS_VOICE_FEMALE, "rate": 0.95, "pitch": 1.0, "volume": 55}
+
+
+def get_voice_for_companion(gender: str, subtype: str = None) -> str:
+    """Get the best voice name for the companion based on gender and subtype."""
+    return get_voice_config(gender, subtype)["voice"]
 
 
 # ==================== TTS (Text-to-Speech) ====================
@@ -105,24 +111,43 @@ def _clean_text_for_tts(text: str) -> str:
     return cleaned
 
 
+def _escape_xml(text: str) -> str:
+    """Escape special characters for SSML XML content."""
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    text = text.replace('"', '&quot;')
+    text = text.replace("'", '&apos;')
+    return text
+
+
+def _wrap_ssml(text: str, rate: float = 1.0, pitch: float = 1.0, volume: int = 50) -> str:
+    """
+    Wrap text in SSML <speak> tags with prosody parameters for more natural speech.
+    CosyVoice SSML supports rate (0.5-2.0), pitch (0.5-2.0), volume (0-100).
+    """
+    escaped = _escape_xml(text)
+    return f'<speak rate="{rate}" pitch="{pitch}" volume="{volume}">{escaped}</speak>'
+
+
 def synthesize_speech(
     text: str,
     voice: str = None,
     gender: str = "female",
     subtype: str = None,
-    speech_rate: float = 1.0,
-    volume: int = 50,
+    speech_rate: float = None,
+    volume: int = None,
 ) -> bytes:
     """
-    Convert text to speech using CosyVoice.
+    Convert text to speech using CosyVoice with character-specific prosody.
 
     Args:
-        text: The text to synthesize (max 20,000 chars)
+        text: The text to synthesize (max 2000 chars)
         voice: Specific voice name (overrides gender/subtype)
         gender: Companion gender ('male' or 'female')
         subtype: Companion subtype for voice selection
-        speech_rate: Speech rate (0.5 - 2.0, default 1.0)
-        volume: Volume level (0 - 100, default 50)
+        speech_rate: Speech rate override (0.5 - 2.0, None = use character default)
+        volume: Volume level override (0 - 100, None = use character default)
 
     Returns:
         Audio bytes in MP3 format
@@ -144,10 +169,20 @@ def synthesize_speech(
         text = text[:2000]
         logger.warning("Text truncated to 2000 characters for TTS")
 
-    # Determine voice
-    selected_voice = voice or get_voice_for_companion(gender, subtype)
+    # Get character-specific voice config (voice + prosody params)
+    voice_config = get_voice_config(gender, subtype)
+    selected_voice = voice or voice_config["voice"]
+    final_rate = speech_rate if speech_rate is not None else voice_config.get("rate", 1.0)
+    final_pitch = voice_config.get("pitch", 1.0)
+    final_volume = volume if volume is not None else voice_config.get("volume", 55)
 
-    logger.info(f"[TTS] Synthesizing {len(text)} chars with voice={selected_voice}, model={DEFAULT_TTS_MODEL}")
+    logger.info(
+        f"[TTS] Synthesizing {len(text)} chars | voice={selected_voice} | "
+        f"rate={final_rate} pitch={final_pitch} vol={final_volume} | model={DEFAULT_TTS_MODEL}"
+    )
+
+    # Wrap in SSML for natural prosody control
+    ssml_text = _wrap_ssml(text, rate=final_rate, pitch=final_pitch, volume=final_volume)
 
     try:
         synthesizer = SpeechSynthesizer(
@@ -155,7 +190,7 @@ def synthesize_speech(
             voice=selected_voice,
         )
 
-        audio_data = synthesizer.call(text)
+        audio_data = synthesizer.call(ssml_text)
 
         if not audio_data:
             raise Exception("No audio data returned from TTS service")

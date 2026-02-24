@@ -2099,9 +2099,9 @@ VOICE_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upl
 os.makedirs(VOICE_UPLOAD_DIR, exist_ok=True)
 
 
-def _save_audio_file(audio_data: bytes, prefix: str = "tts") -> str:
+def _save_audio_file(audio_data: bytes, prefix: str = "tts", ext: str = "mp3") -> str:
     """Save audio bytes to uploads/voice/ and return the relative URL path."""
-    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.mp3"
+    filename = f"{prefix}_{uuid.uuid4().hex[:12]}.{ext}"
     filepath = os.path.join(VOICE_UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(audio_data)
@@ -2234,8 +2234,8 @@ def voice_upload():
             except Exception as e:
                 logger.warning(f"[VoiceUpload] Could not read WAV duration: {e}")
 
-        # Save the uploaded audio file
-        audio_url = _save_audio_file(audio_data, prefix="user")
+        # Save the uploaded audio file (keep original format extension)
+        audio_url = _save_audio_file(audio_data, prefix="user", ext=audio_format or "webm")
 
         # Run STT to get text transcription
         text = ""
