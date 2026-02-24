@@ -9,6 +9,7 @@ import uuid
 import json
 import logging
 import tempfile
+import wave
 import dashscope
 from dashscope.audio.tts_v2 import SpeechSynthesizer, AudioFormat
 from dashscope.audio.asr import Recognition, RecognitionCallback, RecognitionResult
@@ -26,9 +27,7 @@ DEFAULT_TTS_VOICE_FEMALE = "longanhuan"      # Female, Mandarin/English
 DEFAULT_TTS_VOICE_MALE = "longanyang"        # Male, Mandarin/English
 
 # Default ASR settings
-# Use paraformer-v2 (non-realtime) for file-based recognition
-# paraformer-realtime-v2 is for streaming, doesn't work well with complete files
-DEFAULT_ASR_MODEL = "paraformer-v2"
+DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
 
 # Voice mapping based on companion gender/subtype
 VOICE_MAP = {
@@ -191,12 +190,31 @@ def recognize_speech(
         file_size = os.path.getsize(tmp_file.name)
         logger.info(f"[STT] Saved temp file: {tmp_file.name}, size={file_size} bytes")
 
+        # Auto-detect sample rate from WAV file header
+        actual_sample_rate = sample_rate
+        if audio_format == "wav":
+            try:
+                with wave.open(tmp_file.name, "rb") as wf:
+                    actual_sample_rate = wf.getframerate()
+                    channels = wf.getnchannels()
+                    sampwidth = wf.getsampwidth()
+                    nframes = wf.getnframes()
+                    logger.info(
+                        f"[STT] WAV info: rate={actual_sample_rate}, channels={channels}, "
+                        f"sampwidth={sampwidth}, frames={nframes}, "
+                        f"duration={nframes/actual_sample_rate:.2f}s"
+                    )
+            except Exception as wav_err:
+                logger.warning(f"[STT] Could not read WAV header: {wav_err}, using default rate={sample_rate}")
+
+        logger.info(f"[STT] Using sample_rate={actual_sample_rate} (requested={sample_rate})")
+
         callback = STTCallback()
 
         recognition = Recognition(
             model=DEFAULT_ASR_MODEL,
             format=audio_format,
-            sample_rate=sample_rate,
+            sample_rate=actual_sample_rate,
             language_hints=["zh", "en"],
             callback=callback,
         )
