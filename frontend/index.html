@@ -4455,18 +4455,6 @@
             </div>
             <div class="changelog-body">
 
-                <!-- v0.0.10-beta -->
-                <div class="changelog-version">
-                    <div class="changelog-version-tag">
-                        <span class="ver">v0.0.10-beta</span>
-                        <span class="date">2026-02-26</span>
-                    </div>
-                    <ul class="changelog-list">
-                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v1100.1">Dual image engine — added Flux as backup, image generation more reliable</span></li>
-                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v1100.2">Fixed occasional image generation failures</span></li>
-                    </ul>
-                </div>
-
                 <!-- v0.0.9-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -4476,8 +4464,10 @@
                     <ul class="changelog-list">
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v190.1">Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v190.2">GPT-4o smart switch hint — auto-suggests Grok when GPT replies are short or refused</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v1100.1">Dual image engine — added Flux as backup, image generation more reliable</span></li>
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v190.3">Richer AI replies — no more one-liners, conversations feel more real</span></li>
                         <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v190.4">Fixed Gemini thinking content occasionally leaking into chat</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v1100.2">Fixed occasional image generation failures</span></li>
                     </ul>
                 </div>
 
@@ -4627,7 +4617,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.10-beta</p>
+                    <p class="about-version">v0.0.9-beta</p>
                 </div>
             </div>
 
@@ -7964,7 +7954,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.10-beta';
+        const CURRENT_APP_VERSION = 'v0.0.9-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
