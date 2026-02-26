@@ -8744,7 +8744,7 @@
                 const formData = new FormData();
                 formData.append('file', pendingImportFile);
 
-                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/import`, {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/import/chatgpt`, {
                     method: 'POST',
                     body: formData
                 });

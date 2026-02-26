@@ -1340,7 +1340,7 @@ def delete_conversation(conv_id):
 
 # ==================== 聊天记录导入接口 ====================
 
-@app.route("/api/conversations/import", methods=["POST"])
+@app.route("/api/import/chatgpt", methods=["POST"])
 @login_required
 def import_conversations():
     """从 ChatGPT 导入聊天记录"""
