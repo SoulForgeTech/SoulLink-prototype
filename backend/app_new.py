@@ -811,6 +811,28 @@ def chat():
                     logger.info(f"[RENAME] Detected possible rename intent, adding hint to message")
                     break
 
+        # 导入对话的上下文注入：首次在导入对话中聊天时，注入最近历史消息
+        conv_meta = conversation.get("metadata", {})
+        if conv_meta.get("imported_from") and not conv_meta.get("import_session_activated"):
+            imported_msgs = conversation.get("messages", [])[-20:]  # 最近20条
+            if imported_msgs:
+                context_lines = []
+                for m in imported_msgs:
+                    role_label = "User" if m["role"] == "user" else "Assistant"
+                    context_lines.append(f"{role_label}: {m['content'][:500]}")
+                context_block = "\n".join(context_lines)
+                message_to_send = (
+                    f"[以下是我们之前在其他平台的对话记录，请基于这些上下文继续和我对话，"
+                    f"保持之前的语气和话题]\n{context_block}\n"
+                    f"[对话记录结束，请继续]\n\n{message_to_send}"
+                )
+                logger.info(f"[IMPORT] Injected {len(imported_msgs)} imported messages as context")
+            # 标记已激活，后续消息不再注入
+            db.db["conversations"].update_one(
+                {"_id": conversation["_id"]},
+                {"$set": {"metadata.import_session_activated": True}}
+            )
+
         # 发送消息
         logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
@@ -850,18 +872,26 @@ def chat():
             unclosed_match = re.match(r'^<(?:think|thought)>(.*)', reply, re.DOTALL)
             if unclosed_match:
                 raw = unclosed_match.group(1).strip()
-                # 尝试在内容中找到实际回复（通常 thinking 后面跟着双换行 + 回复）
-                # 或者 Gemini 把回复放在最后一段
-                split_match = re.split(r'\n\n(?=[^\n*#\-])', raw, maxsplit=1)
-                if len(split_match) > 1 and len(split_match[-1].strip()) > 5:
-                    # 最后一段看起来像是实际回复
-                    thinking_content = split_match[0].strip()
-                    reply = split_match[-1].strip()
+                thinking_content = raw  # 全部先归入 thinking
+                reply = ""
+                # 尝试从 thinking 中提取真正的对话回复
+                # 优先找引号内的对话内容（"xxx" / "xxx" / 「xxx」）
+                quoted = re.findall(r'[""「]([^""」]{5,})[""」]', raw)
+                if quoted:
+                    reply = max(quoted, key=len)
+                    logger.info(f"[THINKING] Unclosed <think>: extracted quoted reply ({len(reply)} chars)")
                 else:
-                    # 整个内容都是 thinking，没有明确的回复分隔
-                    thinking_content = raw
-                    reply = ""  # 会在后面触发 fallback
-                logger.info(f"[THINKING] Extracted unclosed thinking tag ({len(thinking_content)} chars), reply len={len(reply)}")
+                    # 没引号，找最后一个不含元语言的段落
+                    _meta_kw = ['我应该', '我需要', '可以表达', '可以补充', '可以更', '可以结合',
+                                '有点平淡', '人设', '回复', '用户', '第一人称', '不要加']
+                    paragraphs = [p.strip() for p in raw.split('\n') if p.strip() and len(p.strip()) > 5]
+                    for p in reversed(paragraphs):
+                        if not any(kw in p for kw in _meta_kw):
+                            reply = p
+                            logger.info(f"[THINKING] Unclosed <think>: used last clean paragraph as reply ({len(reply)} chars)")
+                            break
+                if not reply:
+                    logger.info(f"[THINKING] Unclosed <think>: no reply found, will fallback ({len(thinking_content)} chars)")
 
         # Pattern 2: "THOUGHT" 前缀（Gemini 思考泄露）
         # 格式: THOUGHT\n英文分析...\nPlan:\n1. ...\n\n中文回复
@@ -1039,11 +1069,13 @@ def chat():
         sources = full_response.get("data", {}).get("sources", [])
 
         # Auto-generate TTS for AI reply if user sent voice message
-        reply_audio_url = None
+        # 实时生成 base64 音频直接返回前端播放，不存储（节省空间，文字可随时重新生成语音）
+        reply_audio_b64 = None
         reply_audio_duration = None
         if msg_type == "voice":
             try:
                 from voice_service import synthesize_speech, extract_voice_style_from_persona
+                import base64 as b64mod
                 settings = user.get("settings", {})
                 gender = settings.get("companion_gender", "female")
                 subtype = settings.get("companion_subtype", "")
@@ -1074,12 +1106,10 @@ def chat():
                 tts_text = reply[:2000] if len(reply) > 2000 else reply
                 tts_audio = synthesize_speech(text=tts_text, gender=gender, subtype=subtype)
                 if tts_audio:
-                    reply_audio_url = _save_audio_file(tts_audio, prefix="ai")
-                    # Estimate duration: ~150 chars/min for Chinese, ~120 words/min for English
-                    # rough estimate: len(tts_audio) bytes / (16000 * 2) for 16kHz 16bit, but MP3 is compressed
-                    # Better: just estimate from text length
+                    # 直接返回 base64，不存储到 Cloudinary/本地
+                    reply_audio_b64 = b64mod.b64encode(tts_audio).decode("ascii")
                     reply_audio_duration = round(max(1.0, len(tts_text) * 0.15), 1)
-                    logger.info(f"[Chat] Auto-TTS generated: {reply_audio_url}, est_duration={reply_audio_duration}s")
+                    logger.info(f"[Chat] Auto-TTS generated: {len(tts_audio)} bytes (b64 streamed, not stored), est_duration={reply_audio_duration}s")
             except Exception as tts_err:
                 logger.warning(f"[Chat] Auto-TTS for reply failed (non-fatal): {tts_err}")
 
@@ -1101,9 +1131,7 @@ def chat():
             sources,
             thinking=thinking_content if thinking_content else None,
             attachments=image_attachments,
-            msg_type="voice" if reply_audio_url else None,
-            audio_url=reply_audio_url,
-            audio_duration=reply_audio_duration
+            # AI TTS 不存 DB — 实时生成播放，文字随时可重新合成语音
         )
 
         # 更新统计
@@ -1115,8 +1143,8 @@ def chat():
             "sources": sources,
             "conversation_id": str(conversation["_id"])
         }
-        if reply_audio_url:
-            result["reply_audio_url"] = reply_audio_url
+        if reply_audio_b64:
+            result["reply_audio_b64"] = reply_audio_b64
             result["reply_audio_duration"] = reply_audio_duration
         if thinking_content and show_thinking:
             result["thinking"] = thinking_content
@@ -1201,7 +1229,8 @@ def list_conversations():
                 "title": conv.get("title", "新对话"),
                 "updated_at": conv.get("updated_at").isoformat() if conv.get("updated_at") else None,
                 "message_count": conv.get("metadata", {}).get("total_messages", 0),
-                "preview": conv.get("messages", [{}])[-1].get("content", "")[:50] if conv.get("messages") else ""
+                "preview": conv.get("messages", [{}])[-1].get("content", "")[:50] if conv.get("messages") else "",
+                "imported_from": conv.get("metadata", {}).get("imported_from")
             }
             for conv in conversations
         ]
@@ -1307,6 +1336,161 @@ def delete_conversation(conv_id):
         return jsonify({"error": "Conversation not found or already deleted"}), 404
 
     return jsonify({"success": True})
+
+
+# ==================== 聊天记录导入接口 ====================
+
+@app.route("/api/conversations/import", methods=["POST"])
+@login_required
+def import_conversations():
+    """从 ChatGPT 导入聊天记录"""
+    import zipfile
+    import io
+    from datetime import datetime, timezone
+
+    user_id = get_current_user_id()
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    try:
+        # 读取文件内容
+        file_content = file.read()
+        raw_json = None
+
+        # 支持 ZIP 和直接 JSON
+        if file.filename.endswith(".zip"):
+            with zipfile.ZipFile(io.BytesIO(file_content)) as z:
+                # 查找 conversations.json
+                json_files = [n for n in z.namelist() if n.endswith("conversations.json")]
+                if not json_files:
+                    return jsonify({"error": "No conversations.json found in ZIP"}), 400
+                raw_json = z.read(json_files[0])
+        else:
+            raw_json = file_content
+
+        data = json.loads(raw_json)
+        if not isinstance(data, list):
+            return jsonify({"error": "Invalid format: expected a JSON array of conversations"}), 400
+
+        # 解析 ChatGPT conversations
+        imported = []
+        total_messages = 0
+
+        for conv in data:
+            title = conv.get("title", "Imported Chat")
+            create_time = conv.get("create_time")
+            update_time = conv.get("update_time")
+            mapping = conv.get("mapping", {})
+
+            # 扁平化 ChatGPT 的 mapping 树结构
+            messages = _flatten_chatgpt_mapping(mapping)
+
+            if not messages:
+                continue  # 跳过空对话
+
+            # 转换时间戳
+            created_at = datetime.fromtimestamp(create_time, tz=timezone.utc) if create_time else datetime.utcnow()
+            updated_at = datetime.fromtimestamp(update_time, tz=timezone.utc) if update_time else datetime.utcnow()
+            last_msg_time = messages[-1]["timestamp"] if messages else None
+
+            imported.append({
+                "user_id": user_id,
+                "title": title,
+                "messages": messages,
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "is_active": True,
+                "metadata": {
+                    "total_messages": len(messages),
+                    "last_message_at": last_msg_time,
+                    "imported_from": "chatgpt",
+                    "import_session_activated": False
+                }
+            })
+            total_messages += len(messages)
+
+        if not imported:
+            return jsonify({"error": "No valid conversations found in file"}), 400
+
+        # 批量插入
+        count = db.batch_create_conversations(imported)
+
+        logger.info(f"[IMPORT] User {user_id} imported {count} conversations ({total_messages} messages) from ChatGPT")
+
+        return jsonify({
+            "success": True,
+            "imported_count": count,
+            "total_messages": total_messages
+        })
+
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid JSON file"}), 400
+    except zipfile.BadZipFile:
+        return jsonify({"error": "Invalid ZIP file"}), 400
+    except Exception as e:
+        logger.error(f"[IMPORT] Failed: {e}", exc_info=True)
+        return jsonify({"error": f"Import failed: {str(e)}"}), 500
+
+
+def _flatten_chatgpt_mapping(mapping: dict) -> list:
+    """
+    将 ChatGPT 的 mapping 树结构扁平化为有序消息数组
+    ChatGPT 用 {node_id: {message, parent, children}} 的树来存对话
+    """
+    from datetime import datetime, timezone
+
+    # 找到根节点（parent 为 None 或 parent 不在 mapping 中的）
+    root_id = None
+    for node_id, node in mapping.items():
+        parent = node.get("parent")
+        if parent is None or parent not in mapping:
+            root_id = node_id
+            break
+
+    if not root_id:
+        return []
+
+    # BFS/DFS 沿 children 链遍历（取第一个 child，即主线程）
+    messages = []
+    current_id = root_id
+
+    while current_id:
+        node = mapping.get(current_id)
+        if not node:
+            break
+
+        msg = node.get("message")
+        if msg and msg.get("content"):
+            role = msg.get("author", {}).get("role", "")
+            # 只保留 user 和 assistant 消息
+            if role in ("user", "assistant"):
+                parts = msg.get("content", {}).get("parts", [])
+                # 过滤掉非文本 parts（图片等）
+                text_parts = [p for p in parts if isinstance(p, str)]
+                content = "\n".join(text_parts).strip()
+
+                if content:
+                    create_time = msg.get("create_time")
+                    timestamp = datetime.fromtimestamp(create_time, tz=timezone.utc) if create_time else datetime.utcnow()
+
+                    messages.append({
+                        "id": str(ObjectId()),
+                        "role": role,
+                        "content": content,
+                        "sources": [],
+                        "timestamp": timestamp
+                    })
+
+        # 移动到下一个节点（取 children 的第一个）
+        children = node.get("children", [])
+        current_id = children[0] if children else None
+
+    return messages
 
 
 # ==================== 文档上传接口（可选） ====================
@@ -2122,18 +2306,52 @@ def custom_status():
 
 # ==================== 语音接口 (Voice API) ====================
 
-# Voice uploads directory
+# Voice uploads directory (fallback for local storage)
 VOICE_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads", "voice")
 os.makedirs(VOICE_UPLOAD_DIR, exist_ok=True)
 
 
+def _upload_audio_to_cloudinary(audio_data: bytes, prefix: str = "tts", ext: str = "mp3") -> str:
+    """Upload audio to Cloudinary. Returns CDN URL or empty string on failure."""
+    try:
+        import image_gen as _img_mod
+        import cloudinary.uploader
+        _img_mod._ensure_cloudinary()
+        # 必须通过模块引用检查，from import 导入的是值副本不会更新
+        if not _img_mod._cloudinary_configured:
+            logger.warning("[Voice] Cloudinary not configured, skipping upload")
+            return ""
+        from datetime import datetime, timezone
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        public_id = f"soullink/voice/{prefix}_{timestamp}_{uuid.uuid4().hex[:6]}"
+        result = cloudinary.uploader.upload(
+            audio_data,
+            public_id=public_id,
+            resource_type="video",  # Cloudinary uses "video" for audio files
+            overwrite=True,
+            format=ext,
+        )
+        url = result.get("secure_url", "")
+        if url:
+            logger.info(f"[Voice] Uploaded to Cloudinary: {url[:80]}")
+        return url
+    except Exception as e:
+        logger.warning(f"[Voice] Cloudinary upload failed: {e}")
+        return ""
+
+
 def _save_audio_file(audio_data: bytes, prefix: str = "tts", ext: str = "mp3") -> str:
-    """Save audio bytes to uploads/voice/ and return the relative URL path."""
+    """Save audio: try Cloudinary first, fallback to local storage."""
+    # Try Cloudinary first
+    cdn_url = _upload_audio_to_cloudinary(audio_data, prefix, ext)
+    if cdn_url:
+        return cdn_url
+    # Fallback: save locally
     filename = f"{prefix}_{uuid.uuid4().hex[:12]}.{ext}"
     filepath = os.path.join(VOICE_UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(audio_data)
-    logger.info(f"[Voice] Saved {len(audio_data)} bytes to {filepath}")
+    logger.info(f"[Voice] Saved {len(audio_data)} bytes locally to {filepath}")
     return f"/uploads/voice/{filename}"
 
 
@@ -2216,12 +2434,14 @@ def voice_tts():
             speech_rate=float(speech_rate),
         )
 
-        # Save to file and return URL
-        audio_url = _save_audio_file(audio_data, prefix="tts")
+        # 实时返回 base64 音频，不存储（节省空间，文字可随时重新生成）
+        import base64 as b64mod
+        audio_b64 = b64mod.b64encode(audio_data).decode("ascii")
+        logger.info(f"[TTS] Returning {len(audio_data)} bytes as base64 (not stored)")
 
         return jsonify({
             "success": True,
-            "audio_url": audio_url,
+            "audio_b64": audio_b64,
             "size": len(audio_data),
         })
 

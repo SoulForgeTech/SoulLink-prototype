@@ -385,6 +385,18 @@
             font-weight: 500;
         }
 
+        .imported-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background: rgba(16, 163, 127, 0.2);
+            color: #10a37f;
+            font-weight: 600;
+            vertical-align: middle;
+            margin-right: 2px;
+        }
+
         .conversation-title-input {
             width: 100%;
             font-size: 0.9rem;
@@ -4900,6 +4912,26 @@
                         <div class="form-hint" data-i18n="settings.custom.hint">Customize personality and import knowledge independently</div>
                     </div>
                 </div>
+
+                <!-- 导入聊天记录 -->
+                <div class="form-group" id="import-chat-group">
+                    <label data-i18n="settings.importChat">📥 Import Chat History</label>
+                    <div class="form-hint" style="margin-bottom: 8px;" data-i18n="settings.importChatHint">Import conversations from ChatGPT. Exported via ChatGPT Settings → Data Controls → Export.</div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="import-chat-file" accept=".json,.zip" style="display:none;" onchange="handleImportChatFile(event)">
+                        <button class="custom-btn" onclick="document.getElementById('import-chat-file').click()" style="padding: 6px 14px; font-size: 0.85rem;">
+                            📁 <span data-i18n="settings.importChatBtn">Select File</span>
+                        </button>
+                        <span id="import-chat-filename" style="font-size: 0.8rem; opacity: 0.7;"></span>
+                    </div>
+                    <div id="import-chat-preview" style="display:none; margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem;">
+                    </div>
+                    <button class="custom-btn primary" id="btn-import-chat" style="display:none; margin-top: 8px; padding: 6px 14px; font-size: 0.85rem;" onclick="executeImportChat()">
+                        📤 <span data-i18n="settings.importChatSubmit">Import</span>
+                    </button>
+                    <div id="import-chat-status" style="display:none; margin-top: 6px; font-size: 0.85rem;"></div>
+                </div>
+
             </div>
             <div class="modal-footer">
                 <button class="modal-btn secondary" onclick="closeSettingsModal()" data-i18n="settings.cancel">Cancel</button>
@@ -5320,6 +5352,15 @@
                 'settings.custom.lore.doc_count': '{count}/{max} documents',
                 'settings.custom.lore.limit_reached': 'Maximum documents reached',
                 'settings.custom.lore.delete_confirm': 'Remove this document from knowledge base?',
+                'settings.importChat': '📥 Import Chat History',
+                'settings.importChatHint': 'Import conversations from ChatGPT. Exported via ChatGPT Settings → Data Controls → Export.',
+                'settings.importChatBtn': 'Select File',
+                'settings.importChatSubmit': 'Import',
+                'settings.importChatPreview': 'Found',
+                'settings.importChatConvs': 'conversations',
+                'settings.importChatMsgs': 'messages',
+                'settings.importChatLoading': 'Importing...',
+                'settings.importChatSuccess': 'Imported',
                 'companion.avatar.title': 'Change Companion Avatar',
                 'companion.avatar.upload': 'Upload Image',
                 'companion.avatar.reset': 'Reset to Default',
@@ -5537,6 +5578,15 @@
                 'settings.custom.lore.doc_count': '{count}/{max} 个文档',
                 'settings.custom.lore.limit_reached': '已达文档上限',
                 'settings.custom.lore.delete_confirm': '确定从知识库移除此文档？',
+                'settings.importChat': '📥 导入聊天记录',
+                'settings.importChatHint': '从 ChatGPT 导入对话记录。在 ChatGPT 设置 → 数据控制 → 导出数据 获取文件。',
+                'settings.importChatBtn': '选择文件',
+                'settings.importChatSubmit': '开始导入',
+                'settings.importChatPreview': '发现',
+                'settings.importChatConvs': '个对话',
+                'settings.importChatMsgs': '条消息',
+                'settings.importChatLoading': '导入中...',
+                'settings.importChatSuccess': '已导入',
                 'companion.avatar.title': '修改伴侣头像',
                 'companion.avatar.upload': '上传图片',
                 'companion.avatar.reset': '恢复默认头像',
@@ -6580,7 +6630,7 @@
 
                 item.innerHTML = `
                     <div class="conversation-content" onclick="selectConversation('${conv.id}')">
-                        <div class="conversation-title">${escapeHtml(conv.title || 'New Chat')}</div>
+                        <div class="conversation-title">${conv.imported_from ? '<span class="imported-badge">ChatGPT</span> ' : ''}${escapeHtml(conv.title || 'New Chat')}</div>
                         <div class="conversation-time">${date}</div>
                     </div>
                     <div class="conversation-actions">
@@ -8631,6 +8681,98 @@
             } finally {
                 btn.disabled = false;
                 btn.querySelector('span').textContent = originalText;
+            }
+        }
+
+        // ==================== ChatGPT 聊天记录导入 ====================
+
+        let pendingImportFile = null;
+
+        function handleImportChatFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            pendingImportFile = file;
+            document.getElementById('import-chat-filename').textContent = file.name;
+            document.getElementById('import-chat-status').style.display = 'none';
+
+            // 如果是 JSON，预览内容
+            if (file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (Array.isArray(data)) {
+                            const totalMsgs = data.reduce((sum, c) => {
+                                const mapping = c.mapping || {};
+                                const msgCount = Object.values(mapping).filter(n =>
+                                    n.message && n.message.author && ['user', 'assistant'].includes(n.message.author.role)
+                                ).length;
+                                return sum + msgCount;
+                            }, 0);
+                            const preview = document.getElementById('import-chat-preview');
+                            preview.innerHTML = `📊 ${t('settings.importChatPreview') || 'Found'} <b>${data.length}</b> ${t('settings.importChatConvs') || 'conversations'}，~<b>${totalMsgs}</b> ${t('settings.importChatMsgs') || 'messages'}`;
+                            preview.style.display = 'block';
+                        }
+                    } catch (err) {
+                        console.error('Preview parse error:', err);
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                // ZIP 文件直接显示文件名
+                const preview = document.getElementById('import-chat-preview');
+                preview.innerHTML = `📦 ZIP: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+                preview.style.display = 'block';
+            }
+
+            document.getElementById('btn-import-chat').style.display = 'inline-block';
+        }
+
+        async function executeImportChat() {
+            if (!pendingImportFile) return;
+
+            const btn = document.getElementById('btn-import-chat');
+            const status = document.getElementById('import-chat-status');
+            btn.disabled = true;
+            btn.textContent = '⏳ ' + (t('settings.importChatLoading') || 'Importing...');
+            status.style.display = 'block';
+            status.textContent = '⏳ ' + (t('settings.importChatLoading') || 'Importing...');
+            status.style.color = '#aaa';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', pendingImportFile);
+
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/import`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await resp.json();
+
+                if (data.success) {
+                    status.textContent = `✅ ${t('settings.importChatSuccess') || 'Imported'} ${data.imported_count} ${t('settings.importChatConvs') || 'conversations'}（${data.total_messages} ${t('settings.importChatMsgs') || 'messages'}）`;
+                    status.style.color = '#4ade80';
+                    // 清理状态
+                    pendingImportFile = null;
+                    document.getElementById('import-chat-file').value = '';
+                    document.getElementById('import-chat-filename').textContent = '';
+                    document.getElementById('import-chat-preview').style.display = 'none';
+                    btn.style.display = 'none';
+                    // 刷新对话列表
+                    await loadConversations();
+                } else {
+                    status.textContent = '❌ ' + (data.error || 'Import failed');
+                    status.style.color = '#f87171';
+                }
+            } catch (e) {
+                console.error('[IMPORT] Error:', e);
+                status.textContent = '❌ Network error';
+                status.style.color = '#f87171';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 ' + (t('settings.importChatSubmit') || 'Import');
             }
         }
 

@@ -233,6 +233,13 @@ class MongoDB:
             conv = self.create_conversation(user_id)
         return conv
 
+    def batch_create_conversations(self, conversations: List[Dict]) -> int:
+        """批量创建导入的对话，返回插入数量"""
+        if not conversations:
+            return 0
+        result = self.db[ConversationModel.collection_name].insert_many(conversations)
+        return len(result.inserted_ids)
+
     def delete_conversation(self, conv_id: ObjectId, user_id: ObjectId) -> bool:
         """软删除对话"""
         result = self.db[ConversationModel.collection_name].update_one(
