@@ -4455,6 +4455,20 @@
             </div>
             <div class="changelog-body">
 
+                <!-- v0.0.9-beta -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v0.0.9-beta</span>
+                        <span class="date">2026-02-25</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v190.1">Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v190.2">GPT-4o smart switch hint — auto-suggests Grok when GPT replies are short or refused</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v190.3">Richer AI replies — no more one-liners, conversations feel more real</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v190.4">Fixed Gemini thinking content occasionally leaking into chat</span></li>
+                    </ul>
+                </div>
+
                 <!-- v0.0.8-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -4601,7 +4615,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.8-beta</p>
+                    <p class="about-version">v0.0.9-beta</p>
                 </div>
             </div>
 
@@ -5311,6 +5325,10 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
+                'changelog.v190.1': 'Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies',
+                'changelog.v190.2': 'GPT-4o smart switch hint — auto-suggests Grok when GPT replies are short or refused',
+                'changelog.v190.3': 'Richer AI replies — no more one-liners, conversations feel more real',
+                'changelog.v190.4': 'Fixed Gemini thinking content occasionally leaking into chat',
                 'changelog.v180.1': 'AI image generation — your companion can now send selfies & scene photos',
                 'changelog.v180.2': 'Character appearance matching — images auto-match your character\'s look',
                 'changelog.v180.3': 'Images saved to cloud — persist after refresh, click to fullscreen',
@@ -5522,6 +5540,10 @@
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
                 'changelog.title': '版本日志',
+                'changelog.v190.1': 'Gemini 3 Flash — AI引擎升级，回复更聪明更有表现力',
+                'changelog.v190.2': 'GPT-4o 智能切换提示 — GPT回复过短或拒绝时自动建议切换Grok',
+                'changelog.v190.3': '回复质量优化 — 告别一句话敷衍，对话更有真实感',
+                'changelog.v190.4': '修复 Gemini 思考内容偶尔泄露到聊天中',
                 'changelog.v180.1': 'AI发图 — 伴侣现在可以发自拍和场景照片啦',
                 'changelog.v180.2': '角色外观匹配 — 图片自动符合你的角色形象',
                 'changelog.v180.3': '图片云端保存 — 刷新不丢失，点击可全屏查看',
@@ -7926,7 +7948,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.8-beta';
+        const CURRENT_APP_VERSION = 'v0.0.9-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
