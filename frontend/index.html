@@ -4916,7 +4916,10 @@
                 <!-- 导入聊天记录 -->
                 <div class="form-group" id="import-chat-group">
                     <label data-i18n="settings.importChat">📥 Import Chat History</label>
-                    <div class="form-hint" style="margin-bottom: 8px;" data-i18n="settings.importChatHint">Import conversations from ChatGPT. Exported via ChatGPT Settings → Data Controls → Export.</div>
+                    <div class="form-hint" style="margin-bottom: 8px;">
+                        <span data-i18n="settings.importChatHint">Import conversations from ChatGPT.</span>
+                        <a href="https://chatgpt.com/#settings/DataControls" target="_blank" rel="noopener" style="color: #10a37f; text-decoration: underline; white-space: nowrap;" data-i18n="settings.importChatLink">Go to ChatGPT Export →</a>
+                    </div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <input type="file" id="import-chat-file" accept=".json,.zip" style="display:none;" onchange="handleImportChatFile(event)">
                         <button class="custom-btn" onclick="document.getElementById('import-chat-file').click()" style="padding: 6px 14px; font-size: 0.85rem;">
@@ -5353,7 +5356,8 @@
                 'settings.custom.lore.limit_reached': 'Maximum documents reached',
                 'settings.custom.lore.delete_confirm': 'Remove this document from knowledge base?',
                 'settings.importChat': '📥 Import Chat History',
-                'settings.importChatHint': 'Import conversations from ChatGPT. Exported via ChatGPT Settings → Data Controls → Export.',
+                'settings.importChatHint': 'Import conversations from ChatGPT.',
+                'settings.importChatLink': 'Go to ChatGPT Export →',
                 'settings.importChatBtn': 'Select File',
                 'settings.importChatSubmit': 'Import',
                 'settings.importChatPreview': 'Found',
@@ -5579,7 +5583,8 @@
                 'settings.custom.lore.limit_reached': '已达文档上限',
                 'settings.custom.lore.delete_confirm': '确定从知识库移除此文档？',
                 'settings.importChat': '📥 导入聊天记录',
-                'settings.importChatHint': '从 ChatGPT 导入对话记录。在 ChatGPT 设置 → 数据控制 → 导出数据 获取文件。',
+                'settings.importChatHint': '从 ChatGPT 导入对话记录。',
+                'settings.importChatLink': '前往 ChatGPT 导出 →',
                 'settings.importChatBtn': '选择文件',
                 'settings.importChatSubmit': '开始导入',
                 'settings.importChatPreview': '发现',
