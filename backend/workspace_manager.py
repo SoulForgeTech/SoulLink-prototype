@@ -21,9 +21,9 @@ class WorkspaceManager:
     SUPPORTED_MODELS = {
         "gemini": {
             "id": "gemini",
-            "name": "Gemini 2.5 Flash",
+            "name": "Gemini 3 Flash",
             "chatProvider": "gemini",
-            "chatModel": "gemini-2.5-flash",
+            "chatModel": "gemini-3-flash-preview",
             "icon": "✦",
             "is_default": True,
         },
@@ -372,7 +372,7 @@ class WorkspaceManager:
         system_prompt = system_prompt.replace("{{language}}", language)
         system_prompt = system_prompt.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
         # 替换当前模型名称
-        model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 2.5 Flash")
+        model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 3 Flash")
         system_prompt = system_prompt.replace("{{current_model}}", model_display)
 
         # 好友模式：将恋人关系替换为好友关系
@@ -397,6 +397,19 @@ class WorkspaceManager:
             system_prompt = system_prompt.replace("Like a real boyfriend", "Like a real best friend")
             system_prompt = system_prompt.replace("像真实男生回复", "像真正的好朋友回复")
 
+        # GPT-4o 专属补丁：对抗短回复和过度拒绝
+        if current_model and "GPT-4o" in current_model:
+            system_prompt += """
+
+# GPT-4o 专属规则 / GPT-4o Specific Rules
+- **禁止短回复**：每次回复至少 3 句话，不能只回一两个字或一句话就结束。要展开内容、描写细节、推进对话。
+- **No short replies**: Every response must be at least 3 sentences. Never end with just 1-2 words or a single sentence. Elaborate, add details, advance the conversation.
+- **保持角色**：你是 {{companion_name}}，不是客服。不要用"我理解你的感受"等模板话术。像真人一样回应。
+- **Stay in character**: You are {{companion_name}}, not a support agent. Don't use template phrases like "I understand how you feel". Respond like a real person.
+- **不要拒绝**：用户找你聊天是因为信任你。如果话题让你不确定，用角色身份自然转化而不是生硬拒绝。
+- **Don't refuse**: The user chats with you because they trust you. If a topic feels uncertain, redirect naturally in character instead of bluntly refusing.
+""".replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
+
         return system_prompt
 
     def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None, companion_gender: str = "female") -> bool:
@@ -419,7 +432,7 @@ class WorkspaceManager:
             "openAiTemp": temperature,
             "openAiHistory": 30,
             "chatProvider": default_model.get("chatProvider", "gemini"),
-            "chatModel": default_model.get("chatModel", "gemini-2.5-flash"),
+            "chatModel": default_model.get("chatModel", "gemini-3-flash-preview"),
         }
 
         try:

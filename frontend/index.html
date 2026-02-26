@@ -5085,7 +5085,7 @@
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
-                        <span class="model-indicator" id="model-indicator" onclick="openSettingsModal()">Gemini 2.5 Flash</span>
+                        <span class="model-indicator" id="model-indicator" onclick="openSettingsModal()">Gemini 3 Flash</span>
                     </div>
                 </div>
                 <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
@@ -7677,7 +7677,7 @@
         const MODEL_DEFINITIONS = [
             {
                 id: 'gemini',
-                name: 'Gemini 2.5 Flash',
+                name: 'Gemini 3 Flash',
                 iconClass: 'gemini-icon',
                 svg: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12Z" fill="url(#gemini-grad)"/><defs><linearGradient id="gemini-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset=".5" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs></svg>`,
                 desc_en: 'Fast · Thinking · Multimodal',
@@ -7816,7 +7816,7 @@
 
             const modelId = state.user?.settings?.model || 'gemini';
             const model = MODEL_DEFINITIONS.find(m => m.id === modelId);
-            indicator.textContent = model ? model.name : 'Gemini 2.5 Flash';
+            indicator.textContent = model ? model.name : 'Gemini 3 Flash';
         }
 
         // ==================== 用户设置模态框 ====================
