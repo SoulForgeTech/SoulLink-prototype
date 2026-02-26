@@ -4455,6 +4455,18 @@
             </div>
             <div class="changelog-body">
 
+                <!-- v0.0.10-beta -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v0.0.10-beta</span>
+                        <span class="date">2026-02-26</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v1100.1">Dual image engine — added Flux as backup, image generation more reliable</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v1100.2">Fixed occasional image generation failures</span></li>
+                    </ul>
+                </div>
+
                 <!-- v0.0.9-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -4615,7 +4627,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.9-beta</p>
+                    <p class="about-version">v0.0.10-beta</p>
                 </div>
             </div>
 
@@ -5325,6 +5337,8 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
+                'changelog.v1100.1': 'Dual image engine — added Flux as backup, image generation more reliable',
+                'changelog.v1100.2': 'Fixed occasional image generation failures',
                 'changelog.v190.1': 'Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies',
                 'changelog.v190.2': 'GPT-4o smart switch hint — auto-suggests Grok when GPT replies are short or refused',
                 'changelog.v190.3': 'Richer AI replies — no more one-liners, conversations feel more real',
@@ -5540,6 +5554,8 @@
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
                 'changelog.title': '版本日志',
+                'changelog.v1100.1': '双引擎发图 — 新增 Flux 备用引擎，图片生成更稳定',
+                'changelog.v1100.2': '修复偶尔图片生成失败的问题',
                 'changelog.v190.1': 'Gemini 3 Flash — AI引擎升级，回复更聪明更有表现力',
                 'changelog.v190.2': 'GPT-4o 智能切换提示 — GPT回复过短或拒绝时自动建议切换Grok',
                 'changelog.v190.3': '回复质量优化 — 告别一句话敷衍，对话更有真实感',
@@ -7948,7 +7964,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.9-beta';
+        const CURRENT_APP_VERSION = 'v0.0.10-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
