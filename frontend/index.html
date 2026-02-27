@@ -8525,10 +8525,9 @@
                         try { _callAbortController.abort(); } catch(e) {}
                         _callAbortController = null;
                     }
-                    // Switch to listening
+                    // Restart recording so mic captures the new speech
                     _callSetState('listening');
-                    _callHasSpoken = true;
-                    _callSilenceStart = 0;
+                    _callStartRecording();
                     return;
                 }
 
