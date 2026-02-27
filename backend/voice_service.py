@@ -35,7 +35,7 @@ DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
 # Each voice: { ref_id, name_zh, name_en, gender }
 VOICE_MAP_ZH = {
     "female_gentle":   {"ref_id": "fbe02f8306fc4d3d915e9871722a39d5", "name_zh": "温柔姐姐",   "name_en": "Gentle Girl",   "gender": "female"},   # 嘉岚3.0 - soft, smooth, gentle
-    "female_cold":     {"ref_id": "4f201abba2574feeae11e5ebf737859e", "name_zh": "高冷御姐",   "name_en": "Cool Queen",    "gender": "female"},   # 王琨 - clear, crisp, professional
+    "female_cold":     {"ref_id": "e46d11a7ce9147de9eca8f4c778d1883", "name_zh": "高冷御姐",   "name_en": "Cool Queen",    "gender": "female"},   # 工商旅游001女 - clear, professional, calm
     "female_cute":     {"ref_id": "e488ebeadd83496b97a3cd472dcd04ab", "name_zh": "可爱学妹",   "name_en": "Cute Girl",     "gender": "female"},   # 爱丽丝(中配) - bright, playful
     "female_cheerful": {"ref_id": "5c353fdb312f4888836a9a5680099ef0", "name_zh": "元气少女",   "name_en": "Cheerful Girl", "gender": "female"},   # 女大学生 - energetic, cheerful
     "male_ceo":        {"ref_id": "dd43b30d04d9446a94ebe41f301229b5", "name_zh": "霸总",       "name_en": "Authoritative", "gender": "male"},     # 宣传片 - deep, authoritative, warm
