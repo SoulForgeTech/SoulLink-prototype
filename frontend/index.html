@@ -4937,31 +4937,32 @@
                             <div class="voice-current" id="voice-current-display">
                                 <div class="voice-current-info">
                                     <span class="voice-current-name" id="voice-current-name">Default</span>
-                                    <span class="voice-current-tag" id="voice-current-tag">preset</span>
+                                    <span class="voice-current-tag" id="voice-current-tag" data-i18n="settings.voice.preset.tag">preset</span>
                                 </div>
                                 <button class="voice-preview-btn" onclick="previewCurrentVoice()" id="voice-preview-current-btn">
-                                    ▶ Try
+                                    ▶ <span data-i18n="settings.voice.try">Try</span>
                                 </button>
                             </div>
 
                             <!-- Preset voices grid -->
-                            <div class="voice-section-label">Preset Voices</div>
+                            <div class="voice-section-label" data-i18n="settings.voice.preset">Preset Voices</div>
                             <div class="voice-grid" id="voice-preset-grid">
                                 <!-- filled by JS -->
                             </div>
 
                             <!-- Search community voices -->
-                            <div class="voice-section-label">Search Community (2M+ voices)</div>
+                            <div class="voice-section-label" data-i18n="settings.voice.search">Search Community (2M+ voices)</div>
                             <div class="voice-search-box">
                                 <input type="text" class="voice-search-input" id="voice-search-input"
-                                    placeholder="Search voices... e.g. 温柔, anime, deep"
+                                    data-i18n="settings.voice.search.placeholder" data-i18n-attr="placeholder"
+                                    placeholder="Search voices... e.g. anime, deep, sweet"
                                     onkeydown="if(event.key==='Enter')searchVoices()">
-                                <button class="voice-search-btn" onclick="searchVoices()" id="voice-search-btn">Search</button>
+                                <button class="voice-search-btn" onclick="searchVoices()" id="voice-search-btn" data-i18n="settings.voice.search.btn">Search</button>
                             </div>
                             <div class="voice-search-results" id="voice-search-results"></div>
                         </div>
 
-                        <div class="form-hint">Powered by Fish Audio — 2M+ community voices</div>
+                        <div class="form-hint" data-i18n="settings.voice.hint">Powered by Fish Audio — 2M+ community voices</div>
                     </div>
                     <div class="form-group">
                         <label data-i18n="settings.companion.style">Companion Style</label>
@@ -5427,7 +5428,19 @@
                 'settings.model.hint': 'Choose the AI model that powers {companion}',
                 'settings.voice.title': '🔊 AI Voice Reply',
                 'settings.voice.desc': 'AI auto-replies with voice when you send voice messages',
-                'settings.voice.hint': 'Custom voice & voice cloning coming soon',
+                'settings.voice.hint': 'Powered by Fish Audio — 2M+ community voices',
+                'settings.voice.preset': 'Preset Voices',
+                'settings.voice.search': 'Search Community (2M+ voices)',
+                'settings.voice.search.placeholder': 'Search voices... e.g. anime, deep, sweet',
+                'settings.voice.search.btn': 'Search',
+                'settings.voice.try': 'Try',
+                'settings.voice.use': 'Use',
+                'settings.voice.auto': 'Auto (default)',
+                'settings.voice.preset.tag': 'preset',
+                'settings.voice.community.tag': 'community',
+                'settings.voice.searching': 'Searching...',
+                'settings.voice.no_results': 'No voices found. Try different keywords.',
+                'settings.voice.search.fail': 'Search failed. Please try again.',
                 'settings.cancel': 'Cancel',
                 'settings.save': 'Save Changes',
                 'sidebar.newchat': 'New Chat',
@@ -5658,7 +5671,19 @@
                 'settings.model.hint': '选择驱动 {companion} 的AI模型',
                 'settings.voice.title': '🔊 AI 语音回复',
                 'settings.voice.desc': '发送语音消息时，AI 自动语音回复',
-                'settings.voice.hint': '暂不支持自定义音色和声音克隆',
+                'settings.voice.hint': '由 Fish Audio 提供 — 200万+ 社区音色',
+                'settings.voice.preset': '预设音色',
+                'settings.voice.search': '搜索社区音色（200万+）',
+                'settings.voice.search.placeholder': '搜索音色... 如：温柔、御姐、甜美',
+                'settings.voice.search.btn': '搜索',
+                'settings.voice.try': '试听',
+                'settings.voice.use': '使用',
+                'settings.voice.auto': '自动（默认）',
+                'settings.voice.preset.tag': '预设',
+                'settings.voice.community.tag': '社区',
+                'settings.voice.searching': '搜索中...',
+                'settings.voice.no_results': '未找到音色，请换个关键词试试',
+                'settings.voice.search.fail': '搜索失败，请重试',
                 'settings.cancel': '取消',
                 'settings.save': '保存修改',
                 'sidebar.newchat': '新对话',
@@ -7389,9 +7414,9 @@
             if (_selectedVoiceName) {
                 nameEl.textContent = _selectedVoiceName;
                 const isPreset = _voicePresets.some(v => v.id === _selectedVoiceId);
-                tagEl.textContent = isPreset ? 'preset' : 'community';
+                tagEl.textContent = isPreset ? t('settings.voice.preset.tag') : t('settings.voice.community.tag');
             } else {
-                nameEl.textContent = 'Auto (default)';
+                nameEl.textContent = t('settings.voice.auto');
                 tagEl.textContent = 'auto';
             }
         }
@@ -7483,7 +7508,7 @@
 
             btn.disabled = true;
             btn.textContent = '...';
-            resultsDiv.innerHTML = '<div class="voice-search-loading">Searching...</div>';
+            resultsDiv.innerHTML = `<div class="voice-search-loading">${t('settings.voice.searching')}</div>`;
             resultsDiv.classList.add('visible');
 
             try {
@@ -7497,22 +7522,24 @@
 
                 const voices = data.voices || [];
                 if (voices.length === 0) {
-                    resultsDiv.innerHTML = '<div class="voice-search-empty">No voices found. Try different keywords.</div>';
+                    resultsDiv.innerHTML = `<div class="voice-search-empty">${t('settings.voice.no_results')}</div>`;
                     return;
                 }
 
+                const useLabel = t('settings.voice.use');
                 resultsDiv.innerHTML = '';
                 voices.forEach(v => {
                     const item = document.createElement('div');
                     item.className = 'voice-result-item';
                     const langs = (v.languages || []).join(', ') || '?';
                     const author = v.author ? `by ${v.author}` : '';
+                    const safeName = (v.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     item.innerHTML = `
                         <div class="voice-result-info">
                             <div class="voice-result-name">${v.name || 'Untitled'}</div>
                             <div class="voice-result-meta">${langs} ${author} · ${(v.task_count || 0).toLocaleString()} uses</div>
                         </div>
-                        <button class="voice-result-select" onclick="event.stopPropagation(); selectVoice('${v.id}', '${(v.name || '').replace(/'/g, "\\'")}')">Use</button>
+                        <button class="voice-result-select" onclick="event.stopPropagation(); selectVoice('${v.id}', '${safeName}')">${useLabel}</button>
                     `;
                     item.onclick = () => {
                         previewVoice(v.id, item.querySelector('.voice-result-select'));
@@ -7521,10 +7548,10 @@
                 });
             } catch(e) {
                 console.error('Search error:', e);
-                resultsDiv.innerHTML = '<div class="voice-search-empty">Search failed. Please try again.</div>';
+                resultsDiv.innerHTML = `<div class="voice-search-empty">${t('settings.voice.search.fail')}</div>`;
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Search';
+                btn.textContent = t('settings.voice.search.btn');
             }
         }
 

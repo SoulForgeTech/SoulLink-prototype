@@ -31,33 +31,50 @@ FISH_AUDIO_MODEL = "s1"
 # Default ASR settings (unchanged)
 DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
 
-# Preset voice map — curated defaults for each companion archetype
-# reference_id = Fish Audio community model ID
-# Users can override with any Fish Audio voice via search
-VOICE_MAP = {
-    # Female voices
-    "female_gentle":   {"ref_id": "b545c585f631496c914815291da4e893", "name": "温柔姐姐 / Gentle Girl",     "gender": "female"},
-    "female_cold":     {"ref_id": "d8a1340984ee4b63ad1ffae27a6a4339", "name": "高冷御姐 / Cool Queen",       "gender": "female"},
-    "female_cute":     {"ref_id": "9fad12dc142b429d9396190b0197adb8", "name": "可爱学妹 / Cute Girl",        "gender": "female"},
-    "female_cheerful": {"ref_id": "b545c585f631496c914815291da4e893", "name": "元气少女 / Cheerful Girl",    "gender": "female"},
-    # Male voices
-    "male_ceo":        {"ref_id": "28b049a7574f46bc9d7122761363bda0", "name": "霸总 / CEO",                  "gender": "male"},
-    "male_warm":       {"ref_id": "e0e2468ce2d746c1b20a4414435f6f48", "name": "暖男 / Warm Guy",             "gender": "male"},
-    "male_classmate":  {"ref_id": "728f6ff2240d49308e8137ffe66008e2", "name": "学长 / Senpai",               "gender": "male"},
-    "male_badboy":     {"ref_id": "6c8645b95abb44e0b9095ae3b241e4cc", "name": "坏男孩 / Bad Boy",            "gender": "male"},
-    # Fallbacks
-    "female":          {"ref_id": "b545c585f631496c914815291da4e893", "name": "Default Female",              "gender": "female"},
-    "male":            {"ref_id": "e0e2468ce2d746c1b20a4414435f6f48", "name": "Default Male",                "gender": "male"},
+# Preset voice map — split by language, curated from Fish Audio top voices
+# Each voice: { ref_id, name_zh, name_en, gender }
+VOICE_MAP_ZH = {
+    "female_gentle":   {"ref_id": "faccba1a8ac54016bcfc02761285e67f", "name_zh": "温柔女声",   "name_en": "Gentle Girl",   "gender": "female"},
+    "female_cold":     {"ref_id": "6ce7ea8ada884bf3889fa7c7fb206691", "name_zh": "御姐茉莉",   "name_en": "Cool Queen",    "gender": "female"},
+    "female_cute":     {"ref_id": "5c353fdb312f4888836a9a5680099ef0", "name_zh": "可爱学妹",   "name_en": "Cute Girl",     "gender": "female"},
+    "female_cheerful": {"ref_id": "3b55b3d84d2f453a98d8ca9bb24182d6", "name_zh": "元气少女",   "name_en": "Cheerful Girl", "gender": "female"},
+    "male_ceo":        {"ref_id": "59cb5986671546eaa6ca8ae6f29f6d22", "name_zh": "央视配音",   "name_en": "Authoritative", "gender": "male"},
+    "male_warm":       {"ref_id": "c7cbda1c101c4ce8906c046f01eca1a2", "name_zh": "暖男",       "name_en": "Warm Guy",      "gender": "male"},
+    "male_classmate":  {"ref_id": "54a5170264694bfc8e9ad98df7bd89c3", "name_zh": "阳光男生",   "name_en": "Sunny Boy",     "gender": "male"},
+    "male_badboy":     {"ref_id": "e4642e5edccd4d9ab61a69e82d4f8a14", "name_zh": "酷男孩",     "name_en": "Cool Boy",      "gender": "male"},
 }
 
+VOICE_MAP_EN = {
+    "female_gentle":   {"ref_id": "b545c585f631496c914815291da4e893", "name_zh": "温柔女声",   "name_en": "Friendly Girl",  "gender": "female"},
+    "female_cold":     {"ref_id": "5ac6fb7171ba419190700620738209d8", "name_zh": "冷酷女王",   "name_en": "Raiden Shogun",  "gender": "female"},
+    "female_cute":     {"ref_id": "9fad12dc142b429d9396190b0197adb8", "name_zh": "软萌女孩",   "name_en": "Soft E-Girl",    "gender": "female"},
+    "female_cheerful": {"ref_id": "59e9dc1cb20c452584788a2690c80970", "name_zh": "活力女孩",   "name_en": "ALLE",           "gender": "female"},
+    "male_ceo":        {"ref_id": "03397b4c4be74759b72533b663fbd001", "name_zh": "权威男声",   "name_en": "Elon Musk",      "gender": "male"},
+    "male_warm":       {"ref_id": "728f6ff2240d49308e8137ffe66008e2", "name_zh": "温暖男声",   "name_en": "Adam",           "gender": "male"},
+    "male_classmate":  {"ref_id": "802e3bc2b27e49c2995d23ef70e6ac89", "name_zh": "阳光男生",   "name_en": "Energetic Male", "gender": "male"},
+    "male_badboy":     {"ref_id": "8bed0e9b444046e2bf72da4b251d9a1d", "name_zh": "叙事男声",   "name_en": "Marcus",         "gender": "male"},
+}
 
-def get_voice_ref_id(gender: str, subtype: str = None) -> str:
+# Unified map for subtype key lookup (defaults to zh)
+VOICE_MAP = VOICE_MAP_ZH
+
+
+def _get_voice_map(language: str = "zh") -> dict:
+    """Get the voice map for the given language."""
+    if language and language.startswith("en"):
+        return VOICE_MAP_EN
+    return VOICE_MAP_ZH
+
+
+def get_voice_ref_id(gender: str, subtype: str = None, language: str = "zh") -> str:
     """Get the Fish Audio reference_id for the companion."""
-    if subtype and subtype in VOICE_MAP:
-        return VOICE_MAP[subtype]["ref_id"]
-    if gender in VOICE_MAP:
-        return VOICE_MAP[gender]["ref_id"]
-    return VOICE_MAP["female"]["ref_id"]
+    vmap = _get_voice_map(language)
+    if subtype and subtype in vmap:
+        return vmap[subtype]["ref_id"]
+    fallback_key = f"{gender}_gentle" if gender == "female" else f"{gender}_warm"
+    if fallback_key in vmap:
+        return vmap[fallback_key]["ref_id"]
+    return VOICE_MAP_ZH["female_gentle"]["ref_id"]
 
 
 def extract_voice_style_from_persona(persona: str, gender: str = "female") -> str:
@@ -140,6 +157,7 @@ def synthesize_speech(
     voice_id: str = None,
     gender: str = "female",
     subtype: str = None,
+    language: str = "zh",
     **kwargs,
 ) -> bytes:
     """
@@ -150,6 +168,7 @@ def synthesize_speech(
         voice_id: Fish Audio reference_id (overrides gender/subtype)
         gender: Companion gender ('male' or 'female')
         subtype: Companion subtype for default voice selection
+        language: 'zh' or 'en' — selects language-appropriate default voice
 
     Returns:
         Audio bytes in MP3 format
@@ -175,7 +194,7 @@ def synthesize_speech(
         logger.warning("Text truncated to 2000 characters for TTS")
 
     # Determine reference_id: user-selected voice_id > subtype default > gender default
-    ref_id = voice_id or get_voice_ref_id(gender, subtype)
+    ref_id = voice_id or get_voice_ref_id(gender, subtype, language)
 
     logger.info(f"[TTS] Fish Audio | {len(text)} chars | ref_id={ref_id} | model={FISH_AUDIO_MODEL}")
 
@@ -280,20 +299,15 @@ def search_voices(query: str = "", language: str = None, page: int = 1, page_siz
         raise
 
 
-def list_preset_voices() -> list:
-    """Return the list of preset voices for the voice selector."""
+def list_preset_voices(language: str = "zh") -> list:
+    """Return the list of preset voices for the voice selector, based on language."""
+    vmap = _get_voice_map(language)
+    is_zh = not (language and language.startswith("en"))
     presets = []
-    seen = set()
-    for key, v in VOICE_MAP.items():
-        # Skip fallback entries
-        if key in ("female", "male"):
-            continue
-        if v["ref_id"] in seen:
-            continue
-        seen.add(v["ref_id"])
+    for key, v in vmap.items():
         presets.append({
             "id": v["ref_id"],
-            "name": v["name"],
+            "name": v["name_zh"] if is_zh else v["name_en"],
             "gender": v["gender"],
             "type": key,
             "is_preset": True,

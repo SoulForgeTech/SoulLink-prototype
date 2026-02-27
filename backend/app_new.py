@@ -1104,7 +1104,9 @@ def chat():
                                 pass
 
                 tts_text = reply[:2000] if len(reply) > 2000 else reply
-                tts_audio = synthesize_speech(text=tts_text, voice_id=voice_id, gender=gender, subtype=subtype)
+                user_lang = settings.get("language", "en")
+                voice_lang = "zh" if user_lang.startswith("zh") else "en"
+                tts_audio = synthesize_speech(text=tts_text, voice_id=voice_id, gender=gender, subtype=subtype, language=voice_lang)
                 if tts_audio:
                     reply_audio_b64 = b64mod.b64encode(tts_audio).decode("ascii")
                     reply_audio_duration = round(max(1.0, len(tts_text) * 0.15), 1)
@@ -2424,16 +2426,21 @@ def voice_tts():
                     except Exception:
                         pass
 
+        # Determine language for voice selection
+        user_lang = settings.get("language", "en")
+        voice_lang = "zh" if user_lang.startswith("zh") else "en"
+
         audio_data = synthesize_speech(
             text=text,
             voice_id=voice_id,
             gender=gender,
             subtype=subtype,
+            language=voice_lang,
         )
 
         import base64 as b64mod
         audio_b64 = b64mod.b64encode(audio_data).decode("ascii")
-        logger.info(f"[TTS] Returning {len(audio_data)} bytes as base64 (Fish Audio)")
+        logger.info(f"[TTS] Returning {len(audio_data)} bytes as base64 (Fish Audio, lang={voice_lang})")
 
         return jsonify({
             "success": True,
@@ -2465,7 +2472,10 @@ def voice_list():
         current_voice_id = settings.get("voice_id", "")
         current_voice_name = settings.get("voice_name", "")
 
-        presets = list_preset_voices()
+        # Return presets matching user's language
+        user_lang = settings.get("language", "en")
+        voice_lang = "zh" if user_lang.startswith("zh") else "en"
+        presets = list_preset_voices(language=voice_lang)
 
         return jsonify({
             "voices": presets,
@@ -2527,8 +2537,14 @@ def voice_preview():
         if not voice_id:
             return jsonify({"error": "Missing voice_id"}), 400
 
-        # Default preview text
-        text = data.get("text", "你好呀，很高兴认识你！今天过得怎么样？")
+        # Default preview text based on user language
+        user = get_current_user()
+        user_lang = user.get("settings", {}).get("language", "en")
+        if user_lang.startswith("zh"):
+            default_text = "你好呀，很高兴认识你！今天过得怎么样？"
+        else:
+            default_text = "Hey there! Nice to meet you. How's your day going?"
+        text = data.get("text", default_text)
 
         audio_data = synthesize_speech(text=text, voice_id=voice_id)
 
