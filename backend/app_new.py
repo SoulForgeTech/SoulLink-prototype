@@ -893,11 +893,11 @@ def chat():
                 if not reply:
                     logger.info(f"[THINKING] Unclosed <think>: no reply found, will fallback ({len(thinking_content)} chars)")
 
-        # Pattern 2: "THOUGHT" 前缀（Gemini 思考泄露）
+        # Pattern 2: "THOUGHT" / "think" 前缀（Gemini 思考泄露）
         # 格式: THOUGHT\n英文分析...\nPlan:\n1. ...\n\n中文回复
-        # 或: THOUGHT\n英文分析...\nPlan:\n1. ...\nN. 英文...中文回复（无双换行）
-        if not thinking_content and re.match(r'^THOUGHT[\s\n]', reply):
-            raw = re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
+        # 或: think * User context: ... * Goal: ...\n\n中文回复 (Gemini 3)
+        if not thinking_content and re.match(r'^(?:THOUGHT|think)\s', reply, re.IGNORECASE):
+            raw = re.sub(r'^(?:THOUGHT|think)\s+', '', reply, flags=re.IGNORECASE).strip()
             actual_reply = ""
 
             # 方法1：双换行分隔 — 找最后一个双换行，其后内容如果以CJK/括号开头则为回复
@@ -953,6 +953,20 @@ def chat():
                 if action_match:
                     thinking_content = raw[:action_match.start()].strip()
                     actual_reply = raw[action_match.start():].strip()
+
+            # 方法5：Gemini 3 "think * bullet * bullet..." 格式（inline bullet thinking）
+            # 思考内容都在 "* " 分隔的英文 bullet 中，回复跟在后面
+            # 找最后一个 "* *Section:*" 或 "* " bullet 之后的中文内容
+            if not actual_reply:
+                # 找所有中文段落开头（不在 * bullet 内）
+                # 先按 " * " 分隔看看是否有中文段
+                cjk_start = re.search(r'(?:^|[\s*])(?=[（\uff08\u4e00-\u9fff"「【])', raw[10:])  # 跳过开头几个字
+                if cjk_start:
+                    pos = 10 + cjk_start.start()
+                    candidate = raw[pos:].lstrip('* ').strip()
+                    if len(candidate) >= 10 and re.match(r'[\u4e00-\u9fff（\uff08"「【]', candidate):
+                        thinking_content = raw[:pos].rstrip()
+                        actual_reply = candidate
 
             # fallback：整段都是思考，reply 为空（后面有 fallback 逻辑取最后一段）
             if not actual_reply:
