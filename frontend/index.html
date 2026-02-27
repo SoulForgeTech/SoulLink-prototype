@@ -7405,7 +7405,7 @@
             _voicePresets.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
-                const genderLabel = v.gender === 'female' ? (isZh ? '♀ 女' : '♀ female') : (isZh ? '♂ 男' : '♂ male');
+                const genderLabel = v.gender === 'female' ? '♀' : '♂';
                 card.innerHTML = `
                     <div class="voice-card-name">${v.name}</div>
                     <div class="voice-card-gender">${genderLabel}</div>
