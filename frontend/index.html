@@ -2623,9 +2623,6 @@
             position: fixed;
             inset: 0;
             z-index: 3000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .modal.hidden {
@@ -2640,53 +2637,52 @@
         }
 
         .modal-content {
-            position: relative;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: white;
             border-radius: 20px;
             width: 90%;
             max-width: 450px;
-            max-height: 90vh;
+            max-height: 85vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideIn 0.3s ease-out;
             scrollbar-width: none;
+            display: flex;
+            flex-direction: column;
         }
 
         .modal-content::-webkit-scrollbar {
             display: none;
         }
 
-        /* Settings modal: fixed-height flex layout so footer stays pinned */
-        #settings-modal .modal-content {
-            height: 85vh;
-            max-height: 85vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        #settings-modal .modal-header,
-        #settings-modal .settings-tabs,
-        #settings-modal .modal-footer {
+        .modal-header,
+        .settings-tabs,
+        .modal-footer {
             flex-shrink: 0;
         }
-        #settings-modal .modal-body {
+
+        .modal-body {
             flex: 1;
             min-height: 0;
             overflow-y: auto;
             scrollbar-width: none;
         }
-        #settings-modal .modal-body::-webkit-scrollbar {
+
+        .modal-body::-webkit-scrollbar {
             display: none;
         }
 
         @keyframes modalSlideIn {
             from {
                 opacity: 0;
-                transform: translateY(-20px) scale(0.95);
+                transform: translate(-50%, -50%) translateY(-20px) scale(0.95);
             }
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translate(-50%, -50%) translateY(0) scale(1);
             }
         }
 
@@ -4647,6 +4643,20 @@
             </div>
             <div class="changelog-body">
 
+                <!-- v0.1.0-beta -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v0.1.0-beta</span>
+                        <span class="date">2026-02-26</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.1">Fish Audio TTS — upgraded voice engine, 8 expressive voice presets per language</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.2">ChatGPT history import — bring your old conversations into SoulLink</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.3">Settings redesigned with tabs — Profile, Companion, Advanced</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v200.4">Voice presets now refresh when switching language</span></li>
+                    </ul>
+                </div>
+
                 <!-- v0.0.9-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -4809,7 +4819,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.0.9-beta</p>
+                    <p class="about-version">v0.1.0-beta</p>
                 </div>
             </div>
 
@@ -5636,6 +5646,10 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
+                'changelog.v200.1': 'Fish Audio TTS — upgraded voice engine, 8 expressive voice presets per language',
+                'changelog.v200.2': 'ChatGPT history import — bring your old conversations into SoulLink',
+                'changelog.v200.3': 'Settings redesigned with tabs — Profile, Companion, Advanced',
+                'changelog.v200.4': 'Voice presets now refresh when switching language',
                 'changelog.v1100.1': 'Dual image engine — added Flux as backup, image generation more reliable',
                 'changelog.v1100.2': 'Fixed occasional image generation failures',
                 'changelog.v190.1': 'Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies',
@@ -5882,6 +5896,10 @@
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
                 'changelog.title': '版本日志',
+                'changelog.v200.1': 'Fish Audio 语音引擎 — 升级TTS引擎，每种语言8个高品质声音',
+                'changelog.v200.2': 'ChatGPT 聊天记录导入 — 一键导入旧对话到 SoulLink',
+                'changelog.v200.3': '设置页面重新设计 — 分为个人资料、角色设置、高级三个标签页',
+                'changelog.v200.4': '修复切换语言后语音预设不刷新的问题',
                 'changelog.v1100.1': '双引擎发图 — 新增 Flux 备用引擎，图片生成更稳定',
                 'changelog.v1100.2': '修复偶尔图片生成失败的问题',
                 'changelog.v190.1': 'Gemini 3 Flash — AI引擎升级，回复更聪明更有表现力',
@@ -8511,7 +8529,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.0.9-beta';
+        const CURRENT_APP_VERSION = 'v0.1.0-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
