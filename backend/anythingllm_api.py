@@ -334,7 +334,7 @@ class AnythingLLMAPI:
                 'full_response': response
             }
 
-    def send_message_stream(self, message: str, mode: str = "chat", session_id: Optional[str] = None):
+    def send_message_stream(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None):
         """
         Stream a message response from AnythingLLM workspace.
         Uses the /stream-chat endpoint for real-time token streaming.
@@ -348,6 +348,9 @@ class AnythingLLMAPI:
             "mode": mode,
             "sessionId": session_id if session_id else "default-session"
         }
+        if attachments:
+            payload["attachments"] = attachments
+            logging.info(f"[STREAM-LLM] Sending {len(attachments)} attachment(s) with stream")
 
         logging.info(f"[STREAM-LLM] Sending to '{self.workspace_slug}': {message[:100]}...")
 

@@ -1225,6 +1225,382 @@ def chat():
         }), 500
 
 
+# ==================== Streaming Text Chat (SSE) ====================
+
+@app.route("/api/chat/stream", methods=["POST"])
+@login_required
+def chat_stream():
+    """
+    Streaming text chat — SSE endpoint for real-time token delivery.
+    Same logic as /api/chat but streams tokens via SSE for instant display.
+    Events: text (token), thinking (content), done (full reply + metadata), error.
+    """
+    try:
+        user_id = get_current_user_id()
+        user = get_current_user()
+        data = request.get_json()
+
+        if not data or "message" not in data:
+            return jsonify({"error": "Missing message parameter"}), 400
+
+        user_message = data["message"]
+        conversation_id = data.get("conversation_id")
+        show_thinking = data.get("show_thinking", False)
+        attachments = data.get("attachments")
+        msg_type = data.get("type", "text")
+        user_audio_url = data.get("audio_url")
+        user_audio_duration = data.get("audio_duration")
+
+        # Pre-load workspace
+        workspace_result = workspace_manager.get_or_create_workspace(user_id)
+        if not workspace_result["success"]:
+            return jsonify({"error": "Failed to get workspace"}), 500
+        workspace = workspace_result["workspace"]
+        workspace_slug = workspace["slug"]
+
+        # Sync model setting
+        try:
+            user_model = user.get("settings", {}).get("model", "gemini")
+            if user_model in workspace_manager.SUPPORTED_MODELS:
+                model_config = workspace_manager.SUPPORTED_MODELS[user_model]
+                import requests as req
+                req.post(
+                    f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update",
+                    headers={
+                        "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={"chatProvider": model_config["chatProvider"], "chatModel": model_config["chatModel"]},
+                    timeout=3
+                )
+        except Exception:
+            pass
+
+        # Get or create conversation
+        conversation = None
+        if conversation_id:
+            try:
+                conversation = db.get_conversation(ObjectId(conversation_id), user_id)
+            except Exception:
+                pass
+        if not conversation:
+            conversation = db.get_active_conversation(user_id)
+
+        is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
+
+        # Save user message
+        attachment_meta = None
+        if attachments:
+            attachment_meta = [
+                {"name": a.get("name", "file"), "mime": a.get("mime", ""),
+                 "isImage": a.get("mime", "").startswith("image/")}
+                for a in attachments
+            ]
+        db.add_message_to_conversation(
+            conversation["_id"], user_id, "user", user_message,
+            attachments=attachment_meta,
+            msg_type=msg_type if msg_type != "text" else None,
+            audio_url=user_audio_url,
+            audio_duration=float(user_audio_duration) if user_audio_duration else None
+        )
+
+        # Web search enhancement
+        message_to_send = user_message
+        try:
+            from web_search import enhance_message_with_search
+            enhanced, did_search = enhance_message_with_search(user_message)
+            if did_search:
+                message_to_send = enhanced
+        except Exception:
+            pass
+
+        # Rename hint injection
+        import re
+        ask_name_patterns = r'你叫什么|你叫啥|你的名字是|what.s your name|what do (they|you) call you'
+        is_asking_name = re.search(ask_name_patterns, user_message, re.IGNORECASE)
+        rename_hint_patterns = [
+            r'叫你|叫做|就叫|改叫|叫回|改回|换回|交回|改名|取名|起名',
+            r'call you|name you|rename|your name will|your name is',
+            r'名字.*改|名字.*换|名字.*叫做',
+        ]
+        if not is_asking_name:
+            for p in rename_hint_patterns:
+                if re.search(p, user_message, re.IGNORECASE):
+                    message_to_send = message_to_send + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
+                    break
+
+        # Import context injection
+        conv_meta = conversation.get("metadata", {})
+        if conv_meta.get("imported_from") and not conv_meta.get("import_session_activated"):
+            imported_msgs = conversation.get("messages", [])[-20:]
+            if imported_msgs:
+                context_lines = []
+                for m in imported_msgs:
+                    role_label = "User" if m["role"] == "user" else "Assistant"
+                    context_lines.append(f"{role_label}: {m['content'][:500]}")
+                context_block = "\n".join(context_lines)
+                message_to_send = (
+                    f"[以下是我们之前在其他平台的对话记录，请基于这些上下文继续和我对话，"
+                    f"保持之前的语气和话题]\n{context_block}\n"
+                    f"[对话记录结束，请继续]\n\n{message_to_send}"
+                )
+            db.db["conversations"].update_one(
+                {"_id": conversation["_id"]},
+                {"$set": {"metadata.import_session_activated": True}}
+            )
+
+        # Pre-load all variables needed inside generator
+        conv_id = conversation["_id"]
+        conv_id_str = str(conv_id)
+        anythingllm_base = workspace_manager.anythingllm_base_url
+        anythingllm_key = workspace_manager.anythingllm_api_key
+
+    except Exception as e:
+        logger.error(f"Chat stream setup error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+    def _sse_event(event: str, data_dict: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(data_dict, ensure_ascii=False)}\n\n"
+
+    def generate():
+        import re as _re
+        import threading
+
+        api = AnythingLLMAPI(
+            base_url=anythingllm_base,
+            api_key=anythingllm_key,
+            workspace_slug=workspace_slug
+        )
+
+        full_reply = ""
+        in_thinking = False
+        thinking_content = ""
+        initial_buffer = ""
+        initial_phase = True  # Buffer initial tokens to detect <think> tags
+
+        try:
+            for chunk in api.send_message_stream(
+                message_to_send,
+                session_id=conv_id_str,
+                attachments=attachments
+            ):
+                if chunk.get("error"):
+                    err_msg = chunk["error"] if isinstance(chunk["error"], str) else "LLM error"
+                    yield _sse_event("error", {"message": err_msg})
+                    return
+
+                token = chunk.get("textResponse", "")
+                if not token:
+                    continue
+
+                full_reply += token
+
+                # --- Initial phase: buffer to detect <think> tags ---
+                if initial_phase:
+                    initial_buffer += token
+                    # Check if we found a thinking tag
+                    lower_buf = initial_buffer.lower()
+                    if "<think>" in lower_buf or "<thought>" in lower_buf:
+                        in_thinking = True
+                        initial_phase = False
+                        # Extract any content after the opening tag
+                        for tag in ["<think>", "<thought>"]:
+                            idx = lower_buf.find(tag)
+                            if idx >= 0:
+                                after_tag = initial_buffer[idx + len(tag):]
+                                if after_tag:
+                                    thinking_content += after_tag
+                                break
+                        continue
+                    # If buffer is long enough without thinking tag, flush as text
+                    if len(initial_buffer) > 100:
+                        initial_phase = False
+                        yield _sse_event("text", {"token": initial_buffer})
+                    continue
+
+                # --- Thinking mode ---
+                if in_thinking:
+                    # Check for closing tag
+                    combined = thinking_content + token
+                    lower_combined = combined.lower()
+                    for close_tag in ["</think>", "</thought>"]:
+                        close_idx = lower_combined.find(close_tag)
+                        if close_idx >= 0:
+                            # Extract thinking content before closing tag
+                            thinking_content = combined[:close_idx].strip()
+                            in_thinking = False
+                            # Emit thinking event
+                            if thinking_content and show_thinking:
+                                yield _sse_event("thinking", {"content": thinking_content})
+                            # Any content after closing tag is reply text
+                            after_close = combined[close_idx + len(close_tag):]
+                            if after_close.strip():
+                                yield _sse_event("text", {"token": after_close})
+                            break
+                    else:
+                        thinking_content += token
+                    continue
+
+                # --- Normal streaming ---
+                yield _sse_event("text", {"token": token})
+
+        except Exception as e:
+            logger.error(f"[CHAT-STREAM] LLM error: {e}")
+            if not full_reply:
+                yield _sse_event("error", {"message": f"LLM error: {str(e)}"})
+                return
+
+        # --- Post-processing: clean full reply ---
+        reply = full_reply
+
+        # Strip thinking tags from full reply (in case our streaming logic missed some)
+        think_match = _re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', reply, _re.DOTALL)
+        if think_match:
+            if not thinking_content:
+                thinking_content = think_match.group(1).strip()
+            reply = _re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', reply, flags=_re.DOTALL).strip()
+
+        # Handle THOUGHT/think prefix (no tags)
+        if not thinking_content and _re.match(r'^(?:THOUGHT|think)\s', reply, _re.IGNORECASE):
+            raw = _re.sub(r'^(?:THOUGHT|think)\s+', '', reply, flags=_re.IGNORECASE).strip()
+            for m in _re.finditer(r'\n([\u4e00-\u9fff（\uff08*「【《""])', raw):
+                candidate = raw[m.start(1):].strip()
+                if len(candidate) >= 10:
+                    thinking_content = raw[:m.start(1)].rstrip()
+                    reply = candidate
+                    break
+
+        # Handle Gemini "思考：..." prefix
+        if not thinking_content:
+            gemini_think_match = _re.match(
+                r'^(?:思考|Thinking|思考过程|Let me think|我(?:先)?(?:想想|思考一下|分析一下))[\s：:：]+(.+?)(?:\n\n|\n(?=[^\n]))',
+                reply, _re.DOTALL
+            )
+            if gemini_think_match:
+                thinking_content = gemini_think_match.group(1).strip()
+                reply = reply[gemini_think_match.end():].strip()
+
+        # Fallback: if reply empty but thinking has content
+        if not reply and thinking_content:
+            paragraphs = [p.strip() for p in thinking_content.split('\n\n') if p.strip()]
+            if paragraphs:
+                reply = paragraphs[-1]
+                if len(paragraphs) > 1:
+                    thinking_content = '\n\n'.join(paragraphs[:-1])
+                else:
+                    thinking_content = ""
+
+        # Process image markers
+        generated_images = []
+        try:
+            reply, generated_images = process_image_markers(reply, user_id, db)
+        except Exception:
+            pass
+
+        # Rename detection
+        companion_name_changed = None
+        rename_match = _re.search(r'\[RENAME:(.{1,20}?)\]', reply)
+        if rename_match:
+            new_name = rename_match.group(1).strip()
+            if new_name:
+                companion_name_changed = new_name
+                reply = _re.sub(r'\s*\[RENAME:.{1,20}?\]', '', reply).strip()
+        else:
+            rename_patterns = [
+                r'(?:以后|从现在起)?(?:叫你|叫做|改名|名字叫|就叫|改叫|你叫)\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                r'(?:你?可以|能不?能|能)\s*叫\s*(?:你\s*)?[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                r'(?:还是|就)?(?:叫回|改回|换回|交回)\s*[「「"\'【]?(.{1,15}?)[」」"\'】]?(?:\s*[吧了啊呢好哦嘛吗]|$)',
+                r'(?:call you|name you|rename you to|your name (?:is|will be)|I\'ll call you)\s+["\']?(\w[\w\s]{0,14}?)["\']?(?:\s|$|[.!?,])',
+            ]
+            for pattern in rename_patterns:
+                user_rename_match = _re.search(pattern, user_message, _re.IGNORECASE)
+                if user_rename_match:
+                    potential_name = user_rename_match.group(1).strip()
+                    if potential_name and potential_name.lower() in reply.lower():
+                        companion_name_changed = potential_name
+                        break
+
+        if companion_name_changed:
+            try:
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {"settings.companion_name": companion_name_changed}}
+                )
+                workspace_manager.update_system_prompt(
+                    user_id, user["name"], companion_name=companion_name_changed
+                )
+            except Exception:
+                pass
+
+        # Save AI reply to DB
+        image_attachments = [
+            {"name": f"generated_{i}.png", "mime": "image/png",
+             "isImage": True, "isGenerated": True, "prompt": img["prompt"],
+             **({"url": img["url"]} if img.get("url") else {})}
+            for i, img in enumerate(generated_images)
+        ] if generated_images else None
+        try:
+            db.add_message_to_conversation(
+                conv_id, user_id, "assistant", reply,
+                thinking=thinking_content if thinking_content else None,
+                attachments=image_attachments,
+            )
+            db.update_workspace_stats(user_id, message_count_delta=2)
+        except Exception as e:
+            logger.warning(f"[CHAT-STREAM] DB save error: {e}")
+
+        # Emit done event
+        done_data = {
+            "reply": reply,
+            "conversation_id": conv_id_str,
+        }
+        if thinking_content and show_thinking:
+            done_data["thinking"] = thinking_content
+        if companion_name_changed:
+            done_data["companionNameChanged"] = companion_name_changed
+        if generated_images:
+            done_data["images"] = [
+                {"b64": img.get("b64", ""), "prompt": img["prompt"],
+                 **({"url": img["url"]} if img.get("url") else {})}
+                for img in generated_images
+            ]
+        yield _sse_event("done", done_data)
+
+        # Async tasks: memory + title
+        def _async_tasks():
+            try:
+                from memory_engine import process_memory
+                process_memory(user_id, user_message, reply)
+            except Exception as e:
+                logger.warning(f"[CHAT-STREAM] Memory error: {e}")
+        threading.Thread(target=_async_tasks, daemon=True).start()
+
+        if is_first_message:
+            def _async_title():
+                try:
+                    from memory_engine import _call_gemini
+                    prompt = (
+                        "Generate a very short conversation title (max 6 words) based on this chat. "
+                        "If the message is in Chinese, return Chinese title. If in English, return English title. "
+                        "Return ONLY the title text, nothing else. No quotes, no punctuation at the end.\n\n"
+                        f"User: {user_message[:200]}\nAssistant: {reply[:200]}"
+                    )
+                    title = _call_gemini(prompt)
+                    if title and len(title) < 50:
+                        title = title.strip().strip('"\'').strip()
+                        if title:
+                            from datetime import datetime as dt
+                            db.db["conversations"].update_one(
+                                {"_id": conv_id, "user_id": user_id},
+                                {"$set": {"title": title, "updated_at": dt.utcnow()}}
+                            )
+                except Exception:
+                    pass
+            threading.Thread(target=_async_title, daemon=True).start()
+
+    return Response(generate(), content_type="text/event-stream; charset=utf-8")
+
+
 # ==================== Streaming Voice Chat (SSE) ====================
 
 @app.route("/api/voice/chat-stream", methods=["POST"])
