@@ -1283,7 +1283,18 @@
             border: 2px solid transparent;
             background: rgba(156,163,219,0.06);
             cursor: pointer; transition: all 0.2s;
-            display: flex; flex-direction: column; gap: 4px;
+            display: flex; flex-direction: row; align-items: center; gap: 8px;
+        }
+        .voice-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            object-fit: cover; flex-shrink: 0;
+            background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 100%);
+        }
+        .voice-avatar-placeholder {
+            width: 36px; height: 36px; border-radius: 50%;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 100%);
+            color: white; font-size: 14px; font-weight: 600;
         }
         .voice-card:hover { border-color: rgba(156,163,219,0.3); }
         .voice-card.selected {
@@ -1321,10 +1332,15 @@
         }
         .voice-search-results.visible { display: block; }
         .voice-result-item {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: center; gap: 10px;
             padding: 10px 14px; cursor: pointer;
             transition: background 0.15s;
             border-bottom: 1px solid #f0f0f0;
+        }
+        .voice-result-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            object-fit: cover; flex-shrink: 0;
+            background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 100%);
         }
         .voice-result-item:last-child { border-bottom: none; }
         .voice-result-item:hover { background: rgba(156,163,219,0.08); }
@@ -7475,6 +7491,7 @@
         let _selectedVoiceName = '';
         let _voiceSearchTimeout = null;
         const _voiceModelCache = {};  // cache model details { id: { cover_image, samples } }
+        const FISH_AVATAR_CDN = 'https://public-platform.r2.fish.audio/cdn-cgi/image/format=webp';
 
         async function loadVoicePresets() {
             try {
@@ -7493,6 +7510,10 @@
             }
         }
 
+        function _fishAvatarUrl(modelId, size) {
+            return `${FISH_AVATAR_CDN},width=${size || 64}/coverimage/${modelId}`;
+        }
+
         function renderVoicePresets() {
             const grid = document.getElementById('voice-preset-grid');
             if (!grid) return;
@@ -7502,7 +7523,11 @@
                 const card = document.createElement('div');
                 card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
                 card.dataset.voiceId = v.id;
+                const initial = (v.name || '?').charAt(0);
                 card.innerHTML = `
+                    <img class="voice-avatar" src="${_fishAvatarUrl(v.id, 72)}"
+                         onerror="this.outerHTML='<span class=\\'voice-avatar-placeholder\\'>${initial}</span>'"
+                         alt="" loading="lazy">
                     <div class="voice-card-name">${v.name}</div>
                 `;
                 card.onclick = () => selectVoice(v.id, v.name);
@@ -7709,7 +7734,10 @@
                     const langs = (v.languages || []).join(', ') || '?';
                     const author = v.author ? `by ${v.author}` : '';
                     const safeName = (v.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const initial = (v.name || '?').charAt(0);
                     item.innerHTML = `
+                        <img class="voice-result-avatar" src="${_fishAvatarUrl(v.id, 64)}"
+                             onerror="this.style.display='none'" alt="" loading="lazy">
                         <div class="voice-result-info">
                             <div class="voice-result-name">${v.name || 'Untitled'}</div>
                             <div class="voice-result-meta">${langs} ${author} · ${(v.task_count || 0).toLocaleString()} uses</div>
