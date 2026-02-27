@@ -5501,7 +5501,7 @@
                     <button class="rec-cancel" onclick="cancelVoiceRecording()">&#10005;</button>
                     <span class="rec-dot"></span>
                     <span class="rec-duration" id="recording-duration">0:00</span>
-                    <button class="rec-send" onclick="isVoiceTTSEnabled() ? sendVoiceMessageStream() : sendVoiceRecording()" data-i18n="voice.send">Send</button>
+                    <button class="rec-send" onclick="sendVoiceRecording()" data-i18n="voice.send">Send</button>
                 </div>
                 <div class="input-wrapper" id="input-wrapper">
                     <div class="drag-overlay" data-i18n="chat.drop.hint">Drop files here</div>
@@ -7818,12 +7818,7 @@
         function toggleVoiceRecording() {
             if (_isRecording) {
                 // 已经在录音，点击停止并发送
-                // TTS enabled → use streaming path for faster audio playback
-                if (isVoiceTTSEnabled()) {
-                    sendVoiceMessageStream();
-                } else {
-                    sendVoiceRecording();
-                }
+                sendVoiceRecording();
             } else {
                 startVoiceRecording();
             }
@@ -7855,7 +7850,7 @@
                     const s = _voiceSeconds % 60;
                     document.getElementById('recording-duration').textContent = `${m}:${s.toString().padStart(2,'0')}`;
                     // 最长60秒自动发送
-                    if (_voiceSeconds >= 60) { isVoiceTTSEnabled() ? sendVoiceMessageStream() : sendVoiceRecording(); }
+                    if (_voiceSeconds >= 60) sendVoiceRecording();
                 }, 1000);
             } catch (err) {
                 console.error('Mic permission denied:', err);
