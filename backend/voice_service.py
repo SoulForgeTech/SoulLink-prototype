@@ -299,6 +299,47 @@ def search_voices(query: str = "", language: str = None, page: int = 1, page_siz
         raise
 
 
+def get_voice_model_detail(model_id: str) -> dict:
+    """
+    Fetch a single voice model's details from Fish Audio,
+    including cover_image and sample audio.
+    """
+    if not FISH_AUDIO_KEY:
+        raise ValueError("Fish Audio API key not configured")
+
+    try:
+        resp = requests.get(
+            f"{FISH_AUDIO_MODEL_URL}/{model_id}",
+            headers={"Authorization": f"Bearer {FISH_AUDIO_KEY}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        samples = []
+        for s in data.get("samples", []):
+            samples.append({
+                "title": s.get("title", ""),
+                "text": s.get("text", ""),
+                "audio": s.get("audio", ""),
+                "task_id": s.get("task_id", ""),
+            })
+
+        return {
+            "id": data.get("_id", ""),
+            "name": data.get("title", ""),
+            "description": (data.get("description") or "")[:200],
+            "cover_image": data.get("cover_image", ""),
+            "samples": samples,
+            "languages": data.get("languages", []),
+            "author": data.get("author", {}).get("nickname", ""),
+            "task_count": data.get("task_count", 0),
+        }
+    except Exception as e:
+        logger.error(f"[VOICE] Get model detail failed for {model_id}: {e}")
+        raise
+
+
 def list_preset_voices(language: str = "zh") -> list:
     """Return the list of preset voices for the voice selector, based on language."""
     vmap = _get_voice_map(language)

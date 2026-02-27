@@ -2520,6 +2520,23 @@ def voice_search():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/voice/model/<model_id>", methods=["GET"])
+@login_required
+def voice_model_detail(model_id):
+    """
+    获取单个音色详情（含头像 + 试听音频）
+    GET /api/voice/model/<model_id>
+    Returns: { "id", "name", "cover_image", "samples": [{ "audio", "text" }], ... }
+    """
+    try:
+        from voice_service import get_voice_model_detail
+        detail = get_voice_model_detail(model_id)
+        return jsonify(detail)
+    except Exception as e:
+        logger.error(f"[VOICE] Model detail error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/voice/preview", methods=["POST"])
 @login_required
 def voice_preview():

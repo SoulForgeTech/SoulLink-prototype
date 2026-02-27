@@ -1283,16 +1283,22 @@
             border: 2px solid transparent;
             background: rgba(156,163,219,0.06);
             cursor: pointer; transition: all 0.2s;
-            display: flex; flex-direction: column; gap: 4px;
+            display: flex; align-items: center; gap: 8px;
         }
         .voice-card:hover { border-color: rgba(156,163,219,0.3); }
         .voice-card.selected {
             border-color: #9ca3db;
             background: rgba(156,163,219,0.12);
         }
+        .voice-card-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            object-fit: cover; flex-shrink: 0;
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+        }
         .voice-card-name {
             font-size: 13px; font-weight: 600; color: #4a5568;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            flex: 1; min-width: 0;
         }
         .voice-card-gender {
             font-size: 11px; color: #a0aec0;
@@ -1321,13 +1327,18 @@
         }
         .voice-search-results.visible { display: block; }
         .voice-result-item {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: center; gap: 10px;
             padding: 10px 14px; cursor: pointer;
             transition: background 0.15s;
             border-bottom: 1px solid #f0f0f0;
         }
         .voice-result-item:last-child { border-bottom: none; }
         .voice-result-item:hover { background: rgba(156,163,219,0.08); }
+        .voice-result-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            object-fit: cover; flex-shrink: 0;
+            background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+        }
         .voice-result-info {
             flex: 1; min-width: 0;
         }
@@ -7474,6 +7485,7 @@
         let _selectedVoiceId = '';
         let _selectedVoiceName = '';
         let _voiceSearchTimeout = null;
+        const _voiceModelCache = {};  // cache model details { id: { cover_image, samples } }
 
         async function loadVoicePresets() {
             try {
@@ -7487,8 +7499,26 @@
                 _selectedVoiceName = data.current_voice_name || '';
                 renderVoicePresets();
                 updateVoiceCurrentDisplay();
+                // Lazy-load preset avatars + samples in background
+                _loadPresetDetails();
             } catch(e) {
                 console.error('Failed to load voice presets:', e);
+            }
+        }
+
+        async function _loadPresetDetails() {
+            for (const v of _voicePresets) {
+                if (_voiceModelCache[v.id]) continue;
+                try {
+                    const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/model/${v.id}`);
+                    if (resp.ok) {
+                        const detail = await resp.json();
+                        _voiceModelCache[v.id] = detail;
+                        // Update avatar in DOM
+                        const img = document.querySelector(`.voice-card[data-voice-id="${v.id}"] .voice-card-avatar`);
+                        if (img && detail.cover_image) img.src = detail.cover_image;
+                    }
+                } catch(e) { /* silent */ }
             }
         }
 
@@ -7500,7 +7530,11 @@
             _voicePresets.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
+                card.dataset.voiceId = v.id;
+                const cached = _voiceModelCache[v.id];
+                const avatarSrc = cached?.cover_image || '';
                 card.innerHTML = `
+                    <img class="voice-card-avatar" src="${avatarSrc}" alt="" onerror="this.style.display='none'">
                     <div class="voice-card-name">${v.name}</div>
                 `;
                 card.onclick = () => selectVoice(v.id, v.name);
@@ -7599,6 +7633,53 @@
             const origText = btnEl.textContent;
             btnEl.disabled = true;
             btnEl.textContent = '...';
+
+            // Stop any currently playing audio
+            if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+
+            try {
+                // Step 1: Try native sample audio from Fish Audio (free, no API cost)
+                let sampleUrl = null;
+                let cached = _voiceModelCache[voiceId];
+                if (!cached) {
+                    try {
+                        const detailResp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/model/${voiceId}`);
+                        if (detailResp.ok) {
+                            cached = await detailResp.json();
+                            _voiceModelCache[voiceId] = cached;
+                        }
+                    } catch(e) { /* silent, will fall back to TTS */ }
+                }
+                if (cached?.samples?.length > 0 && cached.samples[0].audio) {
+                    sampleUrl = cached.samples[0].audio;
+                }
+
+                if (sampleUrl) {
+                    // Play native sample audio directly (no API cost!)
+                    btnEl.textContent = '🔊';
+                    const audio = new Audio(sampleUrl);
+                    _currentAudio = audio;
+                    audio.play().catch(e => {
+                        console.warn('Sample audio play failed, falling back to TTS:', e);
+                        _fallbackTTSPreview(voiceId, btnEl, origText);
+                    });
+                    audio.onended = () => { btnEl.textContent = origText; btnEl.disabled = false; _currentAudio = null; };
+                    audio.onerror = () => {
+                        console.warn('Sample audio error, falling back to TTS');
+                        _fallbackTTSPreview(voiceId, btnEl, origText);
+                    };
+                } else {
+                    // Step 2: Fall back to TTS API preview
+                    await _fallbackTTSPreview(voiceId, btnEl, origText);
+                }
+            } catch(e) {
+                console.error('Preview error:', e);
+                btnEl.textContent = origText;
+                btnEl.disabled = false;
+            }
+        }
+
+        async function _fallbackTTSPreview(voiceId, btnEl, origText) {
             try {
                 const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/preview`, {
                     method: 'POST',
@@ -7608,7 +7689,6 @@
                 const data = await resp.json();
                 if (data.success && data.audio_b64) {
                     btnEl.textContent = '🔊';
-                    if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
                     const audio = new Audio('data:audio/mp3;base64,' + data.audio_b64);
                     _currentAudio = audio;
                     audio.play().catch(e => console.error(e));
@@ -7619,7 +7699,7 @@
                     btnEl.disabled = false;
                 }
             } catch(e) {
-                console.error('Preview error:', e);
+                console.error('TTS preview fallback error:', e);
                 btnEl.textContent = origText;
                 btnEl.disabled = false;
             }
@@ -7661,7 +7741,9 @@
                     const langs = (v.languages || []).join(', ') || '?';
                     const author = v.author ? `by ${v.author}` : '';
                     const safeName = (v.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const coverImg = v.cover_image || '';
                     item.innerHTML = `
+                        ${coverImg ? `<img class="voice-result-avatar" src="${coverImg}" alt="" onerror="this.style.display='none'">` : ''}
                         <div class="voice-result-info">
                             <div class="voice-result-name">${v.name || 'Untitled'}</div>
                             <div class="voice-result-meta">${langs} ${author} · ${(v.task_count || 0).toLocaleString()} uses</div>
