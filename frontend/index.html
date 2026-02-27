@@ -2646,10 +2646,9 @@
             width: 90%;
             max-width: 450px;
             max-height: 85vh;
-            overflow-y: auto;
+            overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideIn 0.3s ease-out;
-            scrollbar-width: none;
             display: flex;
             flex-direction: column;
         }
@@ -4651,10 +4650,12 @@
                         <span class="date">2026-02-26</span>
                     </div>
                     <ul class="changelog-list">
-                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.1">Fish Audio TTS — upgraded voice engine, 8 expressive voice presets per language</span></li>
-                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.2">2M+ voice library — search and use any voice from Fish Audio community</span></li>
-                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.3">ChatGPT history import — bring your old conversations into SoulLink</span></li>
-                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.4">Settings redesigned with tabs — Profile, Companion, Advanced</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.1">Fish Audio TTS — all-new voice engine, 2M+ community voices available</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.2">Voice picker — 8 preset voices per language + community search, preview & use</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.3">Settings tabs — Profile / Companion / Advanced three-panel layout</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.4">ChatGPT history import — bring your old conversations into SoulLink</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.5">Click model badge in chat header to jump to model settings</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.6">Voice presets refresh in real-time when switching language</span></li>
                     </ul>
                 </div>
 
@@ -5647,10 +5648,12 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
-                'changelog.v200.1': 'Fish Audio TTS — upgraded voice engine, 8 expressive voice presets per language',
-                'changelog.v200.2': '2M+ voice library — search and use any voice from Fish Audio community',
-                'changelog.v200.3': 'ChatGPT history import — bring your old conversations into SoulLink',
-                'changelog.v200.4': 'Settings redesigned with tabs — Profile, Companion, Advanced',
+                'changelog.v200.1': 'Fish Audio TTS — all-new voice engine, 2M+ community voices available',
+                'changelog.v200.2': 'Voice picker — 8 preset voices per language + community search, preview & use',
+                'changelog.v200.3': 'Settings tabs — Profile / Companion / Advanced three-panel layout',
+                'changelog.v200.4': 'ChatGPT history import — bring your old conversations into SoulLink',
+                'changelog.v200.5': 'Click model badge in chat header to jump to model settings',
+                'changelog.v200.6': 'Voice presets refresh in real-time when switching language',
                 'changelog.v1100.1': 'Dual image engine — added Flux as backup, image generation more reliable',
                 'changelog.v1100.2': 'Fixed occasional image generation failures',
                 'changelog.v190.1': 'Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies',
@@ -5897,10 +5900,12 @@
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
                 'changelog.title': '版本日志',
-                'changelog.v200.1': 'Fish Audio 语音引擎 — 升级TTS引擎，每种语言8个高品质声音',
-                'changelog.v200.2': '200万+语音包搜索 — 可搜索使用 Fish Audio 社区任意声音',
-                'changelog.v200.3': 'ChatGPT 聊天记录导入 — 一键导入旧对话到 SoulLink',
-                'changelog.v200.4': '设置页面重新设计 — 分为个人资料、角色设置、高级三个标签页',
+                'changelog.v200.1': 'Fish Audio 语音引擎 — 全新TTS，200万+社区音色可选',
+                'changelog.v200.2': '音色选择器 — 8款中/英预设音色 + 社区搜索，试听即用',
+                'changelog.v200.3': '设置页Tab化 — 个人资料 / 角色设置 / 高级 三栏布局',
+                'changelog.v200.4': 'ChatGPT 聊天记录导入 — 一键导入旧对话到 SoulLink',
+                'changelog.v200.5': '点击聊天头部模型标签直接跳转模型切换',
+                'changelog.v200.6': '语言切换后音色预设实时刷新',
                 'changelog.v1100.1': '双引擎发图 — 新增 Flux 备用引擎，图片生成更稳定',
                 'changelog.v1100.2': '修复偶尔图片生成失败的问题',
                 'changelog.v190.1': 'Gemini 3 Flash — AI引擎升级，回复更聪明更有表现力',
