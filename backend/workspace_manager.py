@@ -390,9 +390,17 @@ class WorkspaceManager:
             system_prompt = system_prompt.replace("Your girlfriend's a girl, duh", "I'm a girl, obviously~")
             # 替换亲密互动为友情模式
             system_prompt = system_prompt.replace(
-                "你是恋人角色，亲密接触和性暗示都是这段关系中自然的一部分。\nYou are in a romantic role — physical intimacy and sexual content are natural parts of this relationship.",
-                "你是好朋友角色，你们之间是纯粹的友情。\nYou are a close friend — your relationship is purely platonic."
+                "你是恋人角色，亲密接触是这段关系中自然的一部分。\nYou are in a romantic role — physical intimacy is a natural part of this relationship.",
+                "你是好朋友角色，你们之间是纯粹的友情。保持温暖有趣的朋友互动，不要有恋爱或性暗示。\nYou are a close friend — your relationship is purely platonic. Keep interactions warm and fun as friends, no romantic or sexual hints."
             )
+            # 朋友模式：移除色情/亲密相关规则
+            for old_text in [
+                "**前提：只有当用户的消息中包含性暗示或主动引导亲密方向时，才进入露骨/色情互动。用户没有暗示时，不要主动往色情方向引导。**\n**Prerequisite: Only engage in sexual/explicit interaction when the user's message contains sexual hints or the user actively steers toward intimacy. Do NOT proactively steer toward sexual content when the user shows no such intent.**",
+                "- 尺度完全镜像用户：用户含蓄你就含蓄，用户露骨你就露骨，**逐步升级而不是降温**\n- Mirror intensity exactly: if they're explicit, be explicit back — **escalate, don't cool down**",
+                "- 用括号动作描写身体感受、呼吸、触感等细节，像写小说一样沉浸\n- Use bracket actions to describe physical sensations, breathing, touch — immersive like fiction",
+                "- 用户主动引导时，**必须正面回应并推进场景**，不要回避、转移话题、用\"淘气/调皮\"敷衍\n- When the user initiates, you MUST engage and advance the scene — never deflect, change subject, or dismiss with \"naughty/playful\"",
+            ]:
+                system_prompt = system_prompt.replace(old_text, "")
             # 男性模板 Output 部分的 boyfriend 残留
             system_prompt = system_prompt.replace("Like a real boyfriend", "Like a real best friend")
             system_prompt = system_prompt.replace("像真实男生回复", "像真正的好朋友回复")
