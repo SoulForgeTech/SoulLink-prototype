@@ -3710,6 +3710,54 @@
             display: block;
         }
 
+        /* ===== Companion Profile (avatar + name in settings) ===== */
+        .settings-companion-profile {
+            display: flex; align-items: center; gap: 16px;
+            padding: 14px 16px; background: rgba(156,163,219,0.06);
+            border-radius: 14px; margin-bottom: 4px;
+        }
+        .settings-companion-avatar-wrap {
+            position: relative; cursor: pointer; flex-shrink: 0;
+        }
+        .settings-companion-avatar-wrap img {
+            width: 64px; height: 64px; border-radius: 50%;
+            object-fit: cover; border: 2px solid #e2e8f0;
+            transition: opacity 0.2s;
+        }
+        .settings-companion-avatar-wrap:hover img { opacity: 0.7; }
+        .settings-companion-avatar-edit {
+            position: absolute; bottom: 0; right: 0;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #9ca3db; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; border: 2px solid white;
+            pointer-events: none;
+        }
+        .settings-companion-name-group {
+            flex: 1; min-width: 0;
+        }
+        .settings-companion-name-group label {
+            font-size: 12px; color: #a0aec0; margin-bottom: 4px; display: block;
+        }
+        .settings-companion-name-input {
+            width: 100%; padding: 8px 12px;
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            font-size: 15px; font-weight: 600; color: #2d3748;
+            background: white; outline: none; transition: border-color 0.2s;
+        }
+        .settings-companion-name-input:focus {
+            border-color: #9ca3db;
+            box-shadow: 0 0 0 3px rgba(156,163,219,0.15);
+        }
+        .settings-companion-avatar-actions {
+            display: flex; gap: 8px; margin-top: 4px;
+        }
+        .settings-companion-avatar-actions button {
+            font-size: 11px; color: #9ca3db; background: none;
+            border: none; cursor: pointer; padding: 0;
+        }
+        .settings-companion-avatar-actions button:hover { text-decoration: underline; }
+
         /* ===== 自定义角色 & 知识库 ===== */
         .custom-character-section {
             display: flex;
@@ -4985,6 +5033,24 @@
                 <!-- Tab 2: Companion -->
                 <div class="settings-tab-panel" id="settings-panel-companion">
                 <div class="settings-form">
+                    <!-- Companion Avatar & Name -->
+                    <div class="form-group">
+                        <label data-i18n="settings.companion.profile">Companion Profile</label>
+                        <div class="settings-companion-profile">
+                            <div class="settings-companion-avatar-wrap" onclick="document.getElementById('settings-companion-avatar-input').click()">
+                                <img id="settings-companion-avatar-preview" src="images/avatar.png" alt="">
+                                <span class="settings-companion-avatar-edit">📷</span>
+                                <input type="file" id="settings-companion-avatar-input" accept="image/*" style="display:none" onchange="handleSettingsCompanionAvatar(this)">
+                            </div>
+                            <div class="settings-companion-name-group">
+                                <label data-i18n="settings.companion.name_label">Nickname</label>
+                                <input type="text" class="settings-companion-name-input" id="settings-companion-name" maxlength="20" placeholder="Enter companion name">
+                                <div class="settings-companion-avatar-actions">
+                                    <button onclick="resetSettingsCompanionAvatar()" data-i18n="settings.companion.reset_avatar">Reset avatar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label data-i18n="settings.companion.style">Companion Style</label>
                         <div class="settings-style-selector">
@@ -5579,6 +5645,9 @@
                 'naming.confirm': 'Start Chatting ✨',
                 'naming.model.title': 'Choose an AI model',
                 'naming.model.recommended': 'Recommended',
+                'settings.companion.profile': 'Companion Profile',
+                'settings.companion.name_label': 'Nickname',
+                'settings.companion.reset_avatar': 'Reset avatar',
                 'settings.companion.style': 'Companion Style',
                 'settings.companion.hint': 'Changes will update your companion\'s personality',
                 'settings.custom.title': '🔮 Custom Settings',
@@ -5831,6 +5900,9 @@
                 'naming.confirm': '开始聊天 ✨',
                 'naming.model.title': '选择AI模型',
                 'naming.model.recommended': '推荐',
+                'settings.companion.profile': '角色形象',
+                'settings.companion.name_label': '昵称',
+                'settings.companion.reset_avatar': '恢复默认头像',
                 'settings.companion.style': '伴侣风格',
                 'settings.companion.hint': '更改将更新伴侣的性格风格',
                 'settings.custom.title': '🔮 自定义设定',
@@ -8760,6 +8832,36 @@
             document.querySelectorAll('.settings-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'settings-panel-' + tabName));
         }
 
+        // ===== Companion Profile in Settings =====
+        let _pendingSettingsCompanionAvatar = null;
+
+        function loadSettingsCompanionProfile() {
+            const avatar = state.user?.settings?.companion_avatar || 'images/avatar.png';
+            const name = state.user?.settings?.companion_name || getDefaultCompanionName();
+            document.getElementById('settings-companion-avatar-preview').src = avatar;
+            document.getElementById('settings-companion-name').value = name;
+            _pendingSettingsCompanionAvatar = null;
+        }
+
+        function handleSettingsCompanionAvatar(input) {
+            const file = input.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+            if (file.size > 2 * 1024 * 1024) { alert('Image must be less than 2MB'); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                _pendingSettingsCompanionAvatar = e.target.result;
+                document.getElementById('settings-companion-avatar-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            input.value = '';  // allow re-select same file
+        }
+
+        function resetSettingsCompanionAvatar() {
+            _pendingSettingsCompanionAvatar = 'images/avatar.png';
+            document.getElementById('settings-companion-avatar-preview').src = 'images/avatar.png';
+        }
+
         function openSettingsModal(tab) {
             const modal = document.getElementById('settings-modal');
             modal.classList.remove('hidden');
@@ -8775,6 +8877,9 @@
 
             // 渲染模型选择器
             renderModelSelector();
+
+            // 初始化伴侣角色头像 & 昵称
+            loadSettingsCompanionProfile();
 
             // 初始化伴侣风格选择器
             settingsSelectedGender = state.user?.settings?.companion_gender || 'female';
@@ -9607,6 +9712,14 @@
             const styleChanged = genderChanged || subtypeChanged || relChanged;
             if (styleChanged) hasChanges = true;
 
+            // 检测伴侣昵称 & 头像变化
+            const newCompanionName = document.getElementById('settings-companion-name')?.value.trim() || '';
+            const currentCompanionName = state.user?.settings?.companion_name || '';
+            const companionNameChanged = newCompanionName && newCompanionName !== currentCompanionName;
+            if (companionNameChanged) hasChanges = true;
+            const companionAvatarChanged = !!_pendingSettingsCompanionAvatar;
+            if (companionAvatarChanged) hasChanges = true;
+
             // 有风格相关变更时，必须选择伴侣风格（自定义性格除外）
             if (styleChanged && !_customPersonaActive && !settingsSelectedSubtype) {
                 const isZh = state.language === 'zh-CN';
@@ -9644,6 +9757,8 @@
 
                 // 2. 保存模型变化 + 伴侣风格变化
                 const settingsPayload = {};
+                if (companionNameChanged) settingsPayload.companion_name = newCompanionName;
+                if (companionAvatarChanged) settingsPayload.companion_avatar = _pendingSettingsCompanionAvatar;
                 if (modelChanged) settingsPayload.model = selectedModel;
                 if (styleChanged) {
                     if (genderChanged) {
@@ -9668,6 +9783,15 @@
 
                     if (settingsResponse.ok) {
                         if (!state.user.settings) state.user.settings = {};
+                        if (companionNameChanged) {
+                            state.user.settings.companion_name = newCompanionName;
+                            updateUserInfo();
+                        }
+                        if (companionAvatarChanged) {
+                            state.user.settings.companion_avatar = _pendingSettingsCompanionAvatar;
+                            _pendingSettingsCompanionAvatar = null;
+                            updateCompanionAvatars();
+                        }
                         if (modelChanged) {
                             state.user.settings.model = selectedModel;
                             updateModelIndicator();
