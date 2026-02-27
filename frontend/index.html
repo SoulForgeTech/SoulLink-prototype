@@ -8332,6 +8332,7 @@
         let _callVadInterval = null;
         let _callSilenceStart = 0;
         let _callHasSpoken = false;
+        let _callAudioEl = null;       // Persistent unlocked <audio> element for playback
 
         function startVoiceCall() {
             // Check if voice TTS is enabled
@@ -8367,19 +8368,27 @@
                     _updateCallTimer();
                 }, 1000);
 
-                // Audio context for VAD + playback
+                // Audio context for VAD
                 _callAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 _callAnalyser = _callAudioCtx.createAnalyser();
                 _callAnalyser.fftSize = 2048;
                 _callSourceNode = _callAudioCtx.createMediaStreamSource(stream);
                 _callSourceNode.connect(_callAnalyser);
-
-                // Unlock audio playback (user gesture context)
                 if (_callAudioCtx.state === 'suspended') _callAudioCtx.resume();
-                // Also unlock HTML5 Audio by playing silent
-                const _unlockAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-                _unlockAudio.volume = 0;
-                _unlockAudio.play().catch(() => {});
+
+                // Create & unlock a persistent <audio> element (user gesture = unlocked)
+                if (!_callAudioEl) {
+                    _callAudioEl = document.createElement('audio');
+                    _callAudioEl.id = '_call_audio_player';
+                    document.body.appendChild(_callAudioEl);
+                }
+                // Play a tiny silent WAV to fully unlock playback
+                _callAudioEl.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+                _callAudioEl.play().then(() => {
+                    console.log('[VoiceCall] Audio element unlocked');
+                }).catch(e => {
+                    console.warn('[VoiceCall] Audio unlock failed:', e);
+                });
 
                 // Start listening
                 _callSetState('listening');
@@ -8466,13 +8475,18 @@
                 // --- Interrupt: user speaks while AI is speaking → stop AI audio ---
                 if (_callState === 'speaking' && rms > 0.02) {
                     console.log('[VoiceCall] User interrupted, stopping AI audio');
-                    // Stop current audio
-                    if (_callCurrentAudio) {
-                        try {
-                            if (_callCurrentAudio.stop) _callCurrentAudio.stop();
-                            if (_callCurrentAudio.pause) _callCurrentAudio.pause();
-                        } catch(e) {}
-                        _callCurrentAudio = null;
+                    // Stop persistent audio element
+                    if (_callAudioEl) {
+                        try { _callAudioEl.pause(); _callAudioEl.src = ''; } catch(e) {}
+                    }
+                    // Stop Web Audio source if active
+                    if (_callCurrentAudio && _callCurrentAudio !== _callAudioEl) {
+                        try { if (_callCurrentAudio.stop) _callCurrentAudio.stop(); } catch(e) {}
+                    }
+                    _callCurrentAudio = null;
+                    if (_callCurrentBlobUrl) {
+                        URL.revokeObjectURL(_callCurrentBlobUrl);
+                        _callCurrentBlobUrl = null;
                     }
                     _callAudioQueue = [];
                     _callIsPlayingSegment = false;
@@ -8600,6 +8614,7 @@
                                     // Switch to speaking state
                                     if (_callActive) _callSetState('speaking');
                                 } else if (currentEvent === 'audio') {
+                                    console.log('[VoiceCall] Got audio segment, b64 length:', payload.audio_b64?.length);
                                     _callAudioQueue.push(payload.audio_b64);
                                     _callPlayNextSegment();
                                 } else if (currentEvent === 'error') {
@@ -8631,60 +8646,86 @@
             }
         }
 
+        let _callCurrentBlobUrl = null;
+
         function _callPlayNextSegment() {
             if (_callIsPlayingSegment || _callAudioQueue.length === 0) return;
             if (!_callActive) return;
 
             _callIsPlayingSegment = true;
             const b64 = _callAudioQueue.shift();
+            console.log('[VoiceCall] Playing segment, remaining:', _callAudioQueue.length);
 
             function _onSegmentDone() {
                 _callIsPlayingSegment = false;
-                _callCurrentAudio = null;
+                // Revoke old blob URL
+                if (_callCurrentBlobUrl) {
+                    URL.revokeObjectURL(_callCurrentBlobUrl);
+                    _callCurrentBlobUrl = null;
+                }
                 if (_callAudioQueue.length > 0) {
                     _callPlayNextSegment();
                 } else if (_callActive) {
                     // All audio done → loop back to listening
+                    console.log('[VoiceCall] All segments done, back to listening');
                     _callSetState('listening');
                     _callStartRecording();
                 }
             }
 
-            // Try Web Audio API first (bypasses autoplay restrictions)
-            if (_callAudioCtx && _callAudioCtx.state !== 'closed') {
-                try {
-                    const raw = atob(b64);
-                    const buf = new Uint8Array(raw.length);
-                    for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+            try {
+                // Decode base64 → Blob URL (most reliable across browsers)
+                const raw = atob(b64);
+                const buf = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+                const blob = new Blob([buf], { type: 'audio/mpeg' });
+                _callCurrentBlobUrl = URL.createObjectURL(blob);
 
-                    _callAudioCtx.decodeAudioData(buf.buffer, (audioBuffer) => {
-                        if (!_callActive) { _callIsPlayingSegment = false; return; }
-                        const source = _callAudioCtx.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(_callAudioCtx.destination);
-                        _callCurrentAudio = source;
-                        source.onended = _onSegmentDone;
-                        source.start(0);
-                    }, (err) => {
-                        console.error('[VoiceCall] decodeAudioData failed, trying HTML5:', err);
-                        _callPlayViaHTML5(b64, _onSegmentDone);
-                    });
+                // Use the persistent unlocked <audio> element
+                const el = _callAudioEl;
+                if (!el) {
+                    console.error('[VoiceCall] No audio element!');
+                    _onSegmentDone();
                     return;
-                } catch(e) {
-                    console.error('[VoiceCall] WebAudio error, trying HTML5:', e);
                 }
-            }
 
-            // Fallback: HTML5 Audio
-            _callPlayViaHTML5(b64, _onSegmentDone);
+                el.onended = _onSegmentDone;
+                el.onerror = (e) => {
+                    console.error('[VoiceCall] Audio error:', e);
+                    _onSegmentDone();
+                };
+                el.src = _callCurrentBlobUrl;
+                _callCurrentAudio = el;
+
+                el.play().then(() => {
+                    console.log('[VoiceCall] Playing audio OK');
+                }).catch(e => {
+                    console.error('[VoiceCall] play() rejected:', e);
+                    // Last resort: try Web Audio API decode
+                    _callPlayViaWebAudio(buf.buffer.slice(0), _onSegmentDone);
+                });
+            } catch(e) {
+                console.error('[VoiceCall] Segment error:', e);
+                _onSegmentDone();
+            }
         }
 
-        function _callPlayViaHTML5(b64, onDone) {
-            const audio = new Audio('data:audio/mp3;base64,' + b64);
-            _callCurrentAudio = audio;
-            audio.onended = onDone;
-            audio.onerror = (e) => { console.error('[VoiceCall] HTML5 audio error:', e); onDone(); };
-            audio.play().catch((e) => { console.error('[VoiceCall] HTML5 play blocked:', e); onDone(); });
+        function _callPlayViaWebAudio(arrayBuffer, onDone) {
+            if (!_callAudioCtx || _callAudioCtx.state === 'closed') { onDone(); return; }
+            if (_callAudioCtx.state === 'suspended') _callAudioCtx.resume();
+            _callAudioCtx.decodeAudioData(arrayBuffer, (audioBuffer) => {
+                if (!_callActive) { onDone(); return; }
+                const source = _callAudioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(_callAudioCtx.destination);
+                _callCurrentAudio = source;
+                source.onended = onDone;
+                source.start(0);
+                console.log('[VoiceCall] WebAudio fallback playing');
+            }, (err) => {
+                console.error('[VoiceCall] WebAudio decode failed:', err);
+                onDone();
+            });
         }
 
         function _callShowError(msg) {
@@ -8718,13 +8759,17 @@
             _callRecorder = null;
             _callChunks = [];
 
-            // Stop current audio playback (supports both AudioBufferSourceNode and HTML5 Audio)
-            if (_callCurrentAudio) {
-                try {
-                    if (_callCurrentAudio.stop) _callCurrentAudio.stop(); // Web Audio API
-                    if (_callCurrentAudio.pause) _callCurrentAudio.pause(); // HTML5 Audio
-                } catch(e) {}
-                _callCurrentAudio = null;
+            // Stop current audio playback
+            if (_callAudioEl) {
+                try { _callAudioEl.pause(); _callAudioEl.src = ''; } catch(e) {}
+            }
+            if (_callCurrentAudio && _callCurrentAudio !== _callAudioEl) {
+                try { if (_callCurrentAudio.stop) _callCurrentAudio.stop(); } catch(e) {}
+            }
+            _callCurrentAudio = null;
+            if (_callCurrentBlobUrl) {
+                URL.revokeObjectURL(_callCurrentBlobUrl);
+                _callCurrentBlobUrl = null;
             }
             _callAudioQueue = [];
             _callIsPlayingSegment = false;
