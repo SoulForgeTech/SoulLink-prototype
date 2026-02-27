@@ -1246,6 +1246,120 @@
             transform: translateX(20px);
         }
 
+        /* Voice Selector — 音色选择器 */
+        .voice-selector-section {
+            margin-top: 12px;
+        }
+        .voice-current {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; background: rgba(156,163,219,0.08);
+            border-radius: 10px; margin-bottom: 10px;
+        }
+        .voice-current-info {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .voice-current-name {
+            font-size: 14px; font-weight: 600; color: #4a5568;
+        }
+        .voice-current-tag {
+            font-size: 11px; padding: 2px 8px;
+            background: linear-gradient(135deg, #9ca3db 0%, #b8a4d4 100%);
+            color: white; border-radius: 10px;
+        }
+        .voice-preview-btn {
+            padding: 6px 14px; border: none; border-radius: 8px;
+            background: linear-gradient(135deg, #9ca3db 0%, #b8a4d4 100%);
+            color: white; font-size: 12px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .voice-preview-btn:hover { opacity: 0.85; transform: scale(1.02); }
+        .voice-preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .voice-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 8px; margin-bottom: 12px;
+        }
+        .voice-card {
+            padding: 10px 12px; border-radius: 10px;
+            border: 2px solid transparent;
+            background: rgba(156,163,219,0.06);
+            cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .voice-card:hover { border-color: rgba(156,163,219,0.3); }
+        .voice-card.selected {
+            border-color: #9ca3db;
+            background: rgba(156,163,219,0.12);
+        }
+        .voice-card-name {
+            font-size: 13px; font-weight: 600; color: #4a5568;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .voice-card-gender {
+            font-size: 11px; color: #a0aec0;
+        }
+        .voice-search-box {
+            display: flex; gap: 8px; margin-top: 10px; margin-bottom: 10px;
+        }
+        .voice-search-input {
+            flex: 1; padding: 8px 12px; border: 1.5px solid #e2e8f0;
+            border-radius: 10px; font-size: 13px; outline: none;
+            transition: border-color 0.2s;
+        }
+        .voice-search-input:focus { border-color: #9ca3db; }
+        .voice-search-btn {
+            padding: 8px 16px; border: none; border-radius: 10px;
+            background: linear-gradient(135deg, #9ca3db 0%, #b8a4d4 100%);
+            color: white; font-size: 13px; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .voice-search-btn:hover { opacity: 0.85; }
+        .voice-search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .voice-search-results {
+            max-height: 240px; overflow-y: auto;
+            border: 1px solid #e2e8f0; border-radius: 10px;
+            display: none;
+        }
+        .voice-search-results.visible { display: block; }
+        .voice-result-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .voice-result-item:last-child { border-bottom: none; }
+        .voice-result-item:hover { background: rgba(156,163,219,0.08); }
+        .voice-result-info {
+            flex: 1; min-width: 0;
+        }
+        .voice-result-name {
+            font-size: 13px; font-weight: 600; color: #4a5568;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .voice-result-meta {
+            font-size: 11px; color: #a0aec0; margin-top: 2px;
+        }
+        .voice-result-select {
+            padding: 4px 12px; border: 1.5px solid #9ca3db;
+            border-radius: 8px; background: transparent;
+            color: #9ca3db; font-size: 12px; cursor: pointer;
+            transition: all 0.2s; margin-left: 8px; flex-shrink: 0;
+        }
+        .voice-result-select:hover {
+            background: #9ca3db; color: white;
+        }
+        .voice-search-empty {
+            text-align: center; padding: 20px;
+            color: #a0aec0; font-size: 13px;
+        }
+        .voice-search-loading {
+            text-align: center; padding: 16px;
+            color: #a0aec0; font-size: 13px;
+        }
+        .voice-section-label {
+            font-size: 12px; color: #a0aec0; margin-bottom: 6px;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
         /* AI 消息 TTS 按钮 */
         .tts-btn {
             display: inline-flex; align-items: center; justify-content: center;
@@ -4806,7 +4920,7 @@
                         </div>
                         <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers {companion}</div>
                     </div>
-                    <!-- AI 语音回复开关 — 仅语音测试用户可见 -->
+                    <!-- AI 语音回复 + 音色选择 -->
                     <div class="form-group" id="voice-tts-setting-group" style="display:none;">
                         <label data-i18n="settings.voice.title">🔊 AI Voice Reply</label>
                         <div class="voice-tts-setting-row">
@@ -4816,7 +4930,38 @@
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="form-hint" data-i18n="settings.voice.hint">Custom voice & voice cloning coming soon</div>
+
+                        <!-- Voice Selector -->
+                        <div class="voice-selector-section" id="voice-selector-section">
+                            <!-- Current voice display -->
+                            <div class="voice-current" id="voice-current-display">
+                                <div class="voice-current-info">
+                                    <span class="voice-current-name" id="voice-current-name">Default</span>
+                                    <span class="voice-current-tag" id="voice-current-tag">preset</span>
+                                </div>
+                                <button class="voice-preview-btn" onclick="previewCurrentVoice()" id="voice-preview-current-btn">
+                                    ▶ Try
+                                </button>
+                            </div>
+
+                            <!-- Preset voices grid -->
+                            <div class="voice-section-label">Preset Voices</div>
+                            <div class="voice-grid" id="voice-preset-grid">
+                                <!-- filled by JS -->
+                            </div>
+
+                            <!-- Search community voices -->
+                            <div class="voice-section-label">Search Community (2M+ voices)</div>
+                            <div class="voice-search-box">
+                                <input type="text" class="voice-search-input" id="voice-search-input"
+                                    placeholder="Search voices... e.g. 温柔, anime, deep"
+                                    onkeydown="if(event.key==='Enter')searchVoices()">
+                                <button class="voice-search-btn" onclick="searchVoices()" id="voice-search-btn">Search</button>
+                            </div>
+                            <div class="voice-search-results" id="voice-search-results"></div>
+                        </div>
+
+                        <div class="form-hint">Powered by Fish Audio — 2M+ community voices</div>
                     </div>
                     <div class="form-group">
                         <label data-i18n="settings.companion.style">Companion Style</label>
@@ -5936,6 +6081,8 @@
                 if (ttsCheckbox) {
                     ttsCheckbox.checked = localStorage.getItem('voiceAutoTTS') === 'true';
                 }
+                // 加载音色选择器
+                loadVoicePresets();
             }
         }
 
@@ -7195,6 +7342,190 @@
         }
         function isVoiceTTSEnabled() {
             return localStorage.getItem('voiceAutoTTS') === 'true'; // 默认关闭
+        }
+
+        // ==================== Voice Selector (Fish Audio) ====================
+        let _voicePresets = [];
+        let _selectedVoiceId = '';
+        let _selectedVoiceName = '';
+        let _voiceSearchTimeout = null;
+
+        async function loadVoicePresets() {
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/list`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                _voicePresets = data.voices || [];
+                _selectedVoiceId = data.current_voice_id || '';
+                _selectedVoiceName = data.current_voice_name || '';
+                renderVoicePresets();
+                updateVoiceCurrentDisplay();
+            } catch(e) {
+                console.error('Failed to load voice presets:', e);
+            }
+        }
+
+        function renderVoicePresets() {
+            const grid = document.getElementById('voice-preset-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            _voicePresets.forEach(v => {
+                const card = document.createElement('div');
+                card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
+                card.innerHTML = `
+                    <div class="voice-card-name">${v.name}</div>
+                    <div class="voice-card-gender">${v.gender === 'female' ? '♀' : '♂'} ${v.gender}</div>
+                `;
+                card.onclick = () => selectVoice(v.id, v.name);
+                grid.appendChild(card);
+            });
+        }
+
+        function updateVoiceCurrentDisplay() {
+            const nameEl = document.getElementById('voice-current-name');
+            const tagEl = document.getElementById('voice-current-tag');
+            if (!nameEl) return;
+
+            if (_selectedVoiceName) {
+                nameEl.textContent = _selectedVoiceName;
+                const isPreset = _voicePresets.some(v => v.id === _selectedVoiceId);
+                tagEl.textContent = isPreset ? 'preset' : 'community';
+            } else {
+                nameEl.textContent = 'Auto (default)';
+                tagEl.textContent = 'auto';
+            }
+        }
+
+        async function selectVoice(voiceId, voiceName) {
+            _selectedVoiceId = voiceId;
+            _selectedVoiceName = voiceName;
+            renderVoicePresets();
+            updateVoiceCurrentDisplay();
+
+            // Clear search selection highlight
+            document.querySelectorAll('.voice-result-item').forEach(el => {
+                el.style.background = '';
+            });
+
+            // Save to backend
+            try {
+                await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voice_id: voiceId, voice_name: voiceName })
+                });
+                if (state.user) {
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.voice_id = voiceId;
+                    state.user.settings.voice_name = voiceName;
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                }
+            } catch(e) {
+                console.error('Failed to save voice:', e);
+            }
+        }
+
+        async function previewCurrentVoice() {
+            const btn = document.getElementById('voice-preview-current-btn');
+            if (!btn || btn.disabled) return;
+
+            const voiceId = _selectedVoiceId;
+            if (!voiceId) {
+                // Use default based on gender
+                const gender = state.user?.settings?.companion_gender || 'female';
+                const defaultPreset = _voicePresets.find(v => v.gender === gender);
+                if (defaultPreset) {
+                    await previewVoice(defaultPreset.id, btn);
+                }
+                return;
+            }
+            await previewVoice(voiceId, btn);
+        }
+
+        async function previewVoice(voiceId, btnEl) {
+            if (!btnEl) return;
+            const origText = btnEl.textContent;
+            btnEl.disabled = true;
+            btnEl.textContent = '...';
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voice_id: voiceId })
+                });
+                const data = await resp.json();
+                if (data.success && data.audio_b64) {
+                    btnEl.textContent = '🔊';
+                    if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio_b64);
+                    _currentAudio = audio;
+                    audio.play().catch(e => console.error(e));
+                    audio.onended = () => { btnEl.textContent = origText; btnEl.disabled = false; _currentAudio = null; };
+                    audio.onerror = () => { btnEl.textContent = origText; btnEl.disabled = false; _currentAudio = null; };
+                } else {
+                    btnEl.textContent = origText;
+                    btnEl.disabled = false;
+                }
+            } catch(e) {
+                console.error('Preview error:', e);
+                btnEl.textContent = origText;
+                btnEl.disabled = false;
+            }
+        }
+
+        async function searchVoices() {
+            const input = document.getElementById('voice-search-input');
+            const btn = document.getElementById('voice-search-btn');
+            const resultsDiv = document.getElementById('voice-search-results');
+            const query = (input?.value || '').trim();
+
+            if (!query) return;
+
+            btn.disabled = true;
+            btn.textContent = '...';
+            resultsDiv.innerHTML = '<div class="voice-search-loading">Searching...</div>';
+            resultsDiv.classList.add('visible');
+
+            try {
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/search?q=${encodeURIComponent(query)}&page_size=15`);
+                const data = await resp.json();
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="voice-search-empty">${data.error}</div>`;
+                    return;
+                }
+
+                const voices = data.voices || [];
+                if (voices.length === 0) {
+                    resultsDiv.innerHTML = '<div class="voice-search-empty">No voices found. Try different keywords.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = '';
+                voices.forEach(v => {
+                    const item = document.createElement('div');
+                    item.className = 'voice-result-item';
+                    const langs = (v.languages || []).join(', ') || '?';
+                    const author = v.author ? `by ${v.author}` : '';
+                    item.innerHTML = `
+                        <div class="voice-result-info">
+                            <div class="voice-result-name">${v.name || 'Untitled'}</div>
+                            <div class="voice-result-meta">${langs} ${author} · ${(v.task_count || 0).toLocaleString()} uses</div>
+                        </div>
+                        <button class="voice-result-select" onclick="event.stopPropagation(); selectVoice('${v.id}', '${(v.name || '').replace(/'/g, "\\'")}')">Use</button>
+                    `;
+                    item.onclick = () => {
+                        previewVoice(v.id, item.querySelector('.voice-result-select'));
+                    };
+                    resultsDiv.appendChild(item);
+                });
+            } catch(e) {
+                console.error('Search error:', e);
+                resultsDiv.innerHTML = '<div class="voice-search-empty">Search failed. Please try again.</div>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Search';
+            }
         }
 
         function toggleVoiceRecording() {

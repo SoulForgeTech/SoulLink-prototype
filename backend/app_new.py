@@ -442,7 +442,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "voice_id", "voice_name"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
@@ -1068,8 +1068,7 @@ def chat():
         # 从 full_response 中获取 sources
         sources = full_response.get("data", {}).get("sources", [])
 
-        # Auto-generate TTS for AI reply if user sent voice message
-        # 实时生成 base64 音频直接返回前端播放，不存储（节省空间，文字可随时重新生成语音）
+        # Auto-generate TTS for AI reply if user sent voice message (Fish Audio)
         reply_audio_b64 = None
         reply_audio_duration = None
         if msg_type == "voice":
@@ -1080,36 +1079,36 @@ def chat():
                 gender = settings.get("companion_gender", "female")
                 subtype = settings.get("companion_subtype", "")
 
-                # 自定义 persona 用户：自动分析语音风格并缓存
-                custom_persona = settings.get("custom_persona", "")
-                if custom_persona and subtype not in (
-                    "female_gentle", "female_cold", "female_cute", "female_cheerful",
-                    "male_ceo", "male_warm", "male_classmate", "male_badboy",
-                ):
-                    cached_style = settings.get("voice_style", "")
-                    if cached_style:
-                        subtype = cached_style
-                    else:
-                        # 首次：用 Gemini 分析 persona → 缓存到 DB
-                        voice_style = extract_voice_style_from_persona(custom_persona, gender)
-                        subtype = voice_style
-                        try:
-                            db.db["users"].update_one(
-                                {"_id": user_id},
-                                {"$set": {"settings.voice_style": voice_style}}
-                            )
-                            logger.info(f"[VOICE] Cached voice_style='{voice_style}' for user {user_id}")
-                        except Exception:
-                            pass
+                # Priority: user-selected voice_id > auto-detect > default
+                voice_id = settings.get("voice_id")
 
-                # Truncate for TTS (max 2000 chars)
+                if not voice_id:
+                    custom_persona = settings.get("custom_persona", "")
+                    if custom_persona and subtype not in (
+                        "female_gentle", "female_cold", "female_cute", "female_cheerful",
+                        "male_ceo", "male_warm", "male_classmate", "male_badboy",
+                    ):
+                        cached_style = settings.get("voice_style", "")
+                        if cached_style:
+                            subtype = cached_style
+                        else:
+                            voice_style = extract_voice_style_from_persona(custom_persona, gender)
+                            subtype = voice_style
+                            try:
+                                db.db["users"].update_one(
+                                    {"_id": user_id},
+                                    {"$set": {"settings.voice_style": voice_style}}
+                                )
+                                logger.info(f"[VOICE] Cached voice_style='{voice_style}' for user {user_id}")
+                            except Exception:
+                                pass
+
                 tts_text = reply[:2000] if len(reply) > 2000 else reply
-                tts_audio = synthesize_speech(text=tts_text, gender=gender, subtype=subtype)
+                tts_audio = synthesize_speech(text=tts_text, voice_id=voice_id, gender=gender, subtype=subtype)
                 if tts_audio:
-                    # 直接返回 base64，不存储到 Cloudinary/本地
                     reply_audio_b64 = b64mod.b64encode(tts_audio).decode("ascii")
                     reply_audio_duration = round(max(1.0, len(tts_text) * 0.15), 1)
-                    logger.info(f"[Chat] Auto-TTS generated: {len(tts_audio)} bytes (b64 streamed, not stored), est_duration={reply_audio_duration}s")
+                    logger.info(f"[Chat] Auto-TTS (Fish Audio): {len(tts_audio)} bytes, est_duration={reply_audio_duration}s")
             except Exception as tts_err:
                 logger.warning(f"[Chat] Auto-TTS for reply failed (non-fatal): {tts_err}")
 
@@ -2374,17 +2373,17 @@ def serve_voice_file(filename):
 @login_required
 def voice_tts():
     """
-    文本转语音 (Text-to-Speech)
+    文本转语音 (Text-to-Speech) via Fish Audio
     POST /api/voice/tts
-    Body: { "text": "要合成的文字", "voice": "optional_voice_name" }
-    Returns: { "success": true, "audio_url": "/uploads/voice/tts_xxx.mp3" }
+    Body: { "text": "...", "voice_id": "optional_fish_audio_ref_id" }
+    Returns: { "success": true, "audio_b64": "...", "size": ... }
     """
     try:
         from voice_service import synthesize_speech, check_voice_service_health
 
         health = check_voice_service_health()
         if not health["configured"]:
-            return jsonify({"error": "Voice service not configured. DASHSCOPE_API_KEY is missing."}), 503
+            return jsonify({"error": "Voice service not configured. FISH_AUDIO_KEY is missing."}), 503
 
         data = request.get_json()
         if not data or not data.get("text"):
@@ -2394,50 +2393,47 @@ def voice_tts():
         if not text:
             return jsonify({"error": "Text cannot be empty"}), 400
 
-        # Get user's companion settings for voice selection
-        from voice_service import extract_voice_style_from_persona
         user = get_current_user()
         user_id = get_current_user_id()
         settings = user.get("settings", {})
         gender = settings.get("companion_gender", "female")
         subtype = settings.get("companion_subtype", "")
 
-        # 自定义 persona：自动分析语音风格
-        custom_persona = settings.get("custom_persona", "")
-        if custom_persona and subtype not in (
-            "female_gentle", "female_cold", "female_cute", "female_cheerful",
-            "male_ceo", "male_warm", "male_classmate", "male_badboy",
-        ):
-            cached_style = settings.get("voice_style", "")
-            if cached_style:
-                subtype = cached_style
-            else:
-                voice_style = extract_voice_style_from_persona(custom_persona, gender)
-                subtype = voice_style
-                try:
-                    db.db["users"].update_one(
-                        {"_id": user_id},
-                        {"$set": {"settings.voice_style": voice_style}}
-                    )
-                except Exception:
-                    pass
+        # Priority: request voice_id > user settings voice_id > auto-detect from persona > default
+        voice_id = data.get("voice_id") or settings.get("voice_id")
 
-        # Allow optional voice override
-        voice = data.get("voice", None)
-        speech_rate = data.get("speech_rate", 1.0)
+        if not voice_id:
+            # Auto-detect from persona if custom persona is set
+            from voice_service import extract_voice_style_from_persona
+            custom_persona = settings.get("custom_persona", "")
+            if custom_persona and subtype not in (
+                "female_gentle", "female_cold", "female_cute", "female_cheerful",
+                "male_ceo", "male_warm", "male_classmate", "male_badboy",
+            ):
+                cached_style = settings.get("voice_style", "")
+                if cached_style:
+                    subtype = cached_style
+                else:
+                    voice_style = extract_voice_style_from_persona(custom_persona, gender)
+                    subtype = voice_style
+                    try:
+                        db.db["users"].update_one(
+                            {"_id": user_id},
+                            {"$set": {"settings.voice_style": voice_style}}
+                        )
+                    except Exception:
+                        pass
 
         audio_data = synthesize_speech(
             text=text,
-            voice=voice,
+            voice_id=voice_id,
             gender=gender,
             subtype=subtype,
-            speech_rate=float(speech_rate),
         )
 
-        # 实时返回 base64 音频，不存储（节省空间，文字可随时重新生成）
         import base64 as b64mod
         audio_b64 = b64mod.b64encode(audio_data).decode("ascii")
-        logger.info(f"[TTS] Returning {len(audio_data)} bytes as base64 (not stored)")
+        logger.info(f"[TTS] Returning {len(audio_data)} bytes as base64 (Fish Audio)")
 
         return jsonify({
             "success": True,
@@ -2452,6 +2448,101 @@ def voice_tts():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"TTS synthesis failed: {str(e)}"}), 500
+
+
+@app.route("/api/voice/list", methods=["GET"])
+@login_required
+def voice_list():
+    """
+    获取预设音色列表
+    GET /api/voice/list
+    Returns: { "voices": [{ "id", "name", "gender", "type", "is_preset" }] }
+    """
+    try:
+        from voice_service import list_preset_voices
+        user = get_current_user()
+        settings = user.get("settings", {})
+        current_voice_id = settings.get("voice_id", "")
+        current_voice_name = settings.get("voice_name", "")
+
+        presets = list_preset_voices()
+
+        return jsonify({
+            "voices": presets,
+            "current_voice_id": current_voice_id,
+            "current_voice_name": current_voice_name,
+        })
+    except Exception as e:
+        logger.error(f"[VOICE] List error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/voice/search", methods=["GET"])
+@login_required
+def voice_search():
+    """
+    搜索 Fish Audio 社区音色
+    GET /api/voice/search?q=xxx&language=zh&page=1&page_size=20
+    Returns: { "total": int, "voices": [...] }
+    """
+    try:
+        from voice_service import search_voices
+
+        query = request.args.get("q", "")
+        language = request.args.get("language", None)
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 20))
+
+        result = search_voices(
+            query=query,
+            language=language,
+            page=page,
+            page_size=page_size,
+        )
+
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"[VOICE] Search error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/voice/preview", methods=["POST"])
+@login_required
+def voice_preview():
+    """
+    试听音色：用指定音色合成一句示例文本
+    POST /api/voice/preview
+    Body: { "voice_id": "fish_audio_ref_id", "text": "optional sample text" }
+    Returns: { "success": true, "audio_b64": "..." }
+    """
+    try:
+        from voice_service import synthesize_speech, check_voice_service_health
+
+        health = check_voice_service_health()
+        if not health["configured"]:
+            return jsonify({"error": "Voice service not configured"}), 503
+
+        data = request.get_json()
+        voice_id = data.get("voice_id")
+        if not voice_id:
+            return jsonify({"error": "Missing voice_id"}), 400
+
+        # Default preview text
+        text = data.get("text", "你好呀，很高兴认识你！今天过得怎么样？")
+
+        audio_data = synthesize_speech(text=text, voice_id=voice_id)
+
+        import base64 as b64mod
+        audio_b64 = b64mod.b64encode(audio_data).decode("ascii")
+
+        return jsonify({
+            "success": True,
+            "audio_b64": audio_b64,
+            "size": len(audio_data),
+        })
+    except Exception as e:
+        logger.error(f"[VOICE] Preview error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/voice/upload", methods=["POST"])
