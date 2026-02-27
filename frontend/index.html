@@ -2649,23 +2649,10 @@
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideIn 0.3s ease-out;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-content::-webkit-scrollbar {
-            display: none;
-        }
-
-        .modal-header,
-        .settings-tabs,
-        .modal-footer {
-            flex-shrink: 0;
         }
 
         .modal-body {
-            flex: 1;
-            min-height: 0;
+            max-height: calc(85vh - 180px);
             overflow-y: auto;
             scrollbar-width: none;
         }
@@ -4652,7 +4639,7 @@
                     <ul class="changelog-list">
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.1">Fish Audio TTS — all-new voice engine, 2M+ community voices available</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.2">Voice picker — 8 preset voices per language + community search, preview & use</span></li>
-                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.3">Settings tabs — Profile / Companion / Advanced three-panel layout</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.3">Settings tabs — Profile / Companion / Advanced three-panel layout</span></li>
                         <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v200.4">ChatGPT history import — bring your old conversations into SoulLink</span></li>
                         <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.5">Click model badge in chat header to jump to model settings</span></li>
                         <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v200.6">Voice presets refresh in real-time when switching language</span></li>
