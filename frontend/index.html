@@ -4597,11 +4597,12 @@
             height: 160px;
             border-radius: 50%;
             padding: 4px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.08);
+            border: 3px solid transparent;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.5s ease, box-shadow 0.5s ease;
+            transition: border-color 0.6s ease, box-shadow 0.6s ease, background 0.6s ease;
         }
         .voice-call-avatar-ring img {
             width: 100%;
@@ -4610,33 +4611,59 @@
             object-fit: cover;
         }
 
-        /* Listening state — cyan/blue rotating */
+        /* Listening state — soft cyan glow breathing */
         .voice-call-avatar-ring.listening {
-            background: conic-gradient(from 0deg, #00d2ff, #3a7bd5, #00d2ff);
-            box-shadow: 0 0 40px rgba(0, 210, 255, 0.35);
-            animation: vcRingSpin 3s linear infinite;
+            border-color: rgba(0, 210, 255, 0.7);
+            background: rgba(0, 210, 255, 0.08);
+            box-shadow: 0 0 24px rgba(0, 210, 255, 0.25), 0 0 48px rgba(0, 210, 255, 0.1);
+            animation: vcGlowListen 2.5s ease-in-out infinite;
         }
 
-        /* Thinking state — warm pulse */
+        /* Thinking state — warm amber/pink pulse */
         .voice-call-avatar-ring.thinking {
-            background: conic-gradient(from 0deg, #f093fb, #f5576c, #ffd86f, #f093fb);
-            box-shadow: 0 0 40px rgba(245, 87, 108, 0.35);
-            animation: vcRingPulse 1.5s ease-in-out infinite;
+            border-color: rgba(245, 130, 200, 0.75);
+            background: rgba(245, 130, 200, 0.08);
+            box-shadow: 0 0 24px rgba(245, 130, 200, 0.3), 0 0 48px rgba(245, 130, 200, 0.12);
+            animation: vcGlowThink 1.4s ease-in-out infinite;
         }
 
-        /* Speaking state — purple rotating */
+        /* Speaking state — purple glow with subtle scale */
         .voice-call-avatar-ring.speaking {
-            background: conic-gradient(from 0deg, #a18cd1, #fbc2eb, #a18cd1);
-            box-shadow: 0 0 40px rgba(161, 140, 209, 0.4);
-            animation: vcRingSpin 2s linear infinite;
+            border-color: rgba(161, 140, 209, 0.8);
+            background: rgba(161, 140, 209, 0.08);
+            box-shadow: 0 0 28px rgba(161, 140, 209, 0.35), 0 0 56px rgba(161, 140, 209, 0.15);
+            animation: vcGlowSpeak 1.8s ease-in-out infinite;
         }
 
-        @keyframes vcRingSpin {
-            to { transform: rotate(360deg); }
+        @keyframes vcGlowListen {
+            0%, 100% {
+                box-shadow: 0 0 24px rgba(0, 210, 255, 0.25), 0 0 48px rgba(0, 210, 255, 0.1);
+                border-color: rgba(0, 210, 255, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 36px rgba(0, 210, 255, 0.4), 0 0 72px rgba(0, 210, 255, 0.18);
+                border-color: rgba(0, 210, 255, 0.9);
+            }
         }
-        @keyframes vcRingPulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.06); opacity: 0.85; }
+        @keyframes vcGlowThink {
+            0%, 100% {
+                box-shadow: 0 0 24px rgba(245, 130, 200, 0.3), 0 0 48px rgba(245, 130, 200, 0.12);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(245, 130, 200, 0.5), 0 0 72px rgba(245, 130, 200, 0.2);
+                transform: scale(1.03);
+            }
+        }
+        @keyframes vcGlowSpeak {
+            0%, 100% {
+                box-shadow: 0 0 28px rgba(161, 140, 209, 0.35), 0 0 56px rgba(161, 140, 209, 0.15);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 44px rgba(161, 140, 209, 0.55), 0 0 80px rgba(161, 140, 209, 0.22);
+                transform: scale(1.025);
+            }
         }
 
         .voice-call-name {
@@ -8340,12 +8367,19 @@
                     _updateCallTimer();
                 }, 1000);
 
-                // Audio context for VAD
+                // Audio context for VAD + playback
                 _callAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 _callAnalyser = _callAudioCtx.createAnalyser();
                 _callAnalyser.fftSize = 2048;
                 _callSourceNode = _callAudioCtx.createMediaStreamSource(stream);
                 _callSourceNode.connect(_callAnalyser);
+
+                // Unlock audio playback (user gesture context)
+                if (_callAudioCtx.state === 'suspended') _callAudioCtx.resume();
+                // Also unlock HTML5 Audio by playing silent
+                const _unlockAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+                _unlockAudio.volume = 0;
+                _unlockAudio.play().catch(() => {});
 
                 // Start listening
                 _callSetState('listening');
@@ -8417,7 +8451,7 @@
             let noSpeechTimer = 0;
 
             _callVadInterval = setInterval(() => {
-                if (!_callActive || _callState !== 'listening') return;
+                if (!_callActive) return;
 
                 _callAnalyser.getByteTimeDomainData(dataArr);
 
@@ -8428,6 +8462,33 @@
                     sum += v * v;
                 }
                 const rms = Math.sqrt(sum / bufLen);
+
+                // --- Interrupt: user speaks while AI is speaking → stop AI audio ---
+                if (_callState === 'speaking' && rms > 0.02) {
+                    console.log('[VoiceCall] User interrupted, stopping AI audio');
+                    // Stop current audio
+                    if (_callCurrentAudio) {
+                        try {
+                            if (_callCurrentAudio.stop) _callCurrentAudio.stop();
+                            if (_callCurrentAudio.pause) _callCurrentAudio.pause();
+                        } catch(e) {}
+                        _callCurrentAudio = null;
+                    }
+                    _callAudioQueue = [];
+                    _callIsPlayingSegment = false;
+                    // Abort ongoing SSE
+                    if (_callAbortController) {
+                        try { _callAbortController.abort(); } catch(e) {}
+                        _callAbortController = null;
+                    }
+                    // Switch to listening
+                    _callSetState('listening');
+                    _callHasSpoken = true;
+                    _callSilenceStart = 0;
+                    return;
+                }
+
+                if (_callState !== 'listening') return;
 
                 if (rms > 0.015) {
                     // User is speaking
@@ -8468,7 +8529,7 @@
             }
 
             // Wait for final data
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 150));
 
             const mimeType = _callRecorder?.mimeType || 'audio/webm';
             const blob = new Blob(_callChunks, { type: mimeType });
@@ -8576,10 +8637,8 @@
 
             _callIsPlayingSegment = true;
             const b64 = _callAudioQueue.shift();
-            const audio = new Audio('data:audio/mp3;base64,' + b64);
-            _callCurrentAudio = audio;
 
-            audio.onended = () => {
+            function _onSegmentDone() {
                 _callIsPlayingSegment = false;
                 _callCurrentAudio = null;
                 if (_callAudioQueue.length > 0) {
@@ -8589,25 +8648,43 @@
                     _callSetState('listening');
                     _callStartRecording();
                 }
-            };
-            audio.onerror = () => {
-                _callIsPlayingSegment = false;
-                _callCurrentAudio = null;
-                if (_callAudioQueue.length > 0) {
-                    _callPlayNextSegment();
-                } else if (_callActive) {
-                    _callSetState('listening');
-                    _callStartRecording();
+            }
+
+            // Try Web Audio API first (bypasses autoplay restrictions)
+            if (_callAudioCtx && _callAudioCtx.state !== 'closed') {
+                try {
+                    const raw = atob(b64);
+                    const buf = new Uint8Array(raw.length);
+                    for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+
+                    _callAudioCtx.decodeAudioData(buf.buffer, (audioBuffer) => {
+                        if (!_callActive) { _callIsPlayingSegment = false; return; }
+                        const source = _callAudioCtx.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(_callAudioCtx.destination);
+                        _callCurrentAudio = source;
+                        source.onended = _onSegmentDone;
+                        source.start(0);
+                    }, (err) => {
+                        console.error('[VoiceCall] decodeAudioData failed, trying HTML5:', err);
+                        _callPlayViaHTML5(b64, _onSegmentDone);
+                    });
+                    return;
+                } catch(e) {
+                    console.error('[VoiceCall] WebAudio error, trying HTML5:', e);
                 }
-            };
-            audio.play().catch(() => {
-                _callIsPlayingSegment = false;
-                _callCurrentAudio = null;
-                if (_callActive) {
-                    _callSetState('listening');
-                    _callStartRecording();
-                }
-            });
+            }
+
+            // Fallback: HTML5 Audio
+            _callPlayViaHTML5(b64, _onSegmentDone);
+        }
+
+        function _callPlayViaHTML5(b64, onDone) {
+            const audio = new Audio('data:audio/mp3;base64,' + b64);
+            _callCurrentAudio = audio;
+            audio.onended = onDone;
+            audio.onerror = (e) => { console.error('[VoiceCall] HTML5 audio error:', e); onDone(); };
+            audio.play().catch((e) => { console.error('[VoiceCall] HTML5 play blocked:', e); onDone(); });
         }
 
         function _callShowError(msg) {
@@ -8641,9 +8718,12 @@
             _callRecorder = null;
             _callChunks = [];
 
-            // Stop current audio playback
+            // Stop current audio playback (supports both AudioBufferSourceNode and HTML5 Audio)
             if (_callCurrentAudio) {
-                try { _callCurrentAudio.pause(); } catch(e) {}
+                try {
+                    if (_callCurrentAudio.stop) _callCurrentAudio.stop(); // Web Audio API
+                    if (_callCurrentAudio.pause) _callCurrentAudio.pause(); // HTML5 Audio
+                } catch(e) {}
                 _callCurrentAudio = null;
             }
             _callAudioQueue = [];
