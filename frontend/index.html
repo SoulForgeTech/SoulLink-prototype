@@ -2623,6 +2623,9 @@
             position: fixed;
             inset: 0;
             z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal.hidden {
@@ -2637,10 +2640,7 @@
         }
 
         .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: relative;
             background: white;
             border-radius: 20px;
             width: 90%;
@@ -2660,11 +2660,11 @@
         @keyframes modalSlideIn {
             from {
                 opacity: 0;
-                transform: translate(-50%, -50%) translateY(-20px) scale(0.95);
+                transform: translateY(-20px) scale(0.95);
             }
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%) translateY(0) scale(1);
+                transform: translateY(0) scale(1);
             }
         }
 
