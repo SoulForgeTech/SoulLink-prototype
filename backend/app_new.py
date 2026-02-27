@@ -1368,23 +1368,68 @@ def voice_chat_stream():
             yield _sse_event("error", {"message": f"Setup error: {str(e)}"})
             return
 
-        # ---------- 4. Streaming LLM + real-time TTS (interleaved) ----------
-        # Stream tokens from LLM, detect sentence boundaries, TTS each sentence
-        # immediately, and yield audio before the full reply is complete.
-        from voice_service import synthesize_single_sentence, split_sentences, \
+        # ---------- 4. Streaming LLM + parallel TTS ----------
+        # Stream tokens from LLM, detect clause/sentence boundaries, TTS each
+        # segment in a background thread so LLM streaming is never blocked.
+        from voice_service import synthesize_single_sentence, \
             _clean_text_for_tts, get_voice_ref_id
+        from concurrent.futures import ThreadPoolExecutor, Future
+        import queue as _queue
         ref_id = voice_id or get_voice_ref_id(gender, subtype, voice_lang)
 
-        full_reply = ""          # accumulate raw LLM output
-        sentence_buffer = ""     # buffer for detecting sentence boundaries
+        # Clause-level split: commas + sentence-ending punctuation
+        _CLAUSE_SPLIT_RE = _re.compile(
+            r'(?<=[。！？…\.!\?\n，,；;—])'
+            r'(?=\S)'
+        )
+
+        def _split_clauses(text, min_len=6):
+            """Split text on commas and sentence-ending punctuation."""
+            if not text:
+                return []
+            raw = _CLAUSE_SPLIT_RE.split(text.strip())
+            out, buf = [], ""
+            for part in raw:
+                part = part.strip()
+                if not part:
+                    continue
+                buf += part
+                if len(buf) >= min_len:
+                    out.append(buf)
+                    buf = ""
+            if buf:
+                if out:
+                    out[-1] += buf
+                else:
+                    out.append(buf)
+            return out
+
+        # Voice call instruction: encourage concise responses
+        voice_prefix = (
+            "[语音通话模式] 请用简短自然的口语回复，1-3句话即可，"
+            "不要太长，像真人打电话聊天一样。\n\n"
+        )
+        message_with_prefix = voice_prefix + message_to_send
+
+        full_reply = ""
+        sentence_buffer = ""
         audio_idx = 0
-        in_thinking = False      # track <think> tag state
+        in_thinking = False
         thinking_content = ""
-        first_audio_sent = False
+
+        # TTS runs in background thread, results collected in order
+        tts_executor = ThreadPoolExecutor(max_workers=2)
+        pending_tts = []  # list of (idx, sentence_text, Future)
+
+        def _do_tts(sentence_text):
+            cleaned = _clean_text_for_tts(sentence_text)
+            if cleaned and len(cleaned) >= 2:
+                return synthesize_single_sentence(cleaned, ref_id)
+            return b""
 
         try:
             for chunk in api.send_message_stream(
-                message_to_send,
+                message_with_prefix,
                 session_id=str(conversation["_id"]),
             ):
                 if chunk.get("error"):
@@ -1394,6 +1439,15 @@ def voice_chat_stream():
 
                 token = chunk.get("textResponse", "")
                 if not token:
+                    # While waiting for tokens, yield any ready TTS audio (in order)
+                    while pending_tts and pending_tts[0][2].done():
+                        idx, sent, fut = pending_tts.pop(0)
+                        audio_bytes = fut.result()
+                        if audio_bytes:
+                            audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
+                            yield _sse_event("audio", {
+                                "index": idx, "text": sent, "audio_b64": audio_b64,
+                            })
                     continue
 
                 full_reply += token
@@ -1407,49 +1461,52 @@ def voice_chat_stream():
                 if in_thinking:
                     continue
 
-                # Accumulate tokens into sentence buffer
                 sentence_buffer += token
 
-                # Check for sentence boundaries
-                sentences = split_sentences(sentence_buffer)
-                if len(sentences) > 1:
-                    # All except last are complete sentences
-                    complete = sentences[:-1]
-                    sentence_buffer = sentences[-1]
+                # Check for clause/sentence boundaries
+                clauses = _split_clauses(sentence_buffer)
+                if len(clauses) > 1:
+                    complete = clauses[:-1]
+                    sentence_buffer = clauses[-1]
 
                     for sent in complete:
-                        cleaned = _clean_text_for_tts(sent)
-                        if cleaned and len(cleaned) >= 2:
-                            audio_bytes = synthesize_single_sentence(cleaned, ref_id)
-                            if audio_bytes:
-                                audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
-                                yield _sse_event("audio", {
-                                    "index": audio_idx,
-                                    "text": sent,
-                                    "audio_b64": audio_b64,
-                                })
-                                audio_idx += 1
-                                first_audio_sent = True
+                        fut = tts_executor.submit(_do_tts, sent)
+                        pending_tts.append((audio_idx, sent, fut))
+                        audio_idx += 1
 
-            # Process remaining buffer (last sentence)
-            if sentence_buffer.strip():
-                cleaned = _clean_text_for_tts(sentence_buffer.strip())
-                if cleaned and len(cleaned) >= 2:
-                    audio_bytes = synthesize_single_sentence(cleaned, ref_id)
+                # Yield any ready TTS audio (in order)
+                while pending_tts and pending_tts[0][2].done():
+                    idx, sent, fut = pending_tts.pop(0)
+                    audio_bytes = fut.result()
                     if audio_bytes:
                         audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
                         yield _sse_event("audio", {
-                            "index": audio_idx,
-                            "text": sentence_buffer.strip(),
-                            "audio_b64": audio_b64,
+                            "index": idx, "text": sent, "audio_b64": audio_b64,
                         })
-                        audio_idx += 1
+
+            # LLM stream done — process remaining buffer
+            if sentence_buffer.strip():
+                fut = tts_executor.submit(_do_tts, sentence_buffer.strip())
+                pending_tts.append((audio_idx, sentence_buffer.strip(), fut))
+                audio_idx += 1
+
+            # Wait for all remaining TTS to complete, yield in order
+            for idx, sent, fut in pending_tts:
+                audio_bytes = fut.result(timeout=30)
+                if audio_bytes:
+                    audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
+                    yield _sse_event("audio", {
+                        "index": idx, "text": sent, "audio_b64": audio_b64,
+                    })
+            pending_tts.clear()
 
         except Exception as e:
             logger.error(f"[STREAM] LLM+TTS error: {e}")
             if not full_reply:
                 yield _sse_event("error", {"message": f"LLM error: {str(e)}"})
                 return
+        finally:
+            tts_executor.shutdown(wait=False)
 
         # ---------- 5. Process full reply & emit reply event ----------
         reply = full_reply
