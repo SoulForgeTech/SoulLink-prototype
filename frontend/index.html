@@ -6028,6 +6028,15 @@
                 'thinking.header': 'Thought Process',
                 'hint.switch.grok': 'GPT-4o may have content restrictions. Try Grok for a more open & immersive experience',
                 'hint.switch.grok.btn': 'Switch to Grok →',
+                'voicecall.status.connecting': 'Connecting...',
+                'voicecall.status.listening': 'Listening...',
+                'voicecall.status.thinking': 'Thinking...',
+                'voicecall.status.speaking': 'Speaking...',
+                'voicecall.status.still_listening': 'Still listening...',
+                'voicecall.error.no_speech': "Didn't catch that...",
+                'voicecall.error.connection': 'Connection error',
+                'voicecall.error.mic_denied': 'Cannot access microphone. Please check permissions.',
+                'voicecall.feature_gate': 'Please enable "Voice Reply" and select a voice in Settings first to use voice call',
             },
             'zh-CN': {
                 'login.subtitle': '你的AI灵魂伴侣，始终在这里',
@@ -6287,6 +6296,15 @@
                 'thinking.header': '思考过程',
                 'hint.switch.grok': 'GPT-4o 可能有内容限制，试试切换 Grok 获得更开放沉浸的体验',
                 'hint.switch.grok.btn': '切换到 Grok →',
+                'voicecall.status.connecting': '连接中...',
+                'voicecall.status.listening': '正在聆听...',
+                'voicecall.status.thinking': '思考中...',
+                'voicecall.status.speaking': '说话中...',
+                'voicecall.status.still_listening': '还在听呢...',
+                'voicecall.error.no_speech': '没听清，再说一次...',
+                'voicecall.error.connection': '连接出错',
+                'voicecall.error.mic_denied': '无法访问麦克风，请检查权限设置',
+                'voicecall.feature_gate': '请先在设置中开启「语音回复」并选择音色，才能使用语音通话',
             }
         };
 
@@ -8352,11 +8370,7 @@
         function startVoiceCall() {
             // Check if voice TTS is enabled
             if (!isVoiceTTSEnabled()) {
-                const lang = localStorage.getItem('soullink_language') || 'en';
-                const msg = lang === 'zh'
-                    ? '请先在设置中开启「语音回复」并选择音色，才能使用语音通话'
-                    : 'Please enable "Voice Reply" and select a voice in Settings first to use voice call';
-                alert(msg);
+                alert(t('voicecall.feature_gate'));
                 return;
             }
 
@@ -8413,8 +8427,7 @@
 
             }).catch(err => {
                 console.error('Mic access denied:', err);
-                const lang = localStorage.getItem('soullink_language') || 'en';
-                alert(lang === 'zh' ? '无法访问麦克风，请检查权限设置' : 'Cannot access microphone. Please check permissions.');
+                alert(t('voicecall.error.mic_denied'));
             });
         }
 
@@ -8434,20 +8447,18 @@
             ring.classList.remove('listening', 'thinking', 'speaking');
             statusEl.classList.remove('error');
 
-            const lang = localStorage.getItem('soullink_language') || 'en';
-
             switch (newState) {
                 case 'listening':
                     ring.classList.add('listening');
-                    statusEl.textContent = lang === 'zh' ? '正在聆听...' : 'Listening...';
+                    statusEl.textContent = t('voicecall.status.listening');
                     break;
                 case 'processing':
                     ring.classList.add('thinking');
-                    statusEl.textContent = lang === 'zh' ? '思考中...' : 'Thinking...';
+                    statusEl.textContent = t('voicecall.status.thinking');
                     break;
                 case 'speaking':
                     ring.classList.add('speaking');
-                    statusEl.textContent = lang === 'zh' ? '说话中...' : 'Speaking...';
+                    statusEl.textContent = t('voicecall.status.speaking');
                     _callSpeakingStartTime = Date.now(); // Grace period: suppress interrupt for first 1s
                     break;
                 default:
@@ -8561,8 +8572,7 @@
                     noSpeechTimer += 50;
                     if (noSpeechTimer >= 30000) {
                         const statusEl = document.getElementById('voice-call-status');
-                        const lang = localStorage.getItem('soullink_language') || 'en';
-                        if (statusEl) statusEl.textContent = lang === 'zh' ? '还在听呢...' : 'Still listening...';
+                        if (statusEl) statusEl.textContent = t('voicecall.status.still_listening');
                         noSpeechTimer = 0; // reset so it shows again after another 30s
                     }
                 }
@@ -8672,9 +8682,8 @@
                                     console.error('[VoiceCall] Server error:', payload.message);
                                     // ASR failure → just go back to listening silently (don't show error)
                                     if (payload.message === 'Could not recognize speech') {
-                                        const lang = localStorage.getItem('soullink_language') || 'en';
                                         const statusEl = document.getElementById('voice-call-status');
-                                        if (statusEl) statusEl.textContent = lang === 'zh' ? '没听清，再说一次...' : "Didn't catch that...";
+                                        if (statusEl) statusEl.textContent = t('voicecall.error.no_speech');
                                         setTimeout(() => {
                                             if (_callActive) {
                                                 _callSetState('listening');
@@ -8713,7 +8722,7 @@
             } catch (err) {
                 if (err.name === 'AbortError') return; // intentional abort
                 console.error('[VoiceCall] Error:', err);
-                _callShowError('Connection error');
+                _callShowError(t('voicecall.error.connection'));
             }
         }
 
@@ -11602,7 +11611,7 @@
                     <img id="voice-call-avatar" src="images/avatar.png" alt="">
                 </div>
                 <h2 class="voice-call-name" id="voice-call-name">Companion</h2>
-                <div class="voice-call-status" id="voice-call-status">Connecting...</div>
+                <div class="voice-call-status" id="voice-call-status" data-i18n="voicecall.status.connecting">Connecting...</div>
             </div>
             <div class="voice-call-controls">
                 <button class="voice-call-hangup" onclick="endVoiceCall()">
