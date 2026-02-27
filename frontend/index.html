@@ -8454,6 +8454,9 @@
         function _callStartRecording() {
             if (!_callActive || !_callStream) return;
 
+            // Clear any existing VAD interval to avoid duplicates
+            if (_callVadInterval) { clearInterval(_callVadInterval); _callVadInterval = null; }
+
             _callChunks = [];
             _callHasSpoken = false;
             _callSilenceStart = 0;
@@ -8548,8 +8551,8 @@
         async function _callStopAndSend() {
             if (!_callActive) return;
 
-            // Stop VAD
-            if (_callVadInterval) { clearInterval(_callVadInterval); _callVadInterval = null; }
+            // NOTE: Do NOT clear _callVadInterval here!
+            // VAD must keep running during processing/speaking to detect user interrupt.
 
             // Stop recorder
             if (_callRecorder && _callRecorder.state !== 'inactive') {
