@@ -1520,7 +1520,7 @@ def voice_chat_stream():
 
     return Response(
         stream_with_context(generate()),
-        mimetype="text/event-stream",
+        content_type="text/event-stream; charset=utf-8",
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",  # Disable nginx buffering

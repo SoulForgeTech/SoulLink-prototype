@@ -360,13 +360,15 @@ class AnythingLLMAPI:
                 stream=True,
             )
             resp.raise_for_status()
+            # Force UTF-8 decoding (AnythingLLM may not set charset in headers)
+            resp.encoding = 'utf-8'
 
             for raw_line in resp.iter_lines(decode_unicode=True):
                 if not raw_line:
                     continue
                 # AnythingLLM stream-chat sends lines like:
                 # data: {"id":"...","type":"textResponseChunk","textResponse":"Hello","close":false}
-                line = raw_line.strip()
+                line = raw_line.strip() if isinstance(raw_line, str) else raw_line.decode('utf-8').strip()
                 if line.startswith("data:"):
                     json_str = line[5:].strip()
                     if not json_str:
