@@ -38,7 +38,7 @@ VOICE_MAP_ZH = {
     "female_cold":     {"ref_id": "e46d11a7ce9147de9eca8f4c778d1883", "name_zh": "高冷御姐",   "name_en": "Cool Queen",    "gender": "female"},   # 工商旅游001女 - clear, professional, calm
     "female_cute":     {"ref_id": "e488ebeadd83496b97a3cd472dcd04ab", "name_zh": "可爱学妹",   "name_en": "Cute Girl",     "gender": "female"},   # 爱丽丝(中配) - bright, playful
     "female_cheerful": {"ref_id": "5c353fdb312f4888836a9a5680099ef0", "name_zh": "元气少女",   "name_en": "Cheerful Girl", "gender": "female"},   # 女大学生 - energetic, cheerful
-    "male_ceo":        {"ref_id": "918a8277663d476b95e2c4867da0f6a6", "name_zh": "霸总",       "name_en": "Authoritative", "gender": "male"},     # 磐石 - character-voice, deep, authoritative, dramatic
+    "male_ceo":        {"ref_id": "1137ba200a984979ac6572813a2e330b", "name_zh": "霸总",       "name_en": "Authoritative", "gender": "male"},     # 霸总樊登 - confident, authoritative, business
     "male_warm":       {"ref_id": "332941d1360c48949f1b4e0cabf912cd", "name_zh": "暖男",       "name_en": "Warm Guy",      "gender": "male"},     # 丁真(锐刻五代) - warm, gentle
     "male_classmate":  {"ref_id": "e80ea225770f42f79d50aa98be3cedfc", "name_zh": "阳光男生",   "name_en": "Sunny Boy",     "gender": "male"},     # 孙笑川 - relaxed, friendly, smooth
     "male_badboy":     {"ref_id": "f7561ff309bd4040a59f1e600f4f4338", "name_zh": "酷男孩",     "name_en": "Cool Boy",      "gender": "male"},     # 黑手 - authoritative, serious, dramatic
