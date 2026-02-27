@@ -4887,6 +4887,20 @@
             </div>
             <div class="changelog-body">
 
+                <!-- v0.1.1-beta -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v0.1.1-beta</span>
+                        <span class="date">2026-02-27</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v211.1">Voice call — Gemini Live-style full-screen call with auto voice detection, interruption & auto-play</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v211.2">Streaming text chat — AI replies appear word by word in real-time, typewriter effect</span></li>
+                        <li><span class="changelog-badge badge-ui">UI</span> <span data-i18n="changelog.v211.3">Input bar button redesign — unified icon style, call button moved to input area</span></li>
+                        <li><span class="changelog-badge badge-fix">FIX</span> <span data-i18n="changelog.v211.4">Reply speed boost — streaming transmission + parallel voice synthesis, reduced wait time</span></li>
+                    </ul>
+                </div>
+
                 <!-- v0.1.0-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -5065,7 +5079,7 @@
                 <div class="about-section">
                     <h2>SoulLink</h2>
                     <p class="about-tagline" data-i18n="about.tagline">Your AI Soul Companion</p>
-                    <p class="about-version">v0.1.0-beta</p>
+                    <p class="about-version">v0.1.1-beta</p>
                 </div>
             </div>
 
@@ -5915,6 +5929,10 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
+                'changelog.v211.1': 'Voice call — Gemini Live-style full-screen call with auto voice detection, interruption & auto-play',
+                'changelog.v211.2': 'Streaming text chat — AI replies appear word by word in real-time, typewriter effect',
+                'changelog.v211.3': 'Input bar button redesign — unified icon style, call button moved to input area',
+                'changelog.v211.4': 'Reply speed boost — streaming transmission + parallel voice synthesis, reduced wait time',
                 'changelog.v200.1': 'Fish Audio TTS — all-new voice engine, 2M+ community voices available',
                 'changelog.v200.2': 'Voice picker — 8 preset voices per language + community search, preview & use',
                 'changelog.v200.3': 'Settings tabs — Profile / Companion / Advanced three-panel layout',
@@ -6170,6 +6188,10 @@
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
                 'changelog.title': '版本日志',
+                'changelog.v211.1': '语音通话 — Gemini Live 风格全屏通话，自动语音检测、语音打断、自动播放回复',
+                'changelog.v211.2': '流式文字聊天 — AI 回复逐字实时显示，打字机效果',
+                'changelog.v211.3': '输入栏按钮优化 — 图标风格统一，通话按钮移至输入栏',
+                'changelog.v211.4': '回复速度优化 — 流式传输 + 并行语音合成，减少等待时间',
                 'changelog.v200.1': 'Fish Audio 语音引擎 — 全新TTS，200万+社区音色可选',
                 'changelog.v200.2': '音色选择器 — 8款中/英预设音色 + 社区搜索，试听即用',
                 'changelog.v200.3': '设置页Tab化 — 个人资料 / 角色设置 / 高级 三栏布局',
@@ -9635,7 +9657,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.1.0-beta';
+        const CURRENT_APP_VERSION = 'v0.1.1-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
