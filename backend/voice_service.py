@@ -241,6 +241,96 @@ def synthesize_speech(
         raise
 
 
+# ==================== Sentence-Level Streaming TTS ====================
+
+# Split text into sentences for streaming TTS
+_SENTENCE_SPLIT_RE = re.compile(
+    r'(?<=[。！？…\.!\?\n])'   # split after Chinese/English sentence-ending punctuation
+    r'(?=\S)'                   # only if followed by non-whitespace (avoid splitting on trailing spaces)
+)
+
+def split_sentences(text: str, min_len: int = 4) -> list:
+    """
+    Split text into sentences for streaming TTS.
+    Merges very short fragments into the previous sentence.
+    """
+    if not text or not text.strip():
+        return []
+    raw = _SENTENCE_SPLIT_RE.split(text.strip())
+    sentences = []
+    buf = ""
+    for part in raw:
+        part = part.strip()
+        if not part:
+            continue
+        buf += part
+        if len(buf) >= min_len:
+            sentences.append(buf)
+            buf = ""
+    if buf:
+        if sentences:
+            sentences[-1] += buf
+        else:
+            sentences.append(buf)
+    return sentences
+
+
+def synthesize_speech_segments(
+    text: str,
+    voice_id: str = None,
+    gender: str = "female",
+    subtype: str = None,
+    language: str = "zh",
+):
+    """
+    Generator: splits text into sentences, TTS each, yields (sentence_text, mp3_bytes).
+    Allows frontend to start playback before all TTS completes.
+    """
+    # Clean text once (same as synthesize_speech)
+    cleaned = _clean_text_for_tts(text)
+    if not cleaned:
+        return
+
+    sentences = split_sentences(cleaned)
+    if not sentences:
+        return
+
+    ref_id = voice_id or get_voice_ref_id(gender, subtype, language)
+    logger.info(f"[TTS-STREAM] {len(sentences)} sentences | ref_id={ref_id}")
+
+    for i, sentence in enumerate(sentences):
+        try:
+            resp = requests.post(
+                FISH_AUDIO_TTS_URL,
+                headers={
+                    "Authorization": f"Bearer {FISH_AUDIO_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": sentence,
+                    "reference_id": ref_id,
+                    "format": "mp3",
+                },
+                timeout=30,
+                stream=True,
+            )
+            if resp.status_code != 200:
+                logger.error(f"[TTS-STREAM] sentence {i} failed: {resp.status_code}")
+                continue
+
+            chunks = []
+            for chunk in resp.iter_content(chunk_size=8192):
+                if chunk:
+                    chunks.append(chunk)
+            audio = b"".join(chunks)
+            if audio:
+                logger.info(f"[TTS-STREAM] sentence {i}: {len(sentence)} chars → {len(audio)} bytes")
+                yield (sentence, audio)
+        except Exception as e:
+            logger.error(f"[TTS-STREAM] sentence {i} error: {e}")
+            continue
+
+
 # ==================== Voice Search (Fish Audio Community) ====================
 
 def search_voices(query: str = "", language: str = None, page: int = 1, page_size: int = 20) -> dict:

@@ -7,7 +7,7 @@ import os
 import json
 import logging
 import uuid
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 from bson import ObjectId
 from dotenv import load_dotenv
@@ -1209,6 +1209,257 @@ def chat():
             "success": False,
             "error": str(e)
         }), 500
+
+
+# ==================== Streaming Voice Chat (SSE) ====================
+
+@app.route("/api/voice/chat-stream", methods=["POST"])
+@login_required
+def voice_chat_stream():
+    """
+    Streaming voice chat: ASR → LLM → sentence-level TTS → SSE audio chunks.
+    Accepts multipart/form-data with 'audio' file (same as voice_upload).
+    Returns text/event-stream with events: transcript, reply, audio, done.
+    """
+    import base64 as b64mod
+
+    # ---------- Parse audio (same as voice_upload) ----------
+    user_id = get_current_user_id()
+    user = get_current_user()
+
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio file"}), 400
+
+    audio_file = request.files["audio"]
+    audio_data = audio_file.read()
+    if not audio_data or len(audio_data) < 100:
+        return jsonify({"error": "Audio too small"}), 400
+
+    audio_format = request.form.get("format", "").lower() or _detect_audio_format(audio_file.filename)
+    sample_rate = int(request.form.get("sample_rate", 16000))
+    conversation_id = request.form.get("conversation_id", "")
+
+    # Pre-load everything we need before entering the generator
+    # (request context is only available here, not inside the generator)
+    settings = user.get("settings", {})
+    gender = settings.get("companion_gender", "female")
+    subtype = settings.get("companion_subtype", "")
+    voice_id = settings.get("voice_id", "")
+    user_lang = settings.get("language", "en")
+    voice_lang = "zh" if user_lang.startswith("zh") else "en"
+
+    # Voice style auto-detection for custom persona
+    if not voice_id:
+        from voice_service import extract_voice_style_from_persona
+        custom_persona = settings.get("custom_persona", "")
+        if custom_persona and subtype not in (
+            "female_gentle", "female_cold", "female_cute", "female_cheerful",
+            "male_ceo", "male_warm", "male_classmate", "male_badboy",
+        ):
+            cached_style = settings.get("voice_style", "")
+            subtype = cached_style if cached_style else extract_voice_style_from_persona(custom_persona, gender)
+
+    def _sse_event(event: str, data: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    def generate():
+        from voice_service import recognize_speech, synthesize_speech_segments
+        import re as _re
+        import threading
+
+        conv_id_str = conversation_id
+
+        # ---------- 1. ASR ----------
+        try:
+            transcript = recognize_speech(
+                audio_data=audio_data,
+                audio_format=audio_format,
+                sample_rate=sample_rate,
+            )
+        except Exception as e:
+            logger.error(f"[STREAM] ASR error: {e}")
+            transcript = ""
+
+        if not transcript:
+            yield _sse_event("error", {"message": "Could not recognize speech"})
+            return
+
+        yield _sse_event("transcript", {"text": transcript})
+
+        # ---------- 2. Get/create conversation & save user message ----------
+        try:
+            if conv_id_str:
+                conv_oid = ObjectId(conv_id_str)
+                conversation = db.get_conversation(conv_oid, user_id)
+                if not conversation:
+                    conversation = db.create_conversation(user_id)
+            else:
+                conversation = db.get_active_conversation(user_id)
+
+            audio_url = _save_audio_file(audio_data, prefix="user", ext=audio_format or "webm")
+            db.add_message_to_conversation(
+                conversation["_id"], user_id, "user", transcript,
+                msg_type="voice", audio_url=audio_url,
+            )
+            is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
+        except Exception as e:
+            logger.error(f"[STREAM] DB error: {e}")
+            yield _sse_event("error", {"message": "Database error"})
+            return
+
+        # ---------- 3. LLM via AnythingLLM (same blocking call) ----------
+        try:
+            workspace_result = workspace_manager.get_or_create_workspace(user_id)
+            if not workspace_result["success"]:
+                yield _sse_event("error", {"message": "Workspace error"})
+                return
+
+            workspace_slug = workspace_result["workspace"]["slug"]
+
+            # Sync model setting
+            user_model = settings.get("model", "gemini")
+            if user_model in workspace_manager.SUPPORTED_MODELS:
+                model_config = workspace_manager.SUPPORTED_MODELS[user_model]
+                import requests as req
+                try:
+                    req.post(
+                        f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update",
+                        headers={
+                            "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={"chatProvider": model_config["chatProvider"], "chatModel": model_config["chatModel"]},
+                        timeout=3
+                    )
+                except Exception:
+                    pass
+
+            api = AnythingLLMAPI(
+                base_url=workspace_manager.anythingllm_base_url,
+                api_key=workspace_manager.anythingllm_api_key,
+                workspace_slug=workspace_slug
+            )
+
+            # Web search enhancement
+            message_to_send = transcript
+            try:
+                from web_search import enhance_message_with_search
+                enhanced, did_search = enhance_message_with_search(transcript)
+                if did_search:
+                    message_to_send = enhanced
+            except Exception:
+                pass
+
+            response = api.send_message(
+                message_to_send,
+                session_id=str(conversation["_id"]),
+            )
+
+            if not response:
+                yield _sse_event("error", {"message": "No LLM response"})
+                return
+
+            reply = response.get("text_response", "")
+
+        except Exception as e:
+            logger.error(f"[STREAM] LLM error: {e}")
+            yield _sse_event("error", {"message": f"LLM error: {str(e)}"})
+            return
+
+        # ---------- 4. Process reply (strip thinking) ----------
+        thinking_content = ""
+        think_match = _re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', reply, _re.DOTALL)
+        if think_match:
+            thinking_content = think_match.group(1).strip()
+            reply = _re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', reply, flags=_re.DOTALL).strip()
+
+        # Handle THOUGHT prefix (simplified)
+        if not thinking_content and _re.match(r'^THOUGHT[\s\n]', reply):
+            raw = _re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
+            # Find Chinese reply after English thinking
+            for m in _re.finditer(r'\n([\u4e00-\u9fff（\uff08*「【《""])', raw):
+                candidate = raw[m.start(1):].strip()
+                if len(candidate) >= 10:
+                    thinking_content = raw[:m.start(1)].rstrip()
+                    reply = candidate
+                    break
+
+        yield _sse_event("reply", {
+            "text": reply,
+            "thinking": thinking_content,
+            "conversation_id": str(conversation["_id"]),
+        })
+
+        # ---------- 5. Save AI reply to DB ----------
+        try:
+            db.add_message_to_conversation(
+                conversation["_id"], user_id, "assistant", reply,
+                thinking=thinking_content if thinking_content else None,
+            )
+            db.update_workspace_stats(user_id, message_count_delta=2)
+        except Exception as e:
+            logger.warning(f"[STREAM] DB save error: {e}")
+
+        # Async memory + title (same as chat endpoint)
+        try:
+            def _async_tasks():
+                try:
+                    from memory_engine import process_memory
+                    process_memory(user_id, transcript, reply)
+                except Exception:
+                    pass
+                if is_first_message:
+                    try:
+                        from memory_engine import _call_gemini
+                        prompt = (
+                            "Generate a very short conversation title (max 6 words). "
+                            "Chinese message → Chinese title. English → English title. "
+                            "Return ONLY the title.\n\n"
+                            f"User: {transcript[:200]}\nAssistant: {reply[:200]}"
+                        )
+                        title = _call_gemini(prompt)
+                        if title and len(title) < 50:
+                            title = title.strip().strip('"\'').strip()
+                            if title:
+                                from datetime import datetime as dt
+                                db.db["conversations"].update_one(
+                                    {"_id": conversation["_id"], "user_id": user_id},
+                                    {"$set": {"title": title, "updated_at": dt.utcnow()}}
+                                )
+                    except Exception:
+                        pass
+            threading.Thread(target=_async_tasks, daemon=True).start()
+        except Exception:
+            pass
+
+        # ---------- 6. Stream TTS segments ----------
+        try:
+            tts_text = reply[:2000]
+            idx = 0
+            for sentence, audio_bytes in synthesize_speech_segments(
+                text=tts_text, voice_id=voice_id,
+                gender=gender, subtype=subtype, language=voice_lang
+            ):
+                audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
+                yield _sse_event("audio", {
+                    "index": idx,
+                    "text": sentence,
+                    "audio_b64": audio_b64,
+                })
+                idx += 1
+        except Exception as e:
+            logger.error(f"[STREAM] TTS error: {e}")
+
+        yield _sse_event("done", {})
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
 
 
 # ==================== 对话历史接口 ====================

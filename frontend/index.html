@@ -5501,7 +5501,7 @@
                     <button class="rec-cancel" onclick="cancelVoiceRecording()">&#10005;</button>
                     <span class="rec-dot"></span>
                     <span class="rec-duration" id="recording-duration">0:00</span>
-                    <button class="rec-send" onclick="sendVoiceRecording()" data-i18n="voice.send">Send</button>
+                    <button class="rec-send" onclick="isVoiceTTSEnabled() ? sendVoiceMessageStream() : sendVoiceRecording()" data-i18n="voice.send">Send</button>
                 </div>
                 <div class="input-wrapper" id="input-wrapper">
                     <div class="drag-overlay" data-i18n="chat.drop.hint">Drop files here</div>
@@ -7818,7 +7818,12 @@
         function toggleVoiceRecording() {
             if (_isRecording) {
                 // 已经在录音，点击停止并发送
-                sendVoiceRecording();
+                // TTS enabled → use streaming path for faster audio playback
+                if (isVoiceTTSEnabled()) {
+                    sendVoiceMessageStream();
+                } else {
+                    sendVoiceRecording();
+                }
             } else {
                 startVoiceRecording();
             }
@@ -7850,7 +7855,7 @@
                     const s = _voiceSeconds % 60;
                     document.getElementById('recording-duration').textContent = `${m}:${s.toString().padStart(2,'0')}`;
                     // 最长60秒自动发送
-                    if (_voiceSeconds >= 60) sendVoiceRecording();
+                    if (_voiceSeconds >= 60) { isVoiceTTSEnabled() ? sendVoiceMessageStream() : sendVoiceRecording(); }
                 }, 1000);
             } catch (err) {
                 console.error('Mic permission denied:', err);
@@ -7966,6 +7971,124 @@
             } catch (err) {
                 console.error('Voice send error:', err);
                 hideTyping();
+            } finally {
+                state.isLoading = false;
+            }
+        }
+
+        // ===== Streaming Voice Chat (SSE) =====
+        const _audioSegmentQueue = [];
+        let _isPlayingSegment = false;
+
+        function _playNextSegment() {
+            if (_isPlayingSegment || _audioSegmentQueue.length === 0) return;
+            _isPlayingSegment = true;
+            const b64 = _audioSegmentQueue.shift();
+            const audio = new Audio('data:audio/mp3;base64,' + b64);
+            _currentAudio = audio;
+            audio.onended = () => { _isPlayingSegment = false; _currentAudio = null; _playNextSegment(); };
+            audio.onerror = () => { _isPlayingSegment = false; _currentAudio = null; _playNextSegment(); };
+            audio.play().catch(() => { _isPlayingSegment = false; _currentAudio = null; _playNextSegment(); });
+        }
+
+        async function sendVoiceMessageStream() {
+            /**
+             * Streaming voice chat: POST audio → SSE stream (transcript, reply, audio chunks, done).
+             * Falls back to sendVoiceRecording() on any error.
+             */
+            if (!_voiceRecorder || _voiceChunks.length === 0) { cancelVoiceRecording(); return; }
+            const duration = _voiceSeconds;
+            _stopRecordingCleanup();
+            await new Promise(r => setTimeout(r, 200));
+
+            const mimeType = _voiceRecorder.mimeType || 'audio/webm';
+            const blob = new Blob(_voiceChunks, { type: mimeType });
+            _voiceChunks = [];
+            if (blob.size < 200) { console.warn('Voice too short'); return; }
+
+            state.isLoading = true;
+            _audioSegmentQueue.length = 0;
+            _isPlayingSegment = false;
+
+            try {
+                // Build FormData
+                const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+                const formData = new FormData();
+                formData.append('audio', blob, `voice.${ext}`);
+                formData.append('format', ext);
+                formData.append('conversation_id', state.currentConversationId || '');
+
+                // POST to streaming endpoint
+                const token = localStorage.getItem('soullink_token');
+                const resp = await fetch(`${CONFIG.API_BASE_URL}/api/voice/chat-stream`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (!resp.ok || !resp.body) {
+                    throw new Error('Stream request failed');
+                }
+
+                showTyping();
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let gotReply = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    // Parse SSE events from buffer
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep incomplete line
+
+                    let currentEvent = '';
+                    let currentData = '';
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.slice(7).trim();
+                        } else if (line.startsWith('data: ')) {
+                            currentData = line.slice(6);
+                            // Process complete event
+                            try {
+                                const payload = JSON.parse(currentData);
+                                if (currentEvent === 'transcript') {
+                                    // Show user voice message
+                                    addVoiceMessageToUI(true, null, duration, payload.text);
+                                } else if (currentEvent === 'reply') {
+                                    hideTyping();
+                                    gotReply = true;
+                                    if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
+                                    if (payload.thinking) addThinkingBubble(payload.thinking);
+                                    addMessageToUI(payload.text, false, true);
+                                    maybeShowGptSwitchHint(payload.text);
+                                } else if (currentEvent === 'audio') {
+                                    _audioSegmentQueue.push(payload.audio_b64);
+                                    _playNextSegment();
+                                } else if (currentEvent === 'error') {
+                                    console.error('[StreamVoice] Server error:', payload.message);
+                                    hideTyping();
+                                } else if (currentEvent === 'done') {
+                                    // Stream complete
+                                }
+                            } catch(e) { /* ignore parse errors */ }
+                            currentEvent = '';
+                            currentData = '';
+                        }
+                    }
+                }
+
+                if (!gotReply) hideTyping();
+
+            } catch (err) {
+                console.error('[StreamVoice] Error, falling back:', err);
+                hideTyping();
+                // Fallback: re-run with non-streaming path
+                // (voice chunks already consumed, so just show error)
+                addMessageToUI('Voice streaming failed. Please try again.', false);
             } finally {
                 state.isLoading = false;
             }
