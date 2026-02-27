@@ -2691,6 +2691,41 @@
             padding: 24px;
         }
 
+        /* Settings Tabs */
+        .settings-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #edf2f7;
+            padding: 0 24px;
+            margin: 0;
+        }
+        .settings-tab {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #a0aec0;
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+        .settings-tab:hover {
+            color: #718096;
+        }
+        .settings-tab.active {
+            color: #9ca3db;
+            border-bottom-color: #9ca3db;
+        }
+        .settings-tab-panel {
+            display: none;
+        }
+        .settings-tab-panel.active {
+            display: block;
+        }
+
         .modal-body .form-group {
             margin-bottom: 16px;
         }
@@ -4869,7 +4904,7 @@
         <div class="modal-overlay" onclick="closeSettingsModal()"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h3 data-i18n="settings.title">Profile Settings</h3>
+                <h3 data-i18n="settings.title">Settings</h3>
                 <button class="modal-close-btn" onclick="closeSettingsModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -4877,7 +4912,14 @@
                     </svg>
                 </button>
             </div>
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="profile" onclick="switchSettingsTab('profile')" data-i18n="settings.tab.profile">Profile</button>
+                <button class="settings-tab" data-tab="companion" onclick="switchSettingsTab('companion')" data-i18n="settings.tab.companion">Companion</button>
+                <button class="settings-tab" data-tab="advanced" onclick="switchSettingsTab('advanced')" data-i18n="settings.tab.advanced">Advanced</button>
+            </div>
             <div class="modal-body">
+                <!-- Tab 1: Profile -->
+                <div class="settings-tab-panel active" id="settings-panel-profile">
                 <div class="settings-avatar-section">
                     <div class="settings-avatar-preview">
                         <img id="settings-avatar-img" src="images/avatar.png" alt="Avatar">
@@ -4913,12 +4955,30 @@
                         <input type="email" id="settings-email" disabled>
                         <div class="form-hint" data-i18n="settings.email.hint">Email cannot be changed</div>
                     </div>
+                </div>
+                </div>
+                <!-- Tab 2: Companion -->
+                <div class="settings-tab-panel" id="settings-panel-companion">
+                <div class="settings-form">
                     <div class="form-group">
-                        <label data-i18n="settings.model">AI Model</label>
-                        <div class="model-selector" id="model-selector">
-                            <!-- 由 JS 动态填充 -->
+                        <label data-i18n="settings.companion.style">Companion Style</label>
+                        <div class="settings-style-selector">
+                            <div class="settings-gender-row">
+                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">💃 <span data-i18n="companion.gender.her">Her</span></button>
+                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">🕺 <span data-i18n="companion.gender.him">Him</span></button>
+                            </div>
+                            <div class="settings-relationship-row" id="settings-relationship-row">
+                                <button class="rel-btn active" data-rel="lover" onclick="toggleRelationship('lover')">💕 <span data-i18n="companion.rel.lover">Lover</span></button>
+                                <button class="rel-btn" data-rel="friend" onclick="toggleRelationship('friend')">🤝 <span data-i18n="companion.rel.friend">Friend</span></button>
+                            </div>
+                            <div class="settings-subtype-row" id="settings-subtype-row">
+                                <!-- 由 JS 动态填充 -->
+                            </div>
+                            <div class="style-override-hint" id="style-override-hint">
+                                🎭 自定义角色性格已生效，风格选择已禁用 / Custom persona active, style selection disabled
+                            </div>
                         </div>
-                        <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers {companion}</div>
+                        <div class="form-hint" data-i18n="settings.companion.hint">Changes will update your companion's personality</div>
                     </div>
                     <!-- AI 语音回复 + 音色选择 -->
                     <div class="form-group" id="voice-tts-setting-group" style="display:none;">
@@ -4969,25 +5029,17 @@
 
                         <div class="form-hint" data-i18n="settings.voice.hint">Powered by Fish Audio — 2M+ community voices</div>
                     </div>
+                </div>
+                </div>
+                <!-- Tab 3: Advanced -->
+                <div class="settings-tab-panel" id="settings-panel-advanced">
+                <div class="settings-form">
                     <div class="form-group">
-                        <label data-i18n="settings.companion.style">Companion Style</label>
-                        <div class="settings-style-selector">
-                            <div class="settings-gender-row">
-                                <button class="gender-btn" data-gender="female" onclick="toggleSettingsGender('female')">💃 <span data-i18n="companion.gender.her">Her</span></button>
-                                <button class="gender-btn" data-gender="male" onclick="toggleSettingsGender('male')">🕺 <span data-i18n="companion.gender.him">Him</span></button>
-                            </div>
-                            <div class="settings-relationship-row" id="settings-relationship-row">
-                                <button class="rel-btn active" data-rel="lover" onclick="toggleRelationship('lover')">💕 <span data-i18n="companion.rel.lover">Lover</span></button>
-                                <button class="rel-btn" data-rel="friend" onclick="toggleRelationship('friend')">🤝 <span data-i18n="companion.rel.friend">Friend</span></button>
-                            </div>
-                            <div class="settings-subtype-row" id="settings-subtype-row">
-                                <!-- 由 JS 动态填充 -->
-                            </div>
-                            <div class="style-override-hint" id="style-override-hint">
-                                🎭 自定义角色性格已生效，风格选择已禁用 / Custom persona active, style selection disabled
-                            </div>
+                        <label data-i18n="settings.model">AI Model</label>
+                        <div class="model-selector" id="model-selector">
+                            <!-- 由 JS 动态填充 -->
                         </div>
-                        <div class="form-hint" data-i18n="settings.companion.hint">Changes will update your companion's personality</div>
+                        <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers {companion}</div>
                     </div>
 
                     <!-- 自定义角色 & 知识库（仅测试用户可见） -->
@@ -5095,6 +5147,8 @@
                     <div id="import-chat-status" style="display:none; margin-top: 6px; font-size: 0.85rem;"></div>
                 </div>
 
+                </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="modal-btn secondary" onclick="closeSettingsModal()" data-i18n="settings.cancel">Cancel</button>
@@ -5296,7 +5350,7 @@
                     <div class="companion-status">
                         <span class="status-dot"></span>
                         <span data-i18n="chat.online">Online</span>
-                        <span class="model-indicator" id="model-indicator" onclick="openSettingsModal()">Gemini 3 Flash</span>
+                        <span class="model-indicator" id="model-indicator" onclick="openSettingsModal('advanced')">Gemini 3 Flash</span>
                     </div>
                 </div>
                 <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
@@ -5422,7 +5476,10 @@
                 'verify.back': 'Back to registration',
                 'login.divider': 'or',
                 'login.google': 'Continue with Google',
-                'settings.title': 'Profile Settings',
+                'settings.title': 'Settings',
+                'settings.tab.profile': 'Profile',
+                'settings.tab.companion': 'Companion',
+                'settings.tab.advanced': 'Advanced',
                 'settings.upload': 'Upload',
                 'settings.color': 'Or choose a color:',
                 'settings.nickname': 'Nickname (How {companion} calls you)',
@@ -5665,7 +5722,10 @@
                 'verify.back': '返回注册',
                 'login.divider': '或',
                 'login.google': '使用Google登录',
-                'settings.title': '个人设置',
+                'settings.title': '设置',
+                'settings.tab.profile': '个人资料',
+                'settings.tab.companion': '角色设置',
+                'settings.tab.advanced': '高级',
                 'settings.upload': '上传',
                 'settings.color': '或选择一个颜色：',
                 'settings.nickname': '昵称（{companion}怎么称呼你）',
@@ -7868,7 +7928,7 @@
             hintDiv.className = 'model-switch-hint';
             hintDiv.innerHTML = `
                 <span class="hint-text">${isZh ? TRANSLATIONS['zh-CN']['hint.switch.grok'] : TRANSLATIONS.en['hint.switch.grok']}</span>
-                <span class="hint-action" onclick="openSettingsModal(); document.querySelector('.model-option[data-model=grok]')?.scrollIntoView({behavior:'smooth'})">${isZh ? TRANSLATIONS['zh-CN']['hint.switch.grok.btn'] : TRANSLATIONS.en['hint.switch.grok.btn']}</span>
+                <span class="hint-action" onclick="openSettingsModal('advanced'); document.querySelector('.model-option[data-model=grok]')?.scrollIntoView({behavior:'smooth'})">${isZh ? TRANSLATIONS['zh-CN']['hint.switch.grok.btn'] : TRANSLATIONS.en['hint.switch.grok.btn']}</span>
                 <span class="hint-close" onclick="this.parentElement.remove(); sessionStorage.setItem('gptHintDismissed','true')">✕</span>
             `;
             container.appendChild(hintDiv);
@@ -8603,7 +8663,12 @@
             if (e.target === this) closeRenameModal();
         });
 
-        function openSettingsModal() {
+        function switchSettingsTab(tabName) {
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+            document.querySelectorAll('.settings-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'settings-panel-' + tabName));
+        }
+
+        function openSettingsModal(tab) {
             const modal = document.getElementById('settings-modal');
             modal.classList.remove('hidden');
 
@@ -8626,11 +8691,13 @@
             toggleSettingsGender(settingsSelectedGender);
             toggleRelationship(settingsSelectedRelationship, true);
 
-            // 自定义角色 & 知识库（仅测试用户可见）
             // 自定义角色 & 知识库 — 全量开放
             const customGroup = document.getElementById('custom-character-group');
             customGroup.style.display = '';
             loadCustomStatus();
+
+            // Switch to requested tab (default: profile)
+            switchSettingsTab(tab || 'profile');
         }
 
         function closeSettingsModal() {
