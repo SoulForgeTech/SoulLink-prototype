@@ -5956,6 +5956,10 @@
         function toggleLanguage() {
             state.language = state.language === 'zh-CN' ? 'en' : 'zh-CN';
             applyLanguage();
+            // Reload voice presets with new language names
+            if (typeof loadVoicePresets === 'function') {
+                loadVoicePresets();
+            }
             // Sync to server if logged in
             if (state.token) {
                 authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
@@ -7405,10 +7409,8 @@
             _voicePresets.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
-                const genderLabel = v.gender === 'female' ? '♀' : '♂';
                 card.innerHTML = `
                     <div class="voice-card-name">${v.name}</div>
-                    <div class="voice-card-gender">${genderLabel}</div>
                 `;
                 card.onclick = () => selectVoice(v.id, v.name);
                 grid.appendChild(card);

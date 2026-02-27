@@ -34,25 +34,25 @@ DEFAULT_ASR_MODEL = "paraformer-realtime-v2"
 # Preset voice map — split by language, curated from Fish Audio top voices
 # Each voice: { ref_id, name_zh, name_en, gender }
 VOICE_MAP_ZH = {
-    "female_gentle":   {"ref_id": "faccba1a8ac54016bcfc02761285e67f", "name_zh": "温柔女声",   "name_en": "Gentle Girl",   "gender": "female"},
-    "female_cold":     {"ref_id": "6ce7ea8ada884bf3889fa7c7fb206691", "name_zh": "御姐茉莉",   "name_en": "Cool Queen",    "gender": "female"},
-    "female_cute":     {"ref_id": "5c353fdb312f4888836a9a5680099ef0", "name_zh": "可爱学妹",   "name_en": "Cute Girl",     "gender": "female"},
-    "female_cheerful": {"ref_id": "3b55b3d84d2f453a98d8ca9bb24182d6", "name_zh": "元气少女",   "name_en": "Cheerful Girl", "gender": "female"},
-    "male_ceo":        {"ref_id": "59cb5986671546eaa6ca8ae6f29f6d22", "name_zh": "央视配音",   "name_en": "Authoritative", "gender": "male"},
-    "male_warm":       {"ref_id": "c7cbda1c101c4ce8906c046f01eca1a2", "name_zh": "暖男",       "name_en": "Warm Guy",      "gender": "male"},
-    "male_classmate":  {"ref_id": "54a5170264694bfc8e9ad98df7bd89c3", "name_zh": "阳光男生",   "name_en": "Sunny Boy",     "gender": "male"},
-    "male_badboy":     {"ref_id": "e4642e5edccd4d9ab61a69e82d4f8a14", "name_zh": "酷男孩",     "name_en": "Cool Boy",      "gender": "male"},
+    "female_gentle":   {"ref_id": "fbe02f8306fc4d3d915e9871722a39d5", "name_zh": "温柔姐姐",   "name_en": "Gentle Girl",   "gender": "female"},   # 嘉岚3.0 - soft, smooth, gentle
+    "female_cold":     {"ref_id": "4f201abba2574feeae11e5ebf737859e", "name_zh": "高冷御姐",   "name_en": "Cool Queen",    "gender": "female"},   # 王琨 - clear, crisp, professional
+    "female_cute":     {"ref_id": "e488ebeadd83496b97a3cd472dcd04ab", "name_zh": "可爱学妹",   "name_en": "Cute Girl",     "gender": "female"},   # 爱丽丝(中配) - bright, playful
+    "female_cheerful": {"ref_id": "5c353fdb312f4888836a9a5680099ef0", "name_zh": "元气少女",   "name_en": "Cheerful Girl", "gender": "female"},   # 女大学生 - energetic, cheerful
+    "male_ceo":        {"ref_id": "dd43b30d04d9446a94ebe41f301229b5", "name_zh": "霸总",       "name_en": "Authoritative", "gender": "male"},     # 宣传片 - deep, authoritative, warm
+    "male_warm":       {"ref_id": "332941d1360c48949f1b4e0cabf912cd", "name_zh": "暖男",       "name_en": "Warm Guy",      "gender": "male"},     # 丁真(锐刻五代) - warm, gentle
+    "male_classmate":  {"ref_id": "e80ea225770f42f79d50aa98be3cedfc", "name_zh": "阳光男生",   "name_en": "Sunny Boy",     "gender": "male"},     # 孙笑川 - relaxed, friendly, smooth
+    "male_badboy":     {"ref_id": "f7561ff309bd4040a59f1e600f4f4338", "name_zh": "酷男孩",     "name_en": "Cool Boy",      "gender": "male"},     # 黑手 - authoritative, serious, dramatic
 }
 
 VOICE_MAP_EN = {
-    "female_gentle":   {"ref_id": "b545c585f631496c914815291da4e893", "name_zh": "温柔女声",   "name_en": "Friendly Girl",  "gender": "female"},
-    "female_cold":     {"ref_id": "5ac6fb7171ba419190700620738209d8", "name_zh": "冷酷女王",   "name_en": "Raiden Shogun",  "gender": "female"},
-    "female_cute":     {"ref_id": "9fad12dc142b429d9396190b0197adb8", "name_zh": "软萌女孩",   "name_en": "Soft E-Girl",    "gender": "female"},
-    "female_cheerful": {"ref_id": "59e9dc1cb20c452584788a2690c80970", "name_zh": "活力女孩",   "name_en": "ALLE",           "gender": "female"},
-    "male_ceo":        {"ref_id": "03397b4c4be74759b72533b663fbd001", "name_zh": "权威男声",   "name_en": "Elon Musk",      "gender": "male"},
-    "male_warm":       {"ref_id": "728f6ff2240d49308e8137ffe66008e2", "name_zh": "温暖男声",   "name_en": "Adam",           "gender": "male"},
-    "male_classmate":  {"ref_id": "802e3bc2b27e49c2995d23ef70e6ac89", "name_zh": "阳光男生",   "name_en": "Energetic Male", "gender": "male"},
-    "male_badboy":     {"ref_id": "8bed0e9b444046e2bf72da4b251d9a1d", "name_zh": "叙事男声",   "name_en": "Marcus",         "gender": "male"},
+    "female_gentle":   {"ref_id": "8ef4a238714b45718ce04243307c57a7", "name_zh": "温柔女声",   "name_en": "Gentle Girl",    "gender": "female"},   # E-girl intimate - soft, gentle, warm
+    "female_cold":     {"ref_id": "5ac6fb7171ba419190700620738209d8", "name_zh": "冷酷女王",   "name_en": "Raiden Shogun",  "gender": "female"},   # Raiden Shogun - authoritative, regal
+    "female_cute":     {"ref_id": "9fad12dc142b429d9396190b0197adb8", "name_zh": "软萌女孩",   "name_en": "Soft E-Girl",    "gender": "female"},   # E-Girl soft - playful, kawaii
+    "female_cheerful": {"ref_id": "59e9dc1cb20c452584788a2690c80970", "name_zh": "活力女孩",   "name_en": "ALLE",           "gender": "female"},   # ALLE - energetic, bright, enthusiastic
+    "male_ceo":        {"ref_id": "03397b4c4be74759b72533b663fbd001", "name_zh": "权威男声",   "name_en": "Elon Musk",      "gender": "male"},     # Elon Musk - calm, professional
+    "male_warm":       {"ref_id": "728f6ff2240d49308e8137ffe66008e2", "name_zh": "温暖男声",   "name_en": "Adam",           "gender": "male"},     # Adam - friendly, warm
+    "male_classmate":  {"ref_id": "802e3bc2b27e49c2995d23ef70e6ac89", "name_zh": "阳光男生",   "name_en": "Energetic Male", "gender": "male"},     # Energetic Male - enthusiastic, clear
+    "male_badboy":     {"ref_id": "8bed0e9b444046e2bf72da4b251d9a1d", "name_zh": "叙事男声",   "name_en": "Marcus",         "gender": "male"},     # Marcus - deep, smooth, calm
 }
 
 # Unified map for subtype key lookup (defaults to zh)
