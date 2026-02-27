@@ -1891,11 +1891,11 @@
                 font-size: 1.05rem;
             }
 
-            .bg-picker-btn {
+            .call-btn, .bg-picker-btn {
                 padding: 6px;
             }
 
-            .bg-picker-btn svg {
+            .call-btn svg, .bg-picker-btn svg {
                 width: 18px;
                 height: 18px;
             }
@@ -4002,8 +4002,33 @@
         }
 
         /* ===== Background Picker ===== */
-        .bg-picker-btn {
+        .call-btn {
             margin-left: auto;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .call-btn:hover {
+            background: rgba(72, 199, 142, 0.45);
+            transform: scale(1.05);
+        }
+
+        .call-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .bg-picker-btn {
+            margin-left: 8px;
             background: rgba(255, 255, 255, 0.2);
             border: none;
             border-radius: 10px;
@@ -4511,6 +4536,174 @@
             to {
                 opacity: 1;
                 transform: translateY(0);
+            }
+        }
+
+        /* ==================== Voice Call Overlay ==================== */
+        .voice-call-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.35s ease;
+        }
+        .voice-call-overlay.hidden {
+            display: none;
+        }
+        .voice-call-overlay.fade-out {
+            opacity: 0;
+        }
+
+        .voice-call-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(160deg, #0f0f1a 0%, #1a1a3e 40%, #2d1b4e 100%);
+            z-index: 0;
+        }
+
+        .voice-call-content {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 48px 24px 60px;
+        }
+
+        .voice-call-topbar {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .voice-call-topbar span {
+            color: rgba(255,255,255,0.6);
+            font-size: 1rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .voice-call-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .voice-call-avatar-ring {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            padding: 4px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.5s ease, box-shadow 0.5s ease;
+        }
+        .voice-call-avatar-ring img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Listening state — cyan/blue rotating */
+        .voice-call-avatar-ring.listening {
+            background: conic-gradient(from 0deg, #00d2ff, #3a7bd5, #00d2ff);
+            box-shadow: 0 0 40px rgba(0, 210, 255, 0.35);
+            animation: vcRingSpin 3s linear infinite;
+        }
+
+        /* Thinking state — warm pulse */
+        .voice-call-avatar-ring.thinking {
+            background: conic-gradient(from 0deg, #f093fb, #f5576c, #ffd86f, #f093fb);
+            box-shadow: 0 0 40px rgba(245, 87, 108, 0.35);
+            animation: vcRingPulse 1.5s ease-in-out infinite;
+        }
+
+        /* Speaking state — purple rotating */
+        .voice-call-avatar-ring.speaking {
+            background: conic-gradient(from 0deg, #a18cd1, #fbc2eb, #a18cd1);
+            box-shadow: 0 0 40px rgba(161, 140, 209, 0.4);
+            animation: vcRingSpin 2s linear infinite;
+        }
+
+        @keyframes vcRingSpin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes vcRingPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.06); opacity: 0.85; }
+        }
+
+        .voice-call-name {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .voice-call-status {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.95rem;
+            min-height: 1.4em;
+            transition: color 0.3s;
+        }
+        .voice-call-status.error {
+            color: #f87171;
+        }
+
+        .voice-call-controls {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .voice-call-hangup {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #ef4444;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+        }
+        .voice-call-hangup:hover {
+            background: #dc2626;
+            transform: scale(1.08);
+        }
+        .voice-call-hangup svg {
+            width: 28px;
+            height: 28px;
+            color: #fff;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 480px) {
+            .voice-call-content {
+                padding: 32px 16px 48px;
+            }
+            .voice-call-avatar-ring {
+                width: 120px;
+                height: 120px;
+            }
+            .voice-call-name {
+                font-size: 1.25rem;
+            }
+            .voice-call-hangup {
+                width: 56px;
+                height: 56px;
+            }
+            .voice-call-hangup svg {
+                width: 24px;
+                height: 24px;
             }
         }
     </style>
@@ -5443,6 +5636,11 @@
                         <span class="model-indicator" id="model-indicator" onclick="openSettingsModal('advanced')">Gemini 3 Flash</span>
                     </div>
                 </div>
+                <button class="call-btn" id="voice-call-btn" onclick="startVoiceCall()" title="Voice Call">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                </button>
                 <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -8089,6 +8287,401 @@
             }
         }
 
+        // ==================== Voice Call (Gemini Live style) ====================
+        let _callActive = false;
+        let _callStream = null;        // MediaStream from getUserMedia
+        let _callRecorder = null;      // MediaRecorder
+        let _callChunks = [];
+        let _callTimerInterval = null;
+        let _callSeconds = 0;
+        let _callState = 'idle';       // idle | listening | processing | speaking
+        let _callAudioCtx = null;
+        let _callAnalyser = null;
+        let _callSourceNode = null;
+        let _callAudioQueue = [];
+        let _callIsPlayingSegment = false;
+        let _callCurrentAudio = null;
+        let _callAbortController = null;
+        let _callVadInterval = null;
+        let _callSilenceStart = 0;
+        let _callHasSpoken = false;
+
+        function startVoiceCall() {
+            // Check if voice TTS is enabled
+            if (!isVoiceTTSEnabled()) {
+                const lang = localStorage.getItem('soullink_language') || 'en';
+                const msg = lang === 'zh'
+                    ? '请先在设置中开启「语音回复」并选择音色，才能使用语音通话'
+                    : 'Please enable "Voice Reply" and select a voice in Settings first to use voice call';
+                alert(msg);
+                return;
+            }
+
+            // Request mic
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                _callStream = stream;
+                _callActive = true;
+
+                // Setup overlay
+                const overlay = document.getElementById('voice-call-overlay');
+                overlay.classList.remove('hidden', 'fade-out');
+
+                // Set avatar & name
+                const avatarSrc = state.user?.settings?.companion_avatar || 'images/avatar.png';
+                document.getElementById('voice-call-avatar').src = avatarSrc;
+                const name = state.user?.settings?.companion_name || 'Companion';
+                document.getElementById('voice-call-name').textContent = name;
+
+                // Timer
+                _callSeconds = 0;
+                _updateCallTimer();
+                _callTimerInterval = setInterval(() => {
+                    _callSeconds++;
+                    _updateCallTimer();
+                }, 1000);
+
+                // Audio context for VAD
+                _callAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                _callAnalyser = _callAudioCtx.createAnalyser();
+                _callAnalyser.fftSize = 2048;
+                _callSourceNode = _callAudioCtx.createMediaStreamSource(stream);
+                _callSourceNode.connect(_callAnalyser);
+
+                // Start listening
+                _callSetState('listening');
+                _callStartRecording();
+
+            }).catch(err => {
+                console.error('Mic access denied:', err);
+                const lang = localStorage.getItem('soullink_language') || 'en';
+                alert(lang === 'zh' ? '无法访问麦克风，请检查权限设置' : 'Cannot access microphone. Please check permissions.');
+            });
+        }
+
+        function _updateCallTimer() {
+            const m = Math.floor(_callSeconds / 60);
+            const s = (_callSeconds % 60).toString().padStart(2, '0');
+            const el = document.getElementById('voice-call-timer');
+            if (el) el.textContent = `${m}:${s}`;
+        }
+
+        function _callSetState(newState) {
+            _callState = newState;
+            const ring = document.getElementById('voice-call-avatar-ring');
+            const statusEl = document.getElementById('voice-call-status');
+            if (!ring || !statusEl) return;
+
+            ring.classList.remove('listening', 'thinking', 'speaking');
+            statusEl.classList.remove('error');
+
+            const lang = localStorage.getItem('soullink_language') || 'en';
+
+            switch (newState) {
+                case 'listening':
+                    ring.classList.add('listening');
+                    statusEl.textContent = lang === 'zh' ? '正在聆听...' : 'Listening...';
+                    break;
+                case 'processing':
+                    ring.classList.add('thinking');
+                    statusEl.textContent = lang === 'zh' ? '思考中...' : 'Thinking...';
+                    break;
+                case 'speaking':
+                    ring.classList.add('speaking');
+                    statusEl.textContent = lang === 'zh' ? '说话中...' : 'Speaking...';
+                    break;
+                default:
+                    statusEl.textContent = '';
+            }
+        }
+
+        function _callStartRecording() {
+            if (!_callActive || !_callStream) return;
+
+            _callChunks = [];
+            _callHasSpoken = false;
+            _callSilenceStart = 0;
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+
+            _callRecorder = new MediaRecorder(_callStream, mimeType ? { mimeType } : {});
+            _callRecorder.ondataavailable = e => {
+                if (e.data.size > 0) _callChunks.push(e.data);
+            };
+            _callRecorder.start(250); // collect data every 250ms
+
+            // Start VAD polling
+            const bufLen = _callAnalyser.fftSize;
+            const dataArr = new Uint8Array(bufLen);
+            let noSpeechTimer = 0;
+
+            _callVadInterval = setInterval(() => {
+                if (!_callActive || _callState !== 'listening') return;
+
+                _callAnalyser.getByteTimeDomainData(dataArr);
+
+                // Calculate RMS
+                let sum = 0;
+                for (let i = 0; i < bufLen; i++) {
+                    const v = (dataArr[i] - 128) / 128;
+                    sum += v * v;
+                }
+                const rms = Math.sqrt(sum / bufLen);
+
+                if (rms > 0.015) {
+                    // User is speaking
+                    _callHasSpoken = true;
+                    _callSilenceStart = 0;
+                    noSpeechTimer = 0;
+                } else if (_callHasSpoken) {
+                    // Silence after speech
+                    if (!_callSilenceStart) {
+                        _callSilenceStart = Date.now();
+                    } else if (Date.now() - _callSilenceStart > 1500) {
+                        // 1.5s of silence → auto-send
+                        _callStopAndSend();
+                        return;
+                    }
+                } else {
+                    // No speech at all yet
+                    noSpeechTimer += 50;
+                    if (noSpeechTimer >= 30000) {
+                        const statusEl = document.getElementById('voice-call-status');
+                        const lang = localStorage.getItem('soullink_language') || 'en';
+                        if (statusEl) statusEl.textContent = lang === 'zh' ? '还在听呢...' : 'Still listening...';
+                        noSpeechTimer = 0; // reset so it shows again after another 30s
+                    }
+                }
+            }, 50);
+        }
+
+        async function _callStopAndSend() {
+            if (!_callActive) return;
+
+            // Stop VAD
+            if (_callVadInterval) { clearInterval(_callVadInterval); _callVadInterval = null; }
+
+            // Stop recorder
+            if (_callRecorder && _callRecorder.state !== 'inactive') {
+                _callRecorder.stop();
+            }
+
+            // Wait for final data
+            await new Promise(r => setTimeout(r, 300));
+
+            const mimeType = _callRecorder?.mimeType || 'audio/webm';
+            const blob = new Blob(_callChunks, { type: mimeType });
+            _callChunks = [];
+
+            // Ignore too-short recordings
+            if (blob.size < 300) {
+                if (_callActive) {
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+                return;
+            }
+
+            _callSetState('processing');
+
+            try {
+                const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+                const formData = new FormData();
+                formData.append('audio', blob, `voice.${ext}`);
+                formData.append('format', ext);
+                formData.append('conversation_id', state.currentConversationId || '');
+
+                _callAbortController = new AbortController();
+                const token = localStorage.getItem('soullink_token');
+                const resp = await fetch(`${CONFIG.API_BASE_URL}/api/voice/chat-stream`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData,
+                    signal: _callAbortController.signal
+                });
+
+                if (!resp.ok || !resp.body) throw new Error('Stream failed');
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let gotReply = false;
+                _callAudioQueue = [];
+                _callIsPlayingSegment = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    if (!_callActive) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    let currentEvent = '';
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.slice(7).trim();
+                        } else if (line.startsWith('data: ')) {
+                            try {
+                                const payload = JSON.parse(line.slice(6));
+
+                                if (currentEvent === 'transcript') {
+                                    // Add user voice message to chat (silent)
+                                    addVoiceMessageToUI(true, null, 0, payload.text);
+                                } else if (currentEvent === 'reply') {
+                                    gotReply = true;
+                                    if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
+                                    if (payload.thinking) addThinkingBubble(payload.thinking);
+                                    addMessageToUI(payload.text, false, true, [], payload.images || []);
+                                    maybeShowGptSwitchHint(payload.text);
+                                    // Switch to speaking state
+                                    if (_callActive) _callSetState('speaking');
+                                } else if (currentEvent === 'audio') {
+                                    _callAudioQueue.push(payload.audio_b64);
+                                    _callPlayNextSegment();
+                                } else if (currentEvent === 'error') {
+                                    console.error('[VoiceCall] Server error:', payload.message);
+                                    _callShowError(payload.message || 'Error');
+                                } else if (currentEvent === 'done') {
+                                    // Stream complete — if no audio queued, go back to listening
+                                    if (_callAudioQueue.length === 0 && !_callIsPlayingSegment && _callActive) {
+                                        _callSetState('listening');
+                                        _callStartRecording();
+                                    }
+                                }
+                            } catch(e) { /* ignore parse error */ }
+                            currentEvent = '';
+                        }
+                    }
+                }
+
+                // If no reply came, go back to listening
+                if (!gotReply && _callActive) {
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+
+            } catch (err) {
+                if (err.name === 'AbortError') return; // intentional abort
+                console.error('[VoiceCall] Error:', err);
+                _callShowError('Connection error');
+            }
+        }
+
+        function _callPlayNextSegment() {
+            if (_callIsPlayingSegment || _callAudioQueue.length === 0) return;
+            if (!_callActive) return;
+
+            _callIsPlayingSegment = true;
+            const b64 = _callAudioQueue.shift();
+            const audio = new Audio('data:audio/mp3;base64,' + b64);
+            _callCurrentAudio = audio;
+
+            audio.onended = () => {
+                _callIsPlayingSegment = false;
+                _callCurrentAudio = null;
+                if (_callAudioQueue.length > 0) {
+                    _callPlayNextSegment();
+                } else if (_callActive) {
+                    // All audio done → loop back to listening
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+            };
+            audio.onerror = () => {
+                _callIsPlayingSegment = false;
+                _callCurrentAudio = null;
+                if (_callAudioQueue.length > 0) {
+                    _callPlayNextSegment();
+                } else if (_callActive) {
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+            };
+            audio.play().catch(() => {
+                _callIsPlayingSegment = false;
+                _callCurrentAudio = null;
+                if (_callActive) {
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+            });
+        }
+
+        function _callShowError(msg) {
+            const statusEl = document.getElementById('voice-call-status');
+            if (statusEl) {
+                statusEl.textContent = msg;
+                statusEl.classList.add('error');
+            }
+            // After 2s, go back to listening
+            setTimeout(() => {
+                if (_callActive) {
+                    _callSetState('listening');
+                    _callStartRecording();
+                }
+            }, 2000);
+        }
+
+        function endVoiceCall() {
+            _callActive = false;
+
+            // Stop timer
+            if (_callTimerInterval) { clearInterval(_callTimerInterval); _callTimerInterval = null; }
+
+            // Stop VAD
+            if (_callVadInterval) { clearInterval(_callVadInterval); _callVadInterval = null; }
+
+            // Stop recorder
+            if (_callRecorder && _callRecorder.state !== 'inactive') {
+                try { _callRecorder.stop(); } catch(e) {}
+            }
+            _callRecorder = null;
+            _callChunks = [];
+
+            // Stop current audio playback
+            if (_callCurrentAudio) {
+                try { _callCurrentAudio.pause(); } catch(e) {}
+                _callCurrentAudio = null;
+            }
+            _callAudioQueue = [];
+            _callIsPlayingSegment = false;
+
+            // Abort SSE
+            if (_callAbortController) {
+                try { _callAbortController.abort(); } catch(e) {}
+                _callAbortController = null;
+            }
+
+            // Release microphone
+            if (_callStream) {
+                _callStream.getTracks().forEach(t => t.stop());
+                _callStream = null;
+            }
+
+            // Close AudioContext
+            if (_callSourceNode) { try { _callSourceNode.disconnect(); } catch(e) {} _callSourceNode = null; }
+            if (_callAudioCtx) {
+                try { _callAudioCtx.close(); } catch(e) {}
+                _callAudioCtx = null;
+            }
+            _callAnalyser = null;
+
+            // Hide overlay with fade
+            const overlay = document.getElementById('voice-call-overlay');
+            if (overlay) {
+                overlay.classList.add('fade-out');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('fade-out');
+                }, 350);
+            }
+
+            _callState = 'idle';
+        }
+
         // 语音消息气泡
         function addVoiceMessageToUI(isUser, audioUrl, duration, transcriptText) {
             const container = document.getElementById('messages-container');
@@ -8101,8 +8694,21 @@
                 ? (state.user?.avatar_url || 'images/avatar.png')
                 : (state.user?.settings?.companion_avatar || 'images/avatar.png');
 
+            // Voice call transcript-only mode (no audio URL)
+            if (!audioUrl && transcriptText) {
+                messageDiv.innerHTML = `
+                    <img class="message-avatar" src="${avatarSrc}" alt="Avatar">
+                    <div class="message-content">
+                        <div class="voice-transcript" style="margin:0">${transcriptText}</div>
+                    </div>
+                `;
+                container.insertBefore(messageDiv, typingIndicator);
+                container.scrollTop = container.scrollHeight;
+                return;
+            }
+
             const durStr = duration ? `${Math.floor(duration/60)}:${Math.floor(duration%60).toString().padStart(2,'0')}` : '0:00';
-            const fullUrl = audioUrl.startsWith('http') ? audioUrl : CONFIG.API_BASE_URL + audioUrl;
+            const fullUrl = audioUrl && audioUrl.startsWith('http') ? audioUrl : (audioUrl ? CONFIG.API_BASE_URL + audioUrl : '');
 
             // 生成随机波形条高度，模拟真实音频波形
             const barHeights = [];
@@ -10662,6 +11268,31 @@
     <!-- 图片全屏查看器 -->
     <div class="image-viewer-overlay" id="image-viewer" onclick="closeImageViewer()">
         <img id="image-viewer-img" src="" alt="Full size image">
+    </div>
+
+    <!-- Voice Call Overlay -->
+    <div id="voice-call-overlay" class="voice-call-overlay hidden">
+        <div class="voice-call-bg"></div>
+        <div class="voice-call-content">
+            <div class="voice-call-topbar">
+                <span id="voice-call-timer">0:00</span>
+            </div>
+            <div class="voice-call-center">
+                <div class="voice-call-avatar-ring" id="voice-call-avatar-ring">
+                    <img id="voice-call-avatar" src="images/avatar.png" alt="">
+                </div>
+                <h2 class="voice-call-name" id="voice-call-name">Companion</h2>
+                <div class="voice-call-status" id="voice-call-status">Connecting...</div>
+            </div>
+            <div class="voice-call-controls">
+                <button class="voice-call-hangup" onclick="endVoiceCall()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 </body>
 </html>
