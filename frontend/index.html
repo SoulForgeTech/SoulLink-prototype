@@ -2643,11 +2643,12 @@
             border-radius: 20px;
             width: 90%;
             max-width: 450px;
-            max-height: 85vh;
+            height: 85vh;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             position: relative;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .modal-header {
@@ -2683,6 +2684,7 @@
             padding: 24px;
             overflow-y: auto;
             flex: 1;
+            min-height: 0;
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
