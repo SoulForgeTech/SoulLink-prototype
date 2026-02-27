@@ -8572,6 +8572,13 @@
         async function _callStopAndSend() {
             if (!_callActive) return;
 
+            // CRITICAL: Set state IMMEDIATELY to prevent re-entry!
+            // VAD fires every 50ms; without this, the 150ms await below allows
+            // 3 more VAD ticks that see state='listening' and call _callStopAndSend() again,
+            // causing the second call to get an empty blob and flip state back to 'listening'.
+            if (_callState !== 'listening') return; // guard: only send from listening state
+            _callSetState('processing');
+
             // NOTE: Do NOT clear _callVadInterval here!
             // VAD must keep running during processing/speaking to detect user interrupt.
 
@@ -8595,8 +8602,6 @@
                 }
                 return;
             }
-
-            _callSetState('processing');
 
             try {
                 const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
@@ -8680,7 +8685,9 @@
                                     }
                                     _callShowError(payload.message || 'Error');
                                 } else if (evtType === 'done') {
-                                    if (_callAudioQueue.length === 0 && !_callIsPlayingSegment && _callActive) {
+                                    // Only restart if audio already finished AND we're not already listening
+                                    // (prevents double-restart if _onSegmentDone already called _callStartRecording)
+                                    if (_callAudioQueue.length === 0 && !_callIsPlayingSegment && _callActive && _callState !== 'listening') {
                                         _callSetState('listening');
                                         _callStartRecording();
                                     }
