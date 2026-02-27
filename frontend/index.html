@@ -8360,7 +8360,9 @@
             }
 
             // Request mic
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+            }).then(stream => {
                 _callStream = stream;
                 _callActive = true;
 
@@ -8490,7 +8492,8 @@
                 const rms = Math.sqrt(sum / bufLen);
 
                 // --- Interrupt: user speaks while AI is speaking → stop AI audio ---
-                if (_callState === 'speaking' && rms > 0.02) {
+                // Threshold higher (0.06) than listening (0.015) to avoid speaker echo triggering interrupt
+                if (_callState === 'speaking' && rms > 0.06) {
                     console.log('[VoiceCall] User interrupted, stopping AI audio');
                     // Stop persistent audio element
                     if (_callAudioEl) {
