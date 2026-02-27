@@ -8347,6 +8347,7 @@
         let _callSilenceStart = 0;
         let _callHasSpoken = false;
         let _callAudioEl = null;       // Persistent unlocked <audio> element for playback
+        let _callSpeakingStartTime = 0; // Timestamp when speaking state began (for grace period)
 
         function startVoiceCall() {
             // Check if voice TTS is enabled
@@ -8447,6 +8448,7 @@
                 case 'speaking':
                     ring.classList.add('speaking');
                     statusEl.textContent = lang === 'zh' ? '说话中...' : 'Speaking...';
+                    _callSpeakingStartTime = Date.now(); // Grace period: suppress interrupt for first 1s
                     break;
                 default:
                     statusEl.textContent = '';
@@ -8493,8 +8495,15 @@
                 const rms = Math.sqrt(sum / bufLen);
 
                 // --- Interrupt: user speaks while AI is speaking → stop AI audio ---
+                // Grace period: ignore first 1s after entering speaking state (echo cancellation needs time)
                 // Debounce: require 4 consecutive frames (~200ms) above threshold
                 if (_callState === 'speaking') {
+                    // Grace period: suppress interrupt for the first 1s after AI starts speaking
+                    // Echo cancellation takes time to converge, and initial audio burst causes false triggers
+                    if (Date.now() - _callSpeakingStartTime < 1000) {
+                        interruptCount = 0;
+                        return;
+                    }
                     if (rms > 0.08) {
                         interruptCount++;
                     } else {
