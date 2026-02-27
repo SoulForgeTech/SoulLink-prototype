@@ -8585,6 +8585,11 @@
                 _callAudioQueue = [];
                 _callIsPlayingSegment = false;
 
+                // IMPORTANT: currentEvent must persist across chunks!
+                // Audio events are large (base64) and often split across multiple reader.read() calls.
+                // If we reset currentEvent per-chunk, the data line arrives with currentEvent='' and gets lost.
+                let currentEvent = '';
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
@@ -8592,42 +8597,59 @@
 
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
-                    buffer = lines.pop();
+                    buffer = lines.pop(); // keep incomplete last line
 
-                    let currentEvent = '';
                     for (const line of lines) {
                         if (line.startsWith('event: ')) {
                             currentEvent = line.slice(7).trim();
                         } else if (line.startsWith('data: ')) {
+                            const evtType = currentEvent;
+                            currentEvent = ''; // reset after consuming
                             try {
                                 const payload = JSON.parse(line.slice(6));
 
-                                if (currentEvent === 'transcript') {
-                                    // Add user voice message to chat (silent)
+                                if (evtType === 'transcript') {
                                     addVoiceMessageToUI(true, null, 0, payload.text);
-                                } else if (currentEvent === 'reply') {
+                                } else if (evtType === 'reply') {
                                     gotReply = true;
                                     if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
                                     if (payload.thinking) addThinkingBubble(payload.thinking);
                                     addMessageToUI(payload.text, false, true, [], payload.images || []);
                                     maybeShowGptSwitchHint(payload.text);
-                                    // Switch to speaking state
                                     if (_callActive) _callSetState('speaking');
-                                } else if (currentEvent === 'audio') {
+                                } else if (evtType === 'audio') {
                                     console.log('[VoiceCall] Got audio segment, b64 length:', payload.audio_b64?.length);
                                     _callAudioQueue.push(payload.audio_b64);
                                     _callPlayNextSegment();
-                                } else if (currentEvent === 'error') {
+                                } else if (evtType === 'error') {
                                     console.error('[VoiceCall] Server error:', payload.message);
+                                    // ASR failure → just go back to listening silently (don't show error)
+                                    if (payload.message === 'Could not recognize speech') {
+                                        const lang = localStorage.getItem('soullink_language') || 'en';
+                                        const statusEl = document.getElementById('voice-call-status');
+                                        if (statusEl) statusEl.textContent = lang === 'zh' ? '没听清，再说一次...' : "Didn't catch that...";
+                                        setTimeout(() => {
+                                            if (_callActive) {
+                                                _callSetState('listening');
+                                                _callStartRecording();
+                                            }
+                                        }, 1200);
+                                        return;
+                                    }
                                     _callShowError(payload.message || 'Error');
-                                } else if (currentEvent === 'done') {
-                                    // Stream complete — if no audio queued, go back to listening
+                                } else if (evtType === 'done') {
                                     if (_callAudioQueue.length === 0 && !_callIsPlayingSegment && _callActive) {
                                         _callSetState('listening');
                                         _callStartRecording();
                                     }
+                                } else {
+                                    console.log('[VoiceCall] Unknown event type:', evtType, 'data length:', line.length);
                                 }
-                            } catch(e) { /* ignore parse error */ }
+                            } catch(e) {
+                                console.warn('[VoiceCall] JSON parse error for event:', evtType, e.message);
+                            }
+                        } else if (line === '') {
+                            // Blank line = SSE event separator, reset
                             currentEvent = '';
                         }
                     }
