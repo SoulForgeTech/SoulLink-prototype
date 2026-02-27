@@ -334,6 +334,70 @@ class AnythingLLMAPI:
                 'full_response': response
             }
 
+    def send_message_stream(self, message: str, mode: str = "chat", session_id: Optional[str] = None):
+        """
+        Stream a message response from AnythingLLM workspace.
+        Uses the /stream-chat endpoint for real-time token streaming.
+
+        Yields dicts: {"textResponse": "token_text", "close": bool, "error": bool/str}
+        On the final chunk, "close" is True and may include "sources".
+        """
+        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/stream-chat"
+        payload = {
+            "message": message,
+            "mode": mode,
+            "sessionId": session_id if session_id else "default-session"
+        }
+
+        logging.info(f"[STREAM-LLM] Sending to '{self.workspace_slug}': {message[:100]}...")
+
+        try:
+            resp = requests.post(
+                url,
+                headers=self.headers,
+                json=payload,
+                timeout=120,
+                stream=True,
+            )
+            resp.raise_for_status()
+
+            for raw_line in resp.iter_lines(decode_unicode=True):
+                if not raw_line:
+                    continue
+                # AnythingLLM stream-chat sends lines like:
+                # data: {"id":"...","type":"textResponseChunk","textResponse":"Hello","close":false}
+                line = raw_line.strip()
+                if line.startswith("data:"):
+                    json_str = line[5:].strip()
+                    if not json_str:
+                        continue
+                    try:
+                        chunk = json.loads(json_str)
+                        yield chunk
+                        if chunk.get("close"):
+                            return
+                    except json.JSONDecodeError:
+                        continue
+                elif line.startswith("{"):
+                    # Some versions send plain JSON lines
+                    try:
+                        chunk = json.loads(line)
+                        yield chunk
+                        if chunk.get("close"):
+                            return
+                    except json.JSONDecodeError:
+                        continue
+
+        except requests.Timeout:
+            logging.error(f"[STREAM-LLM] Timeout for {url}")
+            yield {"textResponse": "", "close": True, "error": "Timeout"}
+        except requests.ConnectionError:
+            logging.error(f"[STREAM-LLM] Connection error for {url}")
+            yield {"textResponse": "", "close": True, "error": "Connection error"}
+        except Exception as e:
+            logging.error(f"[STREAM-LLM] Error: {e}")
+            yield {"textResponse": "", "close": True, "error": str(e)}
+
     def check_workspace_status(self) -> Dict[str, Any]:
         """Check workspace status for debugging purposes."""
         url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}"

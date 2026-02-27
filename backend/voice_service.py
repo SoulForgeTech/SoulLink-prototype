@@ -331,6 +331,47 @@ def synthesize_speech_segments(
             continue
 
 
+def synthesize_single_sentence(sentence: str, ref_id: str) -> bytes:
+    """
+    TTS a single sentence. Returns MP3 bytes or empty bytes on error.
+    Used by streaming voice call to synthesize each sentence as it arrives.
+    """
+    sentence = _clean_text_for_tts(sentence)
+    if not sentence or len(sentence) < 2:
+        return b""
+
+    try:
+        resp = requests.post(
+            FISH_AUDIO_TTS_URL,
+            headers={
+                "Authorization": f"Bearer {FISH_AUDIO_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "text": sentence,
+                "reference_id": ref_id,
+                "format": "mp3",
+            },
+            timeout=30,
+            stream=True,
+        )
+        if resp.status_code != 200:
+            logger.error(f"[TTS-SINGLE] failed: {resp.status_code}")
+            return b""
+
+        chunks = []
+        for chunk in resp.iter_content(chunk_size=8192):
+            if chunk:
+                chunks.append(chunk)
+        audio = b"".join(chunks)
+        if audio:
+            logger.info(f"[TTS-SINGLE] {len(sentence)} chars → {len(audio)} bytes")
+        return audio
+    except Exception as e:
+        logger.error(f"[TTS-SINGLE] error: {e}")
+        return b""
+
+
 # ==================== Voice Search (Fish Audio Community) ====================
 
 def search_voices(query: str = "", language: str = None, page: int = 1, page_size: int = 20) -> dict:

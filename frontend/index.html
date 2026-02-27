@@ -8610,17 +8610,21 @@
 
                                 if (evtType === 'transcript') {
                                     addVoiceMessageToUI(true, null, 0, payload.text);
+                                } else if (evtType === 'audio') {
+                                    // Audio now arrives BEFORE reply (streaming LLM + real-time TTS)
+                                    console.log('[VoiceCall] Got audio segment, b64 length:', payload.audio_b64?.length);
+                                    if (_callActive && _callState !== 'speaking') {
+                                        _callSetState('speaking');
+                                    }
+                                    _callAudioQueue.push(payload.audio_b64);
+                                    _callPlayNextSegment();
                                 } else if (evtType === 'reply') {
+                                    // Reply arrives AFTER audio segments (full text for chat display)
                                     gotReply = true;
                                     if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
                                     if (payload.thinking) addThinkingBubble(payload.thinking);
                                     addMessageToUI(payload.text, false, true, [], payload.images || []);
                                     maybeShowGptSwitchHint(payload.text);
-                                    if (_callActive) _callSetState('speaking');
-                                } else if (evtType === 'audio') {
-                                    console.log('[VoiceCall] Got audio segment, b64 length:', payload.audio_b64?.length);
-                                    _callAudioQueue.push(payload.audio_b64);
-                                    _callPlayNextSegment();
                                 } else if (evtType === 'error') {
                                     console.error('[VoiceCall] Server error:', payload.message);
                                     // ASR failure → just go back to listening silently (don't show error)

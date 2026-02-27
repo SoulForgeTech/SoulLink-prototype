@@ -1321,7 +1321,7 @@ def voice_chat_stream():
             yield _sse_event("error", {"message": "Database error"})
             return
 
-        # ---------- 3. LLM via AnythingLLM (same blocking call) ----------
+        # ---------- 3. Setup workspace & API ----------
         try:
             workspace_result = workspace_manager.get_or_create_workspace(user_id)
             if not workspace_result["success"]:
@@ -1363,34 +1363,105 @@ def voice_chat_stream():
                     message_to_send = enhanced
             except Exception:
                 pass
-
-            response = api.send_message(
-                message_to_send,
-                session_id=str(conversation["_id"]),
-            )
-
-            if not response:
-                yield _sse_event("error", {"message": "No LLM response"})
-                return
-
-            reply = response.get("text_response", "")
-
         except Exception as e:
-            logger.error(f"[STREAM] LLM error: {e}")
-            yield _sse_event("error", {"message": f"LLM error: {str(e)}"})
+            logger.error(f"[STREAM] Setup error: {e}")
+            yield _sse_event("error", {"message": f"Setup error: {str(e)}"})
             return
 
-        # ---------- 4. Process reply (strip thinking) ----------
+        # ---------- 4. Streaming LLM + real-time TTS (interleaved) ----------
+        # Stream tokens from LLM, detect sentence boundaries, TTS each sentence
+        # immediately, and yield audio before the full reply is complete.
+        from voice_service import synthesize_single_sentence, split_sentences, \
+            _clean_text_for_tts, get_voice_ref_id
+        ref_id = voice_id or get_voice_ref_id(gender, subtype, voice_lang)
+
+        full_reply = ""          # accumulate raw LLM output
+        sentence_buffer = ""     # buffer for detecting sentence boundaries
+        audio_idx = 0
+        in_thinking = False      # track <think> tag state
         thinking_content = ""
+        first_audio_sent = False
+
+        try:
+            for chunk in api.send_message_stream(
+                message_to_send,
+                session_id=str(conversation["_id"]),
+            ):
+                if chunk.get("error"):
+                    err_msg = chunk["error"] if isinstance(chunk["error"], str) else "LLM error"
+                    yield _sse_event("error", {"message": err_msg})
+                    return
+
+                token = chunk.get("textResponse", "")
+                if not token:
+                    continue
+
+                full_reply += token
+
+                # Track <think> tags — don't TTS thinking content
+                if "<think>" in token.lower() or "<thought>" in token.lower():
+                    in_thinking = True
+                if "</think>" in token.lower() or "</thought>" in token.lower():
+                    in_thinking = False
+                    continue
+                if in_thinking:
+                    continue
+
+                # Accumulate tokens into sentence buffer
+                sentence_buffer += token
+
+                # Check for sentence boundaries
+                sentences = split_sentences(sentence_buffer)
+                if len(sentences) > 1:
+                    # All except last are complete sentences
+                    complete = sentences[:-1]
+                    sentence_buffer = sentences[-1]
+
+                    for sent in complete:
+                        cleaned = _clean_text_for_tts(sent)
+                        if cleaned and len(cleaned) >= 2:
+                            audio_bytes = synthesize_single_sentence(cleaned, ref_id)
+                            if audio_bytes:
+                                audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
+                                yield _sse_event("audio", {
+                                    "index": audio_idx,
+                                    "text": sent,
+                                    "audio_b64": audio_b64,
+                                })
+                                audio_idx += 1
+                                first_audio_sent = True
+
+            # Process remaining buffer (last sentence)
+            if sentence_buffer.strip():
+                cleaned = _clean_text_for_tts(sentence_buffer.strip())
+                if cleaned and len(cleaned) >= 2:
+                    audio_bytes = synthesize_single_sentence(cleaned, ref_id)
+                    if audio_bytes:
+                        audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
+                        yield _sse_event("audio", {
+                            "index": audio_idx,
+                            "text": sentence_buffer.strip(),
+                            "audio_b64": audio_b64,
+                        })
+                        audio_idx += 1
+
+        except Exception as e:
+            logger.error(f"[STREAM] LLM+TTS error: {e}")
+            if not full_reply:
+                yield _sse_event("error", {"message": f"LLM error: {str(e)}"})
+                return
+
+        # ---------- 5. Process full reply & emit reply event ----------
+        reply = full_reply
+        # Strip thinking tags from full reply
         think_match = _re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', reply, _re.DOTALL)
         if think_match:
             thinking_content = think_match.group(1).strip()
             reply = _re.sub(r'<(?:think|thought)>.*?</(?:think|thought)>', '', reply, flags=_re.DOTALL).strip()
 
-        # Handle THOUGHT prefix (simplified)
-        if not thinking_content and _re.match(r'^THOUGHT[\s\n]', reply):
-            raw = _re.sub(r'^THOUGHT[\s\n]+', '', reply).strip()
-            # Find Chinese reply after English thinking
+        # Handle THOUGHT prefix
+        if not thinking_content and _re.match(r'^(?:THOUGHT|think)\s', reply, _re.IGNORECASE):
+            raw = _re.sub(r'^(?:THOUGHT|think)\s+', '', reply, flags=_re.IGNORECASE).strip()
             for m in _re.finditer(r'\n([\u4e00-\u9fff（\uff08*「【《""])', raw):
                 candidate = raw[m.start(1):].strip()
                 if len(candidate) >= 10:
@@ -1404,7 +1475,7 @@ def voice_chat_stream():
             "conversation_id": str(conversation["_id"]),
         })
 
-        # ---------- 5. Save AI reply to DB ----------
+        # ---------- 6. Save to DB + async tasks ----------
         try:
             db.add_message_to_conversation(
                 conversation["_id"], user_id, "assistant", reply,
@@ -1414,7 +1485,6 @@ def voice_chat_stream():
         except Exception as e:
             logger.warning(f"[STREAM] DB save error: {e}")
 
-        # Async memory + title (same as chat endpoint)
         try:
             def _async_tasks():
                 try:
@@ -1445,24 +1515,6 @@ def voice_chat_stream():
             threading.Thread(target=_async_tasks, daemon=True).start()
         except Exception:
             pass
-
-        # ---------- 6. Stream TTS segments ----------
-        try:
-            tts_text = reply[:2000]
-            idx = 0
-            for sentence, audio_bytes in synthesize_speech_segments(
-                text=tts_text, voice_id=voice_id,
-                gender=gender, subtype=subtype, language=voice_lang
-            ):
-                audio_b64 = b64mod.b64encode(audio_bytes).decode("ascii")
-                yield _sse_event("audio", {
-                    "index": idx,
-                    "text": sentence,
-                    "audio_b64": audio_b64,
-                })
-                idx += 1
-        except Exception as e:
-            logger.error(f"[STREAM] TTS error: {e}")
 
         yield _sse_event("done", {})
 
