@@ -2010,6 +2010,14 @@
                 font-size: 1.1rem;
             }
 
+            .settings-tabs {
+                padding: 0 18px;
+            }
+            .settings-tab {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
             .modal-body {
                 padding: 18px;
             }
@@ -2638,13 +2646,19 @@
             width: 90%;
             max-width: 450px;
             max-height: 90vh;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .modal-content > .modal-body {
+            flex: 1;
+            overflow-y: auto;
             scrollbar-width: none;
         }
 
-        .modal-content::-webkit-scrollbar {
+        .modal-content > .modal-body::-webkit-scrollbar {
             display: none;
         }
 
