@@ -1366,6 +1366,9 @@ def chat_stream():
         import re as _re
         import threading
 
+        # Flush proxy buffers (Cloudflare, nginx) with SSE comment padding
+        yield ": " + " " * 2048 + "\n\n"
+
         api = AnythingLLMAPI(
             base_url=anythingllm_base,
             api_key=anythingllm_key,
@@ -1601,7 +1604,11 @@ def chat_stream():
                     pass
             threading.Thread(target=_async_title, daemon=True).start()
 
-    return Response(generate(), content_type="text/event-stream; charset=utf-8")
+    resp = Response(generate(), content_type="text/event-stream; charset=utf-8")
+    resp.headers['Cache-Control'] = 'no-cache, no-transform'
+    resp.headers['X-Accel-Buffering'] = 'no'
+    resp.headers['Connection'] = 'keep-alive'
+    return resp
 
 
 # ==================== Streaming Voice Chat (SSE) ====================
