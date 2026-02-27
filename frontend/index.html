@@ -2642,13 +2642,13 @@
             background: white;
             border-radius: 20px;
             width: 90%;
-            max-width: 450px;
+            max-width: 500px;
             height: 85vh;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             position: relative;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
         }
 
         .modal-header {
@@ -2772,6 +2772,8 @@
             justify-content: flex-end;
             gap: 12px;
             flex-shrink: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .modal-btn {
