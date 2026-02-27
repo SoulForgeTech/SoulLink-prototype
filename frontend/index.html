@@ -2646,27 +2646,36 @@
             width: 90%;
             max-width: 450px;
             max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+            scrollbar-width: none;
+        }
+
+        .modal-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Settings modal: fixed-height flex layout so footer stays pinned */
+        #settings-modal .modal-content {
+            height: 85vh;
+            max-height: 85vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: modalSlideIn 0.3s ease-out;
         }
-
-        .modal-content > .modal-header,
-        .modal-content > .settings-tabs,
-        .modal-content > .modal-footer {
+        #settings-modal .modal-header,
+        #settings-modal .settings-tabs,
+        #settings-modal .modal-footer {
             flex-shrink: 0;
         }
-
-        .modal-content > .modal-body {
-            flex: 1 1 0;
+        #settings-modal .modal-body {
+            flex: 1;
             min-height: 0;
             overflow-y: auto;
             scrollbar-width: none;
         }
-
-        .modal-content > .modal-body::-webkit-scrollbar {
+        #settings-modal .modal-body::-webkit-scrollbar {
             display: none;
         }
 
