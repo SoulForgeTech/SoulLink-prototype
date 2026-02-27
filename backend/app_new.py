@@ -2472,9 +2472,13 @@ def voice_list():
         current_voice_id = settings.get("voice_id", "")
         current_voice_name = settings.get("voice_name", "")
 
-        # Return presets matching user's language
-        user_lang = settings.get("language", "en")
-        voice_lang = "zh" if user_lang.startswith("zh") else "en"
+        # Frontend passes ?lang=zh or ?lang=en to match its current i18n state
+        lang_param = request.args.get("lang", "")
+        if lang_param:
+            voice_lang = "zh" if lang_param.startswith("zh") else "en"
+        else:
+            user_lang = settings.get("language", "en")
+            voice_lang = "zh" if user_lang.startswith("zh") else "en"
         presets = list_preset_voices(language=voice_lang)
 
         return jsonify({

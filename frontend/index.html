@@ -4939,9 +4939,14 @@
                                     <span class="voice-current-name" id="voice-current-name">Default</span>
                                     <span class="voice-current-tag" id="voice-current-tag" data-i18n="settings.voice.preset.tag">preset</span>
                                 </div>
-                                <button class="voice-preview-btn" onclick="previewCurrentVoice()" id="voice-preview-current-btn">
-                                    ▶ <span data-i18n="settings.voice.try">Try</span>
-                                </button>
+                                <div style="display:flex;gap:6px;">
+                                    <button class="voice-preview-btn" onclick="previewCurrentVoice()" id="voice-preview-current-btn">
+                                        ▶ <span data-i18n="settings.voice.try">Try</span>
+                                    </button>
+                                    <button class="voice-preview-btn" onclick="clearVoice()" id="voice-clear-btn" style="background:#e2e8f0;color:#718096;display:none;">
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Preset voices grid -->
@@ -7377,7 +7382,9 @@
 
         async function loadVoicePresets() {
             try {
-                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/list`);
+                // Pass frontend language so backend returns correct preset set
+                const lang = state.language === 'zh-CN' ? 'zh' : 'en';
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/voice/list?lang=${lang}`);
                 if (!resp.ok) return;
                 const data = await resp.json();
                 _voicePresets = data.voices || [];
@@ -7393,13 +7400,15 @@
         function renderVoicePresets() {
             const grid = document.getElementById('voice-preset-grid');
             if (!grid) return;
+            const isZh = state.language === 'zh-CN';
             grid.innerHTML = '';
             _voicePresets.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'voice-card' + (v.id === _selectedVoiceId ? ' selected' : '');
+                const genderLabel = v.gender === 'female' ? (isZh ? '♀ 女' : '♀ female') : (isZh ? '♂ 男' : '♂ male');
                 card.innerHTML = `
                     <div class="voice-card-name">${v.name}</div>
-                    <div class="voice-card-gender">${v.gender === 'female' ? '♀' : '♂'} ${v.gender}</div>
+                    <div class="voice-card-gender">${genderLabel}</div>
                 `;
                 card.onclick = () => selectVoice(v.id, v.name);
                 grid.appendChild(card);
@@ -7409,15 +7418,40 @@
         function updateVoiceCurrentDisplay() {
             const nameEl = document.getElementById('voice-current-name');
             const tagEl = document.getElementById('voice-current-tag');
+            const clearBtn = document.getElementById('voice-clear-btn');
             if (!nameEl) return;
 
             if (_selectedVoiceName) {
                 nameEl.textContent = _selectedVoiceName;
                 const isPreset = _voicePresets.some(v => v.id === _selectedVoiceId);
                 tagEl.textContent = isPreset ? t('settings.voice.preset.tag') : t('settings.voice.community.tag');
+                if (clearBtn) clearBtn.style.display = '';
             } else {
                 nameEl.textContent = t('settings.voice.auto');
                 tagEl.textContent = 'auto';
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        }
+
+        async function clearVoice() {
+            _selectedVoiceId = '';
+            _selectedVoiceName = '';
+            renderVoicePresets();
+            updateVoiceCurrentDisplay();
+            try {
+                await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voice_id: '', voice_name: '' })
+                });
+                if (state.user) {
+                    if (!state.user.settings) state.user.settings = {};
+                    state.user.settings.voice_id = '';
+                    state.user.settings.voice_name = '';
+                    localStorage.setItem('soullink_user', JSON.stringify(state.user));
+                }
+            } catch(e) {
+                console.error('Failed to clear voice:', e);
             }
         }
 
