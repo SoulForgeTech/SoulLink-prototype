@@ -8477,6 +8477,7 @@
             const bufLen = _callAnalyser.fftSize;
             const dataArr = new Uint8Array(bufLen);
             let noSpeechTimer = 0;
+            let interruptCount = 0; // debounce: consecutive frames above threshold
 
             _callVadInterval = setInterval(() => {
                 if (!_callActive) return;
@@ -8492,8 +8493,17 @@
                 const rms = Math.sqrt(sum / bufLen);
 
                 // --- Interrupt: user speaks while AI is speaking → stop AI audio ---
-                // Threshold higher (0.06) than listening (0.015) to avoid speaker echo triggering interrupt
-                if (_callState === 'speaking' && rms > 0.06) {
+                // Debounce: require 4 consecutive frames (~200ms) above threshold
+                if (_callState === 'speaking') {
+                    if (rms > 0.08) {
+                        interruptCount++;
+                    } else {
+                        interruptCount = 0;
+                    }
+                    if (interruptCount < 4) return;
+                    interruptCount = 0;
+                }
+                if (_callState === 'speaking' && rms > 0.08) {
                     console.log('[VoiceCall] User interrupted, stopping AI audio');
                     // Stop persistent audio element
                     if (_callAudioEl) {
