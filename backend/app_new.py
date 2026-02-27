@@ -1412,10 +1412,13 @@ def chat_stream():
                                     thinking_content += after_tag
                                 break
                         continue
-                    # If buffer is long enough without thinking tag, flush as text
-                    if len(initial_buffer) > 100:
+                    # If first char is not '<', no thinking tag — start streaming immediately
+                    # If buffer is long enough (>15 chars) without tag, flush and stream
+                    if (len(initial_buffer) > 1 and not initial_buffer.lstrip().startswith('<')) or len(initial_buffer) > 15:
                         initial_phase = False
-                        yield _sse_event("text", {"token": initial_buffer})
+                        # Flush buffer token by token for smooth typewriter effect
+                        for ch in initial_buffer:
+                            yield _sse_event("text", {"token": ch})
                     continue
 
                 # --- Thinking mode ---
