@@ -2126,17 +2126,26 @@ def import_conversations():
         # 支持 ZIP 和直接 JSON
         if file.filename.endswith(".zip"):
             with zipfile.ZipFile(io.BytesIO(file_content)) as z:
-                # 查找 conversations.json
-                json_files = [n for n in z.namelist() if n.endswith("conversations.json")]
+                # 查找 conversations.json 或 conversations-000.json, conversations-001.json 等
+                # ChatGPT 新版导出会把对话拆分成多个文件
+                import re as _re
+                json_files = [n for n in z.namelist() if _re.search(r'conversations(-\d+)?\.json$', n)]
                 if not json_files:
                     return jsonify({"error": "No conversations.json found in ZIP"}), 400
-                raw_json = z.read(json_files[0])
+                # 合并所有拆分文件
+                data = []
+                for jf in sorted(json_files):
+                    part = json.loads(z.read(jf))
+                    if isinstance(part, list):
+                        data.extend(part)
+                    elif isinstance(part, dict):
+                        data.append(part)
+                logger.info(f"[IMPORT] ZIP contains {len(json_files)} conversation files, {len(data)} total conversations")
         else:
             raw_json = file_content
-
-        data = json.loads(raw_json)
-        if not isinstance(data, list):
-            return jsonify({"error": "Invalid format: expected a JSON array of conversations"}), 400
+            data = json.loads(raw_json)
+            if not isinstance(data, list):
+                return jsonify({"error": "Invalid format: expected a JSON array of conversations"}), 400
 
         # 解析 ChatGPT conversations
         imported = []

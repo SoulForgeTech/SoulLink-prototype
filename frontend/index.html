@@ -5438,7 +5438,7 @@
                 <!-- 导入聊天记录 -->
                 <div class="form-group" id="import-chat-group">
                     <label data-i18n="settings.importChat">📥 Import Chat History</label>
-                    <div class="form-hint" style="margin-bottom: 8px;">
+                    <div class="form-hint" style="margin-bottom: 6px;">
                         <span data-i18n="settings.importChatHint">Import conversations from ChatGPT.</span>
                         <a href="https://chatgpt.com/#settings/DataControls" target="_blank" rel="noopener" style="color: #10a37f; text-decoration: underline; white-space: nowrap;" data-i18n="settings.importChatLink">Go to ChatGPT Export →</a>
                     </div>
@@ -5448,8 +5448,12 @@
                             📁 <span data-i18n="settings.importChatBtn">Select File</span>
                         </button>
                         <span id="import-chat-filename" style="font-size: 0.8rem; opacity: 0.7;"></span>
+                        <button class="custom-btn primary" id="btn-import-chat" style="display:none; padding: 6px 14px; font-size: 0.85rem;" onclick="executeImportChat()">
+                            📤 <span data-i18n="settings.importChatSubmit">Import</span>
+                        </button>
                     </div>
-                    <!-- 对话选择列表 -->
+                    <div id="import-chat-status" style="display:none; margin-top: 6px; font-size: 0.85rem;"></div>
+                    <!-- 对话选择列表 (JSON模式显示) -->
                     <div id="import-chat-picker" style="display:none; margin-top: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <span id="import-chat-summary" style="font-size: 0.85rem;"></span>
@@ -5460,10 +5464,6 @@
                         </div>
                         <div id="import-chat-list" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 4px;"></div>
                     </div>
-                    <button class="custom-btn primary" id="btn-import-chat" style="display:none; margin-top: 8px; padding: 6px 14px; font-size: 0.85rem;" onclick="executeImportChat()">
-                        📤 <span data-i18n="settings.importChatSubmit">Import</span>
-                    </button>
-                    <div id="import-chat-status" style="display:none; margin-top: 6px; font-size: 0.85rem;"></div>
                 </div>
 
                 </div>
@@ -10436,13 +10436,9 @@
                 try {
                     let rawJson;
                     if (file.name.endsWith('.zip')) {
-                        // 解压 ZIP 找 conversations.json
-                        const zip = await (new Response(new Blob([e.target.result]))).arrayBuffer();
-                        // 简单方法：直接上传 ZIP 让后端解析，前端只显示文件名
+                        // ZIP: 直接上传让后端解析，前端只显示文件信息
                         pendingImportData = { isZip: true, file };
-                        document.getElementById('import-chat-summary').innerHTML = `📦 ZIP: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
-                        document.getElementById('import-chat-picker').style.display = 'block';
-                        document.getElementById('import-chat-list').innerHTML = '<div style="padding:8px;font-size:0.8rem;opacity:0.7;">' + (t('settings.importZipHint') || 'ZIP files import all conversations. For selective import, use the .json file inside.') + '</div>';
+                        document.getElementById('import-chat-filename').textContent = `📦 ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
                         document.getElementById('btn-import-chat').style.display = 'inline-block';
                         return;
                     }
