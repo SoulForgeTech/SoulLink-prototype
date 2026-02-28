@@ -5447,7 +5447,7 @@
                         <button class="custom-btn" onclick="document.getElementById('import-chat-file').click()" style="padding: 6px 14px; font-size: 0.85rem;">
                             📁 <span data-i18n="settings.importChatBtn">Select File</span>
                         </button>
-                        <span id="import-chat-filename" style="font-size: 0.8rem; opacity: 0.7;"></span>
+                        <span id="import-chat-filename" style="font-size: 0.8rem; opacity: 0.7; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
                         <button class="custom-btn primary" id="btn-import-chat" style="display:none; padding: 6px 14px; font-size: 0.85rem;" onclick="executeImportChat()">
                             📤 <span data-i18n="settings.importChatSubmit">Import</span>
                         </button>
@@ -7215,7 +7215,7 @@
         // ==================== 对话管理 ====================
         async function loadConversations(autoSelect = false) {
             try {
-                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations`, {
+                const response = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations?limit=500`, {
                     headers: {}
                 });
 
@@ -10438,7 +10438,8 @@
                     if (file.name.endsWith('.zip')) {
                         // ZIP: 直接上传让后端解析，前端只显示文件信息
                         pendingImportData = { isZip: true, file };
-                        document.getElementById('import-chat-filename').textContent = `📦 ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+                        const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                        document.getElementById('import-chat-filename').textContent = `📦 ZIP (${sizeMB} MB)`;
                         document.getElementById('btn-import-chat').style.display = 'inline-block';
                         return;
                     }

@@ -1978,7 +1978,7 @@ def voice_chat_stream():
 def list_conversations():
     """获取用户的对话列表"""
     user_id = get_current_user_id()
-    limit = request.args.get("limit", 20, type=int)
+    limit = request.args.get("limit", 500, type=int)
     skip = request.args.get("skip", 0, type=int)
 
     conversations = db.get_user_conversations(user_id, limit, skip)
