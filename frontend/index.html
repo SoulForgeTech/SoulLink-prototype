@@ -8145,8 +8145,13 @@
 
             state.isLoading = true;
 
+            // ⚡ 微信风格：立刻显示语音气泡（用本地 blob URL），STT 完成后补文字
+            const localBlobUrl = URL.createObjectURL(blob);
+            const voiceMsgId = 'voice-msg-' + Date.now();
+            addVoiceMessageToUI(true, localBlobUrl, duration, '', voiceMsgId);
+
             try {
-                // 1) 上传语音 → 获得 text + audio_url
+                // 1) 上传语音 → 获得 text + audio_url (后台进行，气泡已经显示了)
                 const formData = new FormData();
                 const ext = mimeType.includes('mp4') ? '.m4a' : '.webm';
                 formData.append('audio', blob, `voice${ext}`);
@@ -8163,8 +8168,28 @@
                 const userAudioUrl = uploadData.audio_url;
                 const audioDuration = uploadData.duration || duration;
 
-                // 2) 先添加用户语音气泡，再显示 AI typing
-                addVoiceMessageToUI(true, userAudioUrl, audioDuration, sttText);
+                // 2) 更新气泡：补充 transcript 文字 + 替换为 CDN URL
+                const voiceMsgEl = document.getElementById(voiceMsgId);
+                if (voiceMsgEl) {
+                    // 添加识别文字
+                    if (sttText) {
+                        const existingTranscript = voiceMsgEl.querySelector('.voice-transcript');
+                        if (!existingTranscript) {
+                            const transcriptDiv = document.createElement('div');
+                            transcriptDiv.className = 'voice-transcript';
+                            transcriptDiv.textContent = sttText;
+                            voiceMsgEl.querySelector('.message-content').appendChild(transcriptDiv);
+                        }
+                    }
+                    // 替换播放 URL 为 CDN URL
+                    if (userAudioUrl) {
+                        const vmEl = voiceMsgEl.querySelector('.voice-message');
+                        if (vmEl) {
+                            const fullUrl = userAudioUrl.startsWith('http') ? userAudioUrl : CONFIG.API_BASE_URL + userAudioUrl;
+                            vmEl.setAttribute('onclick', `playVoiceMessage(this, '${fullUrl}')`);
+                        }
+                    }
+                }
                 showTyping();
 
                 // 3) 发送到 /api/chat (type: voice)
@@ -8888,13 +8913,14 @@
         }
 
         // 语音消息气泡
-        function addVoiceMessageToUI(isUser, audioUrl, duration, transcriptText) {
+        function addVoiceMessageToUI(isUser, audioUrl, duration, transcriptText, msgId) {
             const container = document.getElementById('messages-container');
             const typingIndicator = document.getElementById('typing-indicator');
             document.getElementById('welcome-message').style.display = 'none';
 
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            if (msgId) messageDiv.id = msgId;
             const avatarSrc = isUser
                 ? (state.user?.avatar_url || 'images/avatar.png')
                 : (state.user?.settings?.companion_avatar || 'images/avatar.png');
