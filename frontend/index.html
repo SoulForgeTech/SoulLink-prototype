@@ -9638,6 +9638,44 @@
         // ==================== 用户设置模态框 ====================
         let pendingAvatarData = null; // 临时存储待保存的头像
 
+        // ==================== Avatar 压缩 & Cloudinary 上传 ====================
+        function compressImage(file, maxSize = 400) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+                    else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.toBlob(blob => {
+                        if (!blob) return reject(new Error('Compress failed'));
+                        resolve({ blob, previewUrl: URL.createObjectURL(blob) });
+                    }, 'image/jpeg', 0.85);
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        async function uploadAvatarToCloud(blob) {
+            const form = new FormData();
+            form.append('file', blob, 'avatar.jpg');
+            const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/upload-avatar`, {
+                method: 'POST',
+                body: form,
+            });
+            if (!resp.ok) {
+                const d = await resp.json().catch(() => ({}));
+                throw new Error(d.error || 'Upload failed');
+            }
+            const d = await resp.json();
+            return d.url;
+        }
+
         // ==================== Companion 头像修改 ====================
         let pendingCompanionAvatar = null;
 
@@ -9660,21 +9698,21 @@
             document.getElementById('companion-avatar-preview').src = 'images/avatar.png';
         }
 
-        function handleCompanionAvatarUpload(event) {
+        async function handleCompanionAvatarUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
             if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
-            if (file.size > 2 * 1024 * 1024) { alert('Image must be less than 2MB'); return; }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const dataUrl = e.target.result;
-                document.getElementById('companion-avatar-preview').src = dataUrl;
-                document.querySelectorAll('.companion-avatar-preset-item').forEach(el => el.classList.remove('selected'));
-                pendingCompanionAvatar = dataUrl;
-            };
-            reader.readAsDataURL(file);
+            if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
             event.target.value = '';
+            try {
+                const { blob, previewUrl } = await compressImage(file, 400);
+                document.getElementById('companion-avatar-preview').src = previewUrl;
+                document.querySelectorAll('.companion-avatar-preset-item').forEach(el => el.classList.remove('selected'));
+                pendingCompanionAvatar = { blob, previewUrl };
+            } catch (e) {
+                console.error('Compress error:', e);
+                alert('Failed to process image');
+            }
         }
 
         async function saveCompanionAvatar() {
@@ -9683,16 +9721,22 @@
                 return;
             }
             try {
+                let avatarUrl;
+                if (typeof pendingCompanionAvatar === 'string') {
+                    // Reset to default path
+                    avatarUrl = pendingCompanionAvatar;
+                } else {
+                    // Upload compressed blob to Cloudinary
+                    avatarUrl = await uploadAvatarToCloud(pendingCompanionAvatar.blob);
+                }
                 const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ companion_avatar: pendingCompanionAvatar })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companion_avatar: avatarUrl })
                 });
                 if (response.ok) {
                     if (!state.user.settings) state.user.settings = {};
-                    state.user.settings.companion_avatar = pendingCompanionAvatar;
+                    state.user.settings.companion_avatar = avatarUrl;
                     localStorage.setItem('soullink_user', JSON.stringify(state.user));
                     updateCompanionAvatars();
                     closeCompanionAvatarModal();
@@ -9941,18 +9985,20 @@
             _pendingSettingsCompanionAvatar = null;
         }
 
-        function handleSettingsCompanionAvatar(input) {
+        async function handleSettingsCompanionAvatar(input) {
             const file = input.files[0];
             if (!file) return;
             if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
-            if (file.size > 2 * 1024 * 1024) { alert('Image must be less than 2MB'); return; }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                _pendingSettingsCompanionAvatar = e.target.result;
-                document.getElementById('settings-companion-avatar-preview').src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-            input.value = '';  // allow re-select same file
+            if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
+            input.value = '';
+            try {
+                const { blob, previewUrl } = await compressImage(file, 400);
+                _pendingSettingsCompanionAvatar = { blob, previewUrl };
+                document.getElementById('settings-companion-avatar-preview').src = previewUrl;
+            } catch (e) {
+                console.error('Compress error:', e);
+                alert('Failed to process image');
+            }
         }
 
         function resetSettingsCompanionAvatar() {
@@ -10729,35 +10775,21 @@
             return `rgb(${r}, ${g}, ${b})`;
         }
 
-        function handleAvatarUpload(event) {
+        async function handleAvatarUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+            if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
 
-            // 验证文件类型
-            if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
-                return;
-            }
-
-            // 验证文件大小（最大 2MB）
-            if (file.size > 2 * 1024 * 1024) {
-                alert('Image size must be less than 2MB');
-                return;
-            }
-
-            // 读取并预览
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const dataUrl = e.target.result;
-                document.getElementById('settings-avatar-img').src = dataUrl;
-
-                // 清除预设选中状态
+            try {
+                const { blob, previewUrl } = await compressImage(file, 400);
+                document.getElementById('settings-avatar-img').src = previewUrl;
                 document.querySelectorAll('.avatar-preset').forEach(el => el.classList.remove('selected'));
-
-                // 存储上传的图片数据
-                pendingAvatarData = { type: 'upload', dataUrl: dataUrl };
-            };
-            reader.readAsDataURL(file);
+                pendingAvatarData = { type: 'upload', blob, previewUrl };
+            } catch (e) {
+                console.error('Compress error:', e);
+                alert('Failed to process image');
+            }
         }
 
         async function saveSettings() {
@@ -10787,7 +10819,13 @@
                 if (pendingAvatarData.type === 'preset') {
                     updates.avatar_url = pendingAvatarData.url;
                 } else if (pendingAvatarData.type === 'upload') {
-                    updates.avatar_url = pendingAvatarData.dataUrl;
+                    if (pendingAvatarData.blob) {
+                        // Upload compressed image to Cloudinary
+                        updates.avatar_url = await uploadAvatarToCloud(pendingAvatarData.blob);
+                    } else if (pendingAvatarData.dataUrl) {
+                        // Color avatar — small canvas data URL, OK to store directly
+                        updates.avatar_url = pendingAvatarData.dataUrl;
+                    }
                 }
                 hasChanges = true;
             }
@@ -10853,7 +10891,13 @@
                 // 2. 保存模型变化 + 伴侣风格变化
                 const settingsPayload = {};
                 if (companionNameChanged) settingsPayload.companion_name = newCompanionName;
-                if (companionAvatarChanged) settingsPayload.companion_avatar = _pendingSettingsCompanionAvatar;
+                if (companionAvatarChanged) {
+                    if (typeof _pendingSettingsCompanionAvatar === 'string') {
+                        settingsPayload.companion_avatar = _pendingSettingsCompanionAvatar;
+                    } else if (_pendingSettingsCompanionAvatar?.blob) {
+                        settingsPayload.companion_avatar = await uploadAvatarToCloud(_pendingSettingsCompanionAvatar.blob);
+                    }
+                }
                 if (modelChanged) settingsPayload.model = selectedModel;
                 if (styleChanged) {
                     if (genderChanged) {
@@ -10883,7 +10927,7 @@
                             updateUserInfo();
                         }
                         if (companionAvatarChanged) {
-                            state.user.settings.companion_avatar = _pendingSettingsCompanionAvatar;
+                            state.user.settings.companion_avatar = settingsPayload.companion_avatar;
                             _pendingSettingsCompanionAvatar = null;
                             updateCompanionAvatars();
                         }
