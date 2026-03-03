@@ -4852,6 +4852,192 @@
             .ambient-tile { padding: 5px 8px; }
             .ambient-tile-name { font-size: 0.65rem; }
         }
+
+        /* ==================== Mini Games ==================== */
+        #games-toggle-btn.active {
+            background: rgba(124, 58, 237, 0.25);
+            color: #7c3aed;
+        }
+
+        /* Game Selection Dropdown */
+        .games-panel-dropdown {
+            position: fixed;
+            right: 48px;
+            top: 80px;
+            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+            pointer-events: none;
+        }
+        .games-panel-dropdown.open {
+            opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
+        }
+        .games-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px 10px;
+            font-size: 14px; font-weight: 600; color: #333;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .games-panel-header button {
+            background: none; border: none; cursor: pointer; padding: 4px;
+            color: #666; border-radius: 50%; display: flex; align-items: center;
+            transition: background 0.15s;
+        }
+        .games-panel-header button:hover { background: rgba(0, 0, 0, 0.06); }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px; padding: 14px;
+        }
+        .game-tile {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 18px 8px; border-radius: 14px;
+            background: rgba(124, 58, 237, 0.06);
+            border: 1px solid rgba(124, 58, 237, 0.12);
+            cursor: pointer; transition: all 0.2s; user-select: none;
+            text-align: center;
+        }
+        .game-tile:hover {
+            background: rgba(124, 58, 237, 0.14);
+            border-color: rgba(124, 58, 237, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+        }
+        .game-tile-emoji { font-size: 1.8rem; line-height: 1; }
+        .game-tile-name { font-size: 0.75rem; font-weight: 500; color: #4a5568; }
+
+        /* Game Fullscreen View */
+        .game-fullscreen {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 3000; background: #f7f8fc;
+            display: none; flex-direction: column;
+        }
+        .game-fullscreen.active { display: flex; }
+        .game-fullscreen-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 20px;
+            background: white;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        .game-fullscreen-title {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 1.05rem; font-weight: 600; color: #2d3748;
+        }
+        .game-fullscreen-title .game-emoji { font-size: 1.3rem; }
+        .game-exit-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 10px; border: none;
+            background: #f1f5f9; color: #64748b;
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .game-exit-btn:hover { background: #e2e8f0; color: #334155; }
+        .game-fullscreen-body {
+            flex: 1; min-height: 0; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; position: relative;
+        }
+
+        /* Game 1: Breathing Circle */
+        .breathing-container { text-align: center; width: 100%; }
+        .breathing-circle {
+            width: 180px; height: 180px; border-radius: 50%; margin: 30px auto;
+            background: linear-gradient(135deg, #a78bfa, #7c3aed);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.1rem; font-weight: 500;
+            box-shadow: 0 0 60px rgba(124, 58, 237, 0.3);
+            transition: transform 0.3s ease;
+        }
+        .breathing-circle.inhale { animation: breatheIn 4s ease-in-out forwards; }
+        .breathing-circle.hold { transform: scale(1.5); }
+        .breathing-circle.exhale { animation: breatheOut 6s ease-in-out forwards; }
+        @keyframes breatheIn { from { transform: scale(1); } to { transform: scale(1.5); } }
+        @keyframes breatheOut { from { transform: scale(1.5); } to { transform: scale(1); } }
+        .breathing-counter { color: #718096; font-size: 0.9rem; margin-top: 16px; }
+        .breathing-btn {
+            margin-top: 20px; padding: 12px 36px; border-radius: 24px; border: none;
+            background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white;
+            font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s;
+        }
+        .breathing-btn:hover { opacity: 0.85; }
+
+        /* Game 2: Bubble Pop */
+        .bubble-grid {
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+            padding: 10px; width: 100%; max-width: 380px;
+        }
+        .bubble {
+            aspect-ratio: 1; border-radius: 50%; cursor: pointer;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            box-shadow: inset 0 -4px 8px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08);
+            min-width: 0;
+        }
+        .bubble:hover { transform: scale(1.1); }
+        .bubble.popped { transform: scale(0); opacity: 0; pointer-events: none; }
+
+        /* Game 3: Zen Sand Drawing */
+        .zen-canvas-container { width: 100%; height: 100%; position: relative; }
+        .zen-canvas {
+            width: 100%; height: 100%; border-radius: 16px; cursor: crosshair;
+            background: #f5e6d3; touch-action: none;
+        }
+        .zen-clear-btn {
+            position: absolute; bottom: 16px; right: 16px;
+            padding: 8px 20px; border-radius: 20px; border: none;
+            background: rgba(124, 58, 237, 0.85); color: white;
+            font-size: 0.85rem; cursor: pointer; transition: opacity 0.2s;
+        }
+        .zen-clear-btn:hover { opacity: 0.85; }
+
+        /* Game 4: Color Mixing */
+        .color-mix-container {
+            width: 100%; height: 100%; position: relative; overflow: hidden;
+            border-radius: 16px; background: #1a1a2e; cursor: pointer;
+        }
+        .color-blob {
+            position: absolute; border-radius: 50%;
+            mix-blend-mode: screen; pointer-events: none;
+            animation: blobExpand 2s ease-out forwards, blobFade 6s ease-in forwards;
+        }
+        @keyframes blobExpand { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes blobFade { 0%, 50% { opacity: 0.8; } 100% { opacity: 0; } }
+
+        /* Game 5: Floating Shapes */
+        .shapes-container {
+            width: 100%; height: 100%; position: relative; overflow: hidden;
+            border-radius: 16px; background: linear-gradient(180deg, #1a1a2e, #2d1b69);
+        }
+        .floating-shape {
+            position: absolute; cursor: pointer; opacity: 0.7;
+            transition: filter 0.15s;
+        }
+        .floating-shape:hover { opacity: 1; filter: brightness(1.3); }
+        .floating-shape.caught {
+            animation: shapeCaught 0.5s ease-out forwards; pointer-events: none;
+        }
+        @keyframes shapeCaught {
+            0% { filter: brightness(2); transform: scale(1.4); }
+            100% { opacity: 0; transform: scale(0); }
+        }
+
+        @media (max-width: 768px) {
+            .games-panel-dropdown { right: 8px; width: calc(100vw - 16px); top: 70px; }
+            .game-fullscreen-body { padding: 12px; }
+        }
+        @media (max-width: 400px) {
+            .games-grid { gap: 8px; padding: 10px; }
+            .game-tile { padding: 14px 6px; }
+            .bubble-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        }
     </style>
 </head>
 <body>
@@ -5816,6 +6002,15 @@
                         <circle cx="18" cy="16" r="3"></circle>
                     </svg>
                 </button>
+                <button class="bg-picker-btn" onclick="toggleGamesPanel()" id="games-toggle-btn" title="Mini games">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                        <line x1="6" y1="12" x2="10" y2="12"></line>
+                        <line x1="8" y1="10" x2="8" y2="14"></line>
+                        <circle cx="15" cy="11" r="1"></circle>
+                        <circle cx="18" cy="13" r="1"></circle>
+                    </svg>
+                </button>
                 <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -5857,6 +6052,33 @@
                 </div>
                 <div class="bg-thumb-grid" id="bg-thumb-grid">
                     <!-- JS 动态生成 -->
+                </div>
+            </div>
+
+            <!-- Mini Games Panel -->
+            <div class="games-panel-dropdown" id="games-panel-dropdown">
+                <div class="games-panel-header">
+                    <span data-i18n="games.title">Stress Relief</span>
+                    <button onclick="toggleGamesPanel()">✕</button>
+                </div>
+                <div class="games-grid" id="games-grid">
+                    <!-- JS lazy-rendered -->
+                </div>
+            </div>
+
+            <!-- Game Fullscreen View -->
+            <div class="game-fullscreen" id="game-fullscreen">
+                <div class="game-fullscreen-header">
+                    <div class="game-fullscreen-title">
+                        <span class="game-emoji" id="game-fullscreen-emoji"></span>
+                        <span id="game-fullscreen-name"></span>
+                    </div>
+                    <button class="game-exit-btn" onclick="closeGame()">
+                        <span data-i18n="games.exit">Exit</span> ✕
+                    </button>
+                </div>
+                <div class="game-fullscreen-body" id="game-fullscreen-body">
+                    <!-- Game content rendered dynamically -->
                 </div>
             </div>
 
@@ -6110,6 +6332,20 @@
                 'ambient.sound.train': 'Train',
                 'ambient.sound.white_noise': 'White Noise',
                 'ambient.sound.brown_noise': 'Brown Noise',
+                'games.title': 'Stress Relief',
+                'games.breathing': 'Breathing',
+                'games.breathing.inhale': 'Inhale...',
+                'games.breathing.hold': 'Hold...',
+                'games.breathing.exhale': 'Exhale...',
+                'games.breathing.start': 'Start',
+                'games.breathing.stop': 'Stop',
+                'games.breathing.done': 'Well done!',
+                'games.bubbles': 'Bubble Pop',
+                'games.zen': 'Zen Sand',
+                'games.zen.clear': 'Clear',
+                'games.colormix': 'Color Mix',
+                'games.shapes': 'Shape Catcher',
+                'games.exit': 'Exit',
                 'changelog.v212.1': 'Improved voice recognition speed',
                 'changelog.v212.2': 'Instant voice bubble — WeChat-style, appears immediately after recording',
                 'changelog.v212.3': 'Voice call no longer causes short text replies in subsequent chats',
@@ -6399,6 +6635,20 @@
                 'ambient.sound.train': '火车',
                 'ambient.sound.white_noise': '白噪音',
                 'ambient.sound.brown_noise': '棕噪音',
+                'games.title': '解压小游戏',
+                'games.breathing': '呼吸引导',
+                'games.breathing.inhale': '吸气...',
+                'games.breathing.hold': '屏住...',
+                'games.breathing.exhale': '呼气...',
+                'games.breathing.start': '开始',
+                'games.breathing.stop': '停止',
+                'games.breathing.done': '做得好！',
+                'games.bubbles': '戳泡泡',
+                'games.zen': '禅意沙画',
+                'games.zen.clear': '清除',
+                'games.colormix': '色彩混合',
+                'games.shapes': '捕捉图形',
+                'games.exit': '退出',
                 'changelog.title': '版本日志',
                 'changelog.v212.1': '提升语音识别速度',
                 'changelog.v212.2': '语音消息即时气泡 — 微信风格，录音后立刻显示',
@@ -11830,9 +12080,13 @@
                 panel.classList.remove('open');
                 if (btn) btn.classList.remove('active');
             } else {
-                // Close bg-picker if open (mutual exclusion)
+                // Close other panels (mutual exclusion)
                 const bgPanel = document.getElementById('bg-picker-panel');
                 if (bgPanel) bgPanel.classList.remove('open');
+                const gamesPanel = document.getElementById('games-panel-dropdown');
+                const gamesBtn = document.getElementById('games-toggle-btn');
+                if (gamesPanel) gamesPanel.classList.remove('open');
+                if (gamesBtn) gamesBtn.classList.remove('active');
                 if (!_ambientRendered) {
                     _renderAmbientPanel();
                     _ambientRendered = true;
@@ -11936,11 +12190,15 @@
             if (isOpen) {
                 panel.classList.remove('open');
             } else {
-                // Close ambient panel if open (mutual exclusion)
+                // Close other panels (mutual exclusion)
                 const ambientPanel = document.getElementById('ambient-panel-dropdown');
                 const ambientBtn = document.getElementById('ambient-toggle-btn');
                 if (ambientPanel) ambientPanel.classList.remove('open');
                 if (ambientBtn) ambientBtn.classList.remove('active');
+                const gamesPanel = document.getElementById('games-panel-dropdown');
+                const gamesBtn = document.getElementById('games-toggle-btn');
+                if (gamesPanel) gamesPanel.classList.remove('open');
+                if (gamesBtn) gamesBtn.classList.remove('active');
                 if (!bgPickerRendered) {
                     renderBgGrid();
                     bgPickerRendered = true;
@@ -12046,13 +12304,393 @@
             }
         }
 
-        // Close bg picker when clicking outside
+        // ==================== Mini Games ====================
+        let _gamesRendered = false;
+        let _activeGameCleanup = null;
+
+        const MINI_GAMES = [
+            { id: 'breathing', emoji: '🫧', nameKey: 'games.breathing' },
+            { id: 'bubbles',   emoji: '🔮', nameKey: 'games.bubbles' },
+            { id: 'zen',       emoji: '🏖️', nameKey: 'games.zen' },
+            { id: 'colormix',  emoji: '🎨', nameKey: 'games.colormix' },
+            { id: 'shapes',    emoji: '✨', nameKey: 'games.shapes' },
+        ];
+
+        function toggleGamesPanel() {
+            const panel = document.getElementById('games-panel-dropdown');
+            const btn = document.getElementById('games-toggle-btn');
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) {
+                panel.classList.remove('open');
+                if (btn) btn.classList.remove('active');
+            } else {
+                // Mutual exclusion: close ambient and bg-picker
+                const ambientPanel = document.getElementById('ambient-panel-dropdown');
+                const ambientBtn = document.getElementById('ambient-toggle-btn');
+                if (ambientPanel) ambientPanel.classList.remove('open');
+                if (ambientBtn) ambientBtn.classList.remove('active');
+                const bgPanel = document.getElementById('bg-picker-panel');
+                if (bgPanel) bgPanel.classList.remove('open');
+
+                if (!_gamesRendered) {
+                    _renderGamesGrid();
+                    _gamesRendered = true;
+                }
+                panel.classList.add('open');
+                if (btn) btn.classList.add('active');
+            }
+        }
+
+        function _renderGamesGrid() {
+            const grid = document.getElementById('games-grid');
+            grid.innerHTML = MINI_GAMES.map(g => `
+                <div class="game-tile" onclick="openGame('${g.id}')">
+                    <span class="game-tile-emoji">${g.emoji}</span>
+                    <span class="game-tile-name" data-i18n="${g.nameKey}">${t(g.nameKey)}</span>
+                </div>
+            `).join('');
+        }
+
+        function openGame(gameId) {
+            // Close games panel
+            const gamesPanel = document.getElementById('games-panel-dropdown');
+            const gamesBtn = document.getElementById('games-toggle-btn');
+            if (gamesPanel) gamesPanel.classList.remove('open');
+            if (gamesBtn) gamesBtn.classList.remove('active');
+
+            // Set title
+            const game = MINI_GAMES.find(g => g.id === gameId);
+            document.getElementById('game-fullscreen-emoji').textContent = game ? game.emoji : '';
+            document.getElementById('game-fullscreen-name').textContent = game ? t(game.nameKey) : gameId;
+
+            // Clear previous game
+            if (_activeGameCleanup) { _activeGameCleanup(); _activeGameCleanup = null; }
+            const body = document.getElementById('game-fullscreen-body');
+            body.innerHTML = '';
+
+            // Launch game
+            const launchers = {
+                breathing: _launchBreathing,
+                bubbles: _launchBubbles,
+                zen: _launchZen,
+                colormix: _launchColorMix,
+                shapes: _launchShapes,
+            };
+            if (launchers[gameId]) launchers[gameId](body);
+
+            // Show fullscreen
+            document.getElementById('game-fullscreen').classList.add('active');
+        }
+
+        function closeGame() {
+            if (_activeGameCleanup) { _activeGameCleanup(); _activeGameCleanup = null; }
+            document.getElementById('game-fullscreen').classList.remove('active');
+            document.getElementById('game-fullscreen-body').innerHTML = '';
+        }
+
+        // ---- Game 1: Guided Breathing Circle ----
+        function _launchBreathing(container) {
+            const INHALE = 4000, HOLD = 4000, EXHALE = 6000;
+            const TOTAL_CYCLES = 10;
+            let cycle = 0, running = false, timerId = null;
+
+            container.innerHTML = `
+                <div class="breathing-container">
+                    <div class="breathing-circle" id="breath-circle">
+                        <span id="breath-text">${t('games.breathing.start')}</span>
+                    </div>
+                    <div class="breathing-counter" id="breath-counter"></div>
+                    <button class="breathing-btn" id="breath-btn">${t('games.breathing.start')}</button>
+                </div>`;
+
+            const circle = document.getElementById('breath-circle');
+            const text = document.getElementById('breath-text');
+            const counter = document.getElementById('breath-counter');
+            const btn = document.getElementById('breath-btn');
+
+            function runCycle() {
+                if (!running || cycle >= TOTAL_CYCLES) { stop(); return; }
+                cycle++;
+                counter.textContent = cycle + ' / ' + TOTAL_CYCLES;
+
+                // Inhale
+                circle.className = 'breathing-circle inhale';
+                text.textContent = t('games.breathing.inhale');
+                timerId = setTimeout(() => {
+                    if (!running) return;
+                    // Hold
+                    circle.className = 'breathing-circle hold';
+                    text.textContent = t('games.breathing.hold');
+                    timerId = setTimeout(() => {
+                        if (!running) return;
+                        // Exhale
+                        circle.className = 'breathing-circle exhale';
+                        text.textContent = t('games.breathing.exhale');
+                        timerId = setTimeout(runCycle, EXHALE);
+                    }, HOLD);
+                }, INHALE);
+            }
+
+            function stop() {
+                running = false;
+                clearTimeout(timerId);
+                circle.className = 'breathing-circle';
+                text.textContent = cycle >= TOTAL_CYCLES ? t('games.breathing.done') : t('games.breathing.start');
+                btn.textContent = t('games.breathing.start');
+                cycle = 0;
+                counter.textContent = '';
+            }
+
+            btn.onclick = () => {
+                if (running) { stop(); }
+                else { running = true; btn.textContent = t('games.breathing.stop'); runCycle(); }
+            };
+
+            _activeGameCleanup = () => { running = false; clearTimeout(timerId); };
+        }
+
+        // ---- Game 2: Bubble Pop ----
+        function _launchBubbles(container) {
+            const COLS = 6, ROWS = 5;
+            const PASTEL = ['#FFB3BA','#FFDFBA','#FFFFBA','#BAFFC9','#BAE1FF','#E8BAFF','#FFB3E6','#B3FFE6','#FFE0B3','#D4BAFF'];
+            let popped = 0;
+
+            function createGrid() {
+                popped = 0;
+                const total = COLS * ROWS;
+                let html = '<div class="bubble-grid">';
+                for (let i = 0; i < total; i++) {
+                    const c = PASTEL[Math.floor(Math.random() * PASTEL.length)];
+                    html += '<div class="bubble" style="background:' + c + '" data-idx="' + i + '"></div>';
+                }
+                html += '</div>';
+                container.innerHTML = html;
+
+                container.querySelector('.bubble-grid').addEventListener('click', (e) => {
+                    const bubble = e.target.closest('.bubble');
+                    if (!bubble || bubble.classList.contains('popped')) return;
+                    bubble.classList.add('popped');
+                    popped++;
+                    if (popped >= total) {
+                        setTimeout(createGrid, 600);
+                    }
+                });
+            }
+
+            createGrid();
+            _activeGameCleanup = null;
+        }
+
+        // ---- Game 3: Zen Sand Drawing ----
+        function _launchZen(container) {
+            container.innerHTML = '<div class="zen-canvas-container"><canvas class="zen-canvas" id="zen-canvas"></canvas><button class="zen-clear-btn" id="zen-clear">' + t('games.zen.clear') + '</button></div>';
+
+            const canvas = document.getElementById('zen-canvas');
+            const ctx = canvas.getContext('2d');
+            let drawing = false, fadeRAF = null;
+
+            function resize() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                // Fill sand background
+                ctx.fillStyle = '#f5e6d3';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            resize();
+            setTimeout(resize, 300);
+
+            const SAND = ['#8B7355','#A0845C','#6B5B45','#9C8565','#7A6B50'];
+            let ci = 0;
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            }
+
+            function startDraw(e) {
+                e.preventDefault();
+                drawing = true;
+                const p = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.strokeStyle = SAND[ci++ % SAND.length];
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.globalAlpha = 0.8;
+            }
+
+            function draw(e) {
+                if (!drawing) return;
+                e.preventDefault();
+                const p = getPos(e);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+
+            function endDraw() { drawing = false; ctx.globalAlpha = 1; }
+
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mouseleave', endDraw);
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', endDraw);
+
+            // Slow fade effect
+            function fade() {
+                ctx.fillStyle = 'rgba(245, 230, 211, 0.008)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                fadeRAF = requestAnimationFrame(fade);
+            }
+            fadeRAF = requestAnimationFrame(fade);
+
+            document.getElementById('zen-clear').onclick = () => {
+                ctx.fillStyle = '#f5e6d3';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            };
+
+            _activeGameCleanup = () => { cancelAnimationFrame(fadeRAF); };
+        }
+
+        // ---- Game 4: Color Mixing ----
+        function _launchColorMix(container) {
+            container.innerHTML = '<div class="color-mix-container" id="color-mix-area"></div>';
+            const area = document.getElementById('color-mix-area');
+            let blobCount = 0;
+
+            const COLORS = [
+                'rgba(167,139,250,0.7)','rgba(236,72,153,0.7)','rgba(59,130,246,0.7)',
+                'rgba(16,185,129,0.7)','rgba(245,158,11,0.7)','rgba(239,68,68,0.7)',
+                'rgba(139,92,246,0.7)','rgba(6,182,212,0.7)',
+            ];
+
+            function addBlob(x, y) {
+                const blob = document.createElement('div');
+                blob.className = 'color-blob';
+                const size = 80 + Math.random() * 140;
+                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                blob.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + (x - size/2) + 'px;top:' + (y - size/2) + 'px;background:radial-gradient(circle,' + color + ',transparent 70%)';
+                area.appendChild(blob);
+                blobCount++;
+                setTimeout(() => { blob.remove(); blobCount--; }, 6000);
+                if (blobCount > 30) {
+                    const first = area.querySelector('.color-blob');
+                    if (first) { first.remove(); blobCount--; }
+                }
+            }
+
+            area.addEventListener('click', (e) => {
+                const rect = area.getBoundingClientRect();
+                addBlob(e.clientX - rect.left, e.clientY - rect.top);
+            });
+            area.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const rect = area.getBoundingClientRect();
+                const t = e.touches[0];
+                addBlob(t.clientX - rect.left, t.clientY - rect.top);
+            }, { passive: false });
+
+            _activeGameCleanup = null;
+        }
+
+        // ---- Game 5: Floating Shapes Catcher ----
+        function _launchShapes(container) {
+            container.innerHTML = '<div class="shapes-container" id="shapes-area"></div>';
+            const area = document.getElementById('shapes-area');
+            let spawnInterval = null, moveRAF = null;
+            const shapes = [];
+
+            const TYPES = ['circle','square','triangle','diamond'];
+            const COLORS = ['#a78bfa','#f472b6','#60a5fa','#34d399','#fbbf24','#f87171','#38bdf8','#fb923c'];
+
+            function svgShape(type, color, s) {
+                if (type === 'circle') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="'+color+'"/></svg>';
+                if (type === 'square') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="6" fill="'+color+'"/></svg>';
+                if (type === 'triangle') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 40 40"><polygon points="20,2 38,36 2,36" fill="'+color+'"/></svg>';
+                return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 40 40"><polygon points="20,2 38,20 20,38 2,20" fill="'+color+'"/></svg>';
+            }
+
+            function spawnShape() {
+                const rect = area.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                const type = TYPES[Math.floor(Math.random() * TYPES.length)];
+                const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                const size = 28 + Math.random() * 28;
+
+                const el = document.createElement('div');
+                el.className = 'floating-shape';
+                el.innerHTML = svgShape(type, color, size);
+                const x = Math.random() * (rect.width - size);
+                el.style.left = x + 'px';
+                el.style.top = rect.height + 'px';
+
+                const data = {
+                    el, speed: 0.4 + Math.random() * 0.6,
+                    drift: (Math.random() - 0.5) * 0.4,
+                    x: x, y: rect.height,
+                };
+                shapes.push(data);
+                area.appendChild(el);
+
+                el.addEventListener('click', () => {
+                    el.classList.add('caught');
+                    setTimeout(() => {
+                        const idx = shapes.findIndex(s => s.el === el);
+                        if (idx !== -1) shapes.splice(idx, 1);
+                        el.remove();
+                    }, 500);
+                });
+            }
+
+            function animate() {
+                for (let i = shapes.length - 1; i >= 0; i--) {
+                    const s = shapes[i];
+                    if (s.el.classList.contains('caught')) continue;
+                    s.y -= s.speed;
+                    s.x += s.drift;
+                    s.el.style.top = s.y + 'px';
+                    s.el.style.left = s.x + 'px';
+                    if (s.y < -60) {
+                        s.el.remove();
+                        shapes.splice(i, 1);
+                    }
+                }
+                moveRAF = requestAnimationFrame(animate);
+            }
+
+            spawnInterval = setInterval(spawnShape, 1200);
+            moveRAF = requestAnimationFrame(animate);
+            // Initial burst
+            for (let i = 0; i < 6; i++) setTimeout(() => spawnShape(), i * 150);
+
+            _activeGameCleanup = () => {
+                clearInterval(spawnInterval);
+                cancelAnimationFrame(moveRAF);
+                shapes.length = 0;
+            };
+        }
+
+        // Close panels when clicking outside
         document.addEventListener('click', function(e) {
-            const panel = document.getElementById('bg-picker-panel');
-            const btn = document.querySelector('.bg-picker-btn');
-            if (panel && panel.classList.contains('open')) {
-                if (!panel.contains(e.target) && !btn.contains(e.target)) {
-                    panel.classList.remove('open');
+            // bg-picker
+            const bgPanel = document.getElementById('bg-picker-panel');
+            if (bgPanel && bgPanel.classList.contains('open')) {
+                const bgBtn = document.querySelector('[onclick="toggleBgPicker()"]');
+                if (!bgPanel.contains(e.target) && (!bgBtn || !bgBtn.contains(e.target))) {
+                    bgPanel.classList.remove('open');
+                }
+            }
+            // games panel
+            const gPanel = document.getElementById('games-panel-dropdown');
+            const gBtn = document.getElementById('games-toggle-btn');
+            if (gPanel && gPanel.classList.contains('open')) {
+                if (!gPanel.contains(e.target) && (!gBtn || !gBtn.contains(e.target))) {
+                    gPanel.classList.remove('open');
+                    if (gBtn) gBtn.classList.remove('active');
                 }
             }
         });
