@@ -4022,7 +4022,6 @@
         .call-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
         .bg-picker-btn {
-            margin-left: auto;
             background: rgba(255, 255, 255, 0.2);
             border: none;
             border-radius: 10px;
@@ -4034,6 +4033,10 @@
             justify-content: center;
             transition: all 0.2s;
             flex-shrink: 0;
+        }
+        /* Push first header icon button to the right */
+        #ambient-toggle-btn {
+            margin-left: auto;
         }
 
         .bg-picker-btn:hover {
@@ -4749,10 +4752,18 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
             z-index: 100;
             overflow: hidden;
-            transform: translateX(110%);
-            transition: transform 0.3s ease-out;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+            pointer-events: none;
         }
-        .ambient-panel-dropdown.open { transform: translateX(0); }
+        .ambient-panel-dropdown.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
 
         .ambient-panel-header {
             display: flex; align-items: center; justify-content: space-between;
