@@ -4727,6 +4727,122 @@
                 height: 24px;
             }
         }
+
+        /* ==================== Ambient Sound Mixer ==================== */
+        .ambient-bar {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+        }
+        .ambient-mini {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .ambient-mini:hover { background: rgba(255, 255, 255, 0.15); }
+        .ambient-mini-icon { font-size: 0.9rem; line-height: 1; }
+        .ambient-mini-label {
+            flex: 1;
+            font-size: 0.72rem;
+            color: #5a6070;
+            font-weight: 500;
+        }
+        .ambient-master-btn {
+            background: none; border: none; cursor: pointer; padding: 4px;
+            color: #7c3aed; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .ambient-master-btn:hover { background: rgba(124, 58, 237, 0.1); }
+        .ambient-master-btn svg { width: 16px; height: 16px; }
+        .ambient-bar.is-playing .ambient-icon-play { display: none; }
+        .ambient-bar.is-playing .ambient-icon-pause { display: block; }
+        .ambient-bar:not(.is-playing) .ambient-icon-play { display: block; }
+        .ambient-bar:not(.is-playing) .ambient-icon-pause { display: none; }
+        .ambient-bar:not(.has-active) .ambient-master-btn { display: none; }
+        .ambient-chevron {
+            width: 16px; height: 16px; color: #a0aec0;
+            transition: transform 0.3s ease; flex-shrink: 0;
+        }
+        .ambient-bar.expanded .ambient-chevron { transform: rotate(180deg); }
+
+        /* Expanded panel */
+        .ambient-panel {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.35s ease, padding 0.35s ease;
+            padding: 0 12px;
+        }
+        .ambient-bar.expanded .ambient-panel {
+            max-height: 400px; padding: 8px 12px 12px;
+        }
+        .ambient-categories { display: flex; flex-direction: column; gap: 10px; }
+        .ambient-cat-label {
+            font-size: 0.65rem; font-weight: 600; color: #7c3aed;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;
+        }
+        .ambient-cat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 6px;
+        }
+
+        /* Sound tiles */
+        .ambient-tile {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px; border-radius: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .ambient-tile:hover { background: rgba(255, 255, 255, 0.5); }
+        .ambient-tile.active {
+            background: rgba(124, 58, 237, 0.15);
+            border-color: rgba(124, 58, 237, 0.4);
+            box-shadow: 0 0 8px rgba(124, 58, 237, 0.15);
+        }
+        .ambient-tile-emoji { font-size: 1.1rem; line-height: 1; flex-shrink: 0; }
+        .ambient-tile-body { flex: 1; min-width: 0; }
+        .ambient-tile-name {
+            font-size: 0.7rem; font-weight: 500; color: #2d3748;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ambient-tile-vol {
+            width: 100%; height: 4px; margin-top: 3px;
+            display: none; -webkit-appearance: none; appearance: none;
+            background: transparent; cursor: pointer;
+        }
+        .ambient-tile.active .ambient-tile-vol { display: block; }
+        .ambient-tile-vol::-webkit-slider-runnable-track {
+            height: 4px; border-radius: 2px; background: rgba(124, 58, 237, 0.2);
+        }
+        .ambient-tile-vol::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            border-radius: 50%; background: #7c3aed; margin-top: -4px;
+        }
+        .ambient-tile-vol::-moz-range-track {
+            height: 4px; border-radius: 2px; background: rgba(124, 58, 237, 0.2);
+        }
+        .ambient-tile-vol::-moz-range-thumb {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #7c3aed; border: none;
+        }
+
+        @media (max-width: 768px) {
+            .ambient-mini { padding: 5px 12px; gap: 6px; }
+            .ambient-cat-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 5px; }
+            .ambient-bar.expanded .ambient-panel { max-height: 50vh; overflow-y: auto; padding: 6px 8px 10px; }
+        }
+        @media (max-width: 400px) {
+            .ambient-cat-grid { grid-template-columns: 1fr 1fr; }
+            .ambient-tile { padding: 5px 8px; }
+            .ambient-tile-name { font-size: 0.65rem; }
+        }
     </style>
 </head>
 <body>
@@ -5693,6 +5809,22 @@
                 </button>
             </header>
 
+            <!-- Ambient Sound Mixer -->
+            <div class="ambient-bar" id="ambient-bar">
+                <div class="ambient-mini" id="ambient-mini" onclick="toggleAmbientPanel()">
+                    <span class="ambient-mini-icon">🎵</span>
+                    <span class="ambient-mini-label" id="ambient-mini-label" data-i18n="ambient.no_sounds">No sounds</span>
+                    <button class="ambient-master-btn" id="ambient-master-btn" onclick="event.stopPropagation(); toggleAmbientMaster()" title="Play/Pause all">
+                        <svg class="ambient-icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
+                        <svg class="ambient-icon-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+                    <svg class="ambient-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="ambient-panel" id="ambient-panel">
+                    <div class="ambient-categories" id="ambient-categories"></div>
+                </div>
+            </div>
+
             <!-- 公告栏 -->
             <div class="announcement-bar" id="announcement-bar">
                 <span class="announcement-text" data-i18n="announcement.community">💬 Join our WeChat community for updates & feedback!</span>
@@ -5942,6 +6074,25 @@
                 'sidebar.changelog': 'Changelog',
                 'voice.send': 'Send',
                 'changelog.title': 'Changelog',
+                'ambient.no_sounds': 'Ambient sounds',
+                'ambient.n_sounds': '{n} sounds playing',
+                'ambient.cat.rain': 'Rain',
+                'ambient.cat.nature': 'Nature',
+                'ambient.cat.urban': 'Urban',
+                'ambient.cat.noise': 'Noise',
+                'ambient.sound.light_rain': 'Light Rain',
+                'ambient.sound.heavy_rain': 'Heavy Rain',
+                'ambient.sound.thunder': 'Thunder',
+                'ambient.sound.birds': 'Birds',
+                'ambient.sound.campfire': 'Campfire',
+                'ambient.sound.ocean': 'Ocean Waves',
+                'ambient.sound.wind': 'Wind',
+                'ambient.sound.river': 'River',
+                'ambient.sound.cafe': 'Cafe',
+                'ambient.sound.keyboard_typing': 'Keyboard',
+                'ambient.sound.train': 'Train',
+                'ambient.sound.white_noise': 'White Noise',
+                'ambient.sound.brown_noise': 'Brown Noise',
                 'changelog.v212.1': 'Improved voice recognition speed',
                 'changelog.v212.2': 'Instant voice bubble — WeChat-style, appears immediately after recording',
                 'changelog.v212.3': 'Voice call no longer causes short text replies in subsequent chats',
@@ -6212,6 +6363,25 @@
                 'sidebar.about': '关于与反馈',
                 'sidebar.changelog': '版本日志',
                 'voice.send': '发送',
+                'ambient.no_sounds': '环境音效',
+                'ambient.n_sounds': '{n} 个音效播放中',
+                'ambient.cat.rain': '雨声',
+                'ambient.cat.nature': '自然',
+                'ambient.cat.urban': '城市',
+                'ambient.cat.noise': '噪音',
+                'ambient.sound.light_rain': '小雨',
+                'ambient.sound.heavy_rain': '大雨',
+                'ambient.sound.thunder': '雷声',
+                'ambient.sound.birds': '鸟鸣',
+                'ambient.sound.campfire': '篝火',
+                'ambient.sound.ocean': '海浪',
+                'ambient.sound.wind': '风声',
+                'ambient.sound.river': '溪流',
+                'ambient.sound.cafe': '咖啡馆',
+                'ambient.sound.keyboard_typing': '键盘',
+                'ambient.sound.train': '火车',
+                'ambient.sound.white_noise': '白噪音',
+                'ambient.sound.brown_noise': '棕噪音',
                 'changelog.title': '版本日志',
                 'changelog.v212.1': '提升语音识别速度',
                 'changelog.v212.2': '语音消息即时气泡 — 微信风格，录音后立刻显示',
@@ -6493,6 +6663,8 @@
             updateUserInfo();
             // Load saved background
             if (typeof loadBackground === 'function') loadBackground();
+            // Ambient sound mixer
+            if (typeof initAmbientMixer === 'function') initAmbientMixer();
             // 社群弹窗（每用户只弹一次）
             showCommunityPopupOnce();
             // 版本更新弹窗
@@ -11543,6 +11715,185 @@
             { id: 'bg17', file: 'tobias-reich-CI8UPpze-V4-unsplash.jpg', thumb: 'images/Background/thumbnails/tobias-reich-CI8UPpze-V4-unsplash.jpg' },
         ];
 
+        // ==================== Ambient Sound Mixer ====================
+        const _AMBIENT_CDN = 'https://cdn.jsdelivr.net/gh/remvze/moodist@main/public/sounds';
+        const AMBIENT_SOUNDS = [
+            { id: 'light_rain',      category: 'rain',   emoji: '🌧️', src: `${_AMBIENT_CDN}/rain/light-rain.mp3` },
+            { id: 'heavy_rain',      category: 'rain',   emoji: '⛈️', src: `${_AMBIENT_CDN}/rain/heavy-rain.mp3` },
+            { id: 'thunder',         category: 'rain',   emoji: '⚡',  src: `${_AMBIENT_CDN}/rain/thunder.mp3` },
+            { id: 'birds',           category: 'nature', emoji: '🐦', src: `${_AMBIENT_CDN}/animals/birds.mp3` },
+            { id: 'campfire',        category: 'nature', emoji: '🔥', src: `${_AMBIENT_CDN}/nature/campfire.mp3` },
+            { id: 'ocean',           category: 'nature', emoji: '🌊', src: `${_AMBIENT_CDN}/nature/waves.mp3` },
+            { id: 'wind',            category: 'nature', emoji: '🍃', src: `${_AMBIENT_CDN}/nature/wind.mp3` },
+            { id: 'river',           category: 'nature', emoji: '🏞️', src: `${_AMBIENT_CDN}/nature/river.mp3` },
+            { id: 'cafe',            category: 'urban',  emoji: '☕',  src: `${_AMBIENT_CDN}/places/cafe.mp3` },
+            { id: 'keyboard_typing', category: 'urban',  emoji: '⌨️', src: `${_AMBIENT_CDN}/things/keyboard.mp3` },
+            { id: 'train',           category: 'urban',  emoji: '🚂', src: `${_AMBIENT_CDN}/transport/inside-a-train.mp3` },
+            { id: 'white_noise',     category: 'noise',  emoji: '📻', src: `${_AMBIENT_CDN}/noise/white-noise.wav` },
+            { id: 'brown_noise',     category: 'noise',  emoji: '🟤', src: `${_AMBIENT_CDN}/noise/brown-noise.wav` },
+        ];
+        const _ambientAudios = {};
+        let _ambientExpanded = false;
+        let _ambientPlaying = true;
+        let _ambientActiveMap = {};
+        let _ambientRendered = false;
+
+        function _loadAmbientState() {
+            try {
+                const raw = localStorage.getItem('soullink_ambient');
+                if (!raw) return;
+                const d = JSON.parse(raw);
+                if (d.activeMap && typeof d.activeMap === 'object') _ambientActiveMap = d.activeMap;
+                if (typeof d.playing === 'boolean') _ambientPlaying = d.playing;
+            } catch (e) {}
+        }
+
+        function _saveAmbientState() {
+            localStorage.setItem('soullink_ambient', JSON.stringify({
+                activeMap: _ambientActiveMap,
+                playing: _ambientPlaying,
+            }));
+        }
+
+        function _getOrCreateAmbientAudio(soundId) {
+            if (_ambientAudios[soundId]) return _ambientAudios[soundId];
+            const def = AMBIENT_SOUNDS.find(s => s.id === soundId);
+            if (!def) return null;
+            const audio = new Audio(def.src);
+            audio.loop = true;
+            audio.preload = 'none';
+            _ambientAudios[soundId] = audio;
+            return audio;
+        }
+
+        function toggleAmbientSound(soundId) {
+            if (_ambientActiveMap[soundId] !== undefined) {
+                // Deactivate
+                const audio = _ambientAudios[soundId];
+                if (audio) { audio.pause(); audio.currentTime = 0; }
+                delete _ambientActiveMap[soundId];
+            } else {
+                // Activate
+                const audio = _getOrCreateAmbientAudio(soundId);
+                if (!audio) return;
+                audio.volume = 0.5;
+                _ambientActiveMap[soundId] = 0.5;
+                if (_ambientPlaying) audio.play().catch(() => {});
+            }
+            _saveAmbientState();
+            _updateAmbientUI();
+        }
+
+        function _setAmbientVolume(soundId, vol) {
+            const audio = _ambientAudios[soundId];
+            if (audio) audio.volume = vol;
+            if (_ambientActiveMap[soundId] !== undefined) {
+                _ambientActiveMap[soundId] = vol;
+                _saveAmbientState();
+            }
+        }
+
+        function toggleAmbientMaster() {
+            _ambientPlaying = !_ambientPlaying;
+            Object.keys(_ambientActiveMap).forEach(id => {
+                const audio = _ambientAudios[id];
+                if (!audio) return;
+                if (_ambientPlaying) audio.play().catch(() => {});
+                else audio.pause();
+            });
+            _saveAmbientState();
+            _updateAmbientUI();
+        }
+
+        function toggleAmbientPanel() {
+            _ambientExpanded = !_ambientExpanded;
+            if (!_ambientRendered) {
+                _renderAmbientPanel();
+                _ambientRendered = true;
+            }
+            _updateAmbientUI();
+        }
+
+        function _renderAmbientPanel() {
+            const container = document.getElementById('ambient-categories');
+            const cats = [
+                { key: 'rain',   labelKey: 'ambient.cat.rain' },
+                { key: 'nature', labelKey: 'ambient.cat.nature' },
+                { key: 'urban',  labelKey: 'ambient.cat.urban' },
+                { key: 'noise',  labelKey: 'ambient.cat.noise' },
+            ];
+            container.innerHTML = cats.map(cat => {
+                const sounds = AMBIENT_SOUNDS.filter(s => s.category === cat.key);
+                return `<div class="ambient-cat">
+                    <div class="ambient-cat-label" data-i18n="${cat.labelKey}">${t(cat.labelKey)}</div>
+                    <div class="ambient-cat-grid">${sounds.map(s => {
+                        const isActive = _ambientActiveMap[s.id] !== undefined;
+                        const vol = _ambientActiveMap[s.id] ?? 0.5;
+                        return `<div class="ambient-tile${isActive ? ' active' : ''}" id="at-${s.id}" onclick="toggleAmbientSound('${s.id}')">
+                            <span class="ambient-tile-emoji">${s.emoji}</span>
+                            <div class="ambient-tile-body">
+                                <div class="ambient-tile-name" data-i18n="ambient.sound.${s.id}">${t('ambient.sound.' + s.id)}</div>
+                                <input type="range" class="ambient-tile-vol" id="av-${s.id}" min="0" max="1" step="0.05" value="${vol}"
+                                    onclick="event.stopPropagation()" oninput="event.stopPropagation(); _setAmbientVolume('${s.id}', parseFloat(this.value))">
+                            </div>
+                        </div>`;
+                    }).join('')}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function _updateAmbientUI() {
+            const bar = document.getElementById('ambient-bar');
+            if (!bar) return;
+            const label = document.getElementById('ambient-mini-label');
+            const n = Object.keys(_ambientActiveMap).length;
+
+            bar.classList.toggle('expanded', _ambientExpanded);
+            bar.classList.toggle('is-playing', _ambientPlaying);
+            bar.classList.toggle('has-active', n > 0);
+
+            if (n === 0) {
+                label.textContent = t('ambient.no_sounds');
+            } else if (n === 1) {
+                const id = Object.keys(_ambientActiveMap)[0];
+                label.textContent = t('ambient.sound.' + id);
+            } else {
+                label.textContent = t('ambient.n_sounds').replace('{n}', n);
+            }
+
+            if (_ambientRendered) {
+                AMBIENT_SOUNDS.forEach(s => {
+                    const tile = document.getElementById('at-' + s.id);
+                    if (tile) tile.classList.toggle('active', _ambientActiveMap[s.id] !== undefined);
+                });
+            }
+        }
+
+        function initAmbientMixer() {
+            _loadAmbientState();
+            _updateAmbientUI();
+            // Restore playing sounds
+            Object.entries(_ambientActiveMap).forEach(([id, vol]) => {
+                const audio = _getOrCreateAmbientAudio(id);
+                if (audio) {
+                    audio.volume = vol;
+                    if (_ambientPlaying) audio.play().catch(() => {});
+                }
+            });
+        }
+
+        // Resume ambient sounds on first user interaction (autoplay policy workaround)
+        function _resumeAmbientOnInteraction() {
+            if (!_ambientPlaying) return;
+            Object.keys(_ambientActiveMap).forEach(id => {
+                const audio = _ambientAudios[id];
+                if (audio && audio.paused) audio.play().catch(() => {});
+            });
+        }
+        document.addEventListener('click', _resumeAmbientOnInteraction, { once: true });
+        document.addEventListener('touchstart', _resumeAmbientOnInteraction, { once: true });
+
+        // ==================== Background Picker ====================
         let bgPickerRendered = false;
 
         function toggleBgPicker() {
