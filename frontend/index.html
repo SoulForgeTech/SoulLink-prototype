@@ -4729,57 +4729,56 @@
         }
 
         /* ==================== Ambient Sound Mixer ==================== */
-        .ambient-bar {
-            background: rgba(255, 255, 255, 0.35);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            overflow: hidden;
+        /* Toggle button active state */
+        #ambient-toggle-btn.active {
+            background: rgba(124, 58, 237, 0.25);
+            color: #7c3aed;
         }
-        .ambient-mini {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.15s;
-        }
-        .ambient-mini:hover { background: rgba(255, 255, 255, 0.15); }
-        .ambient-mini-icon { font-size: 0.9rem; line-height: 1; }
-        .ambient-mini-label {
-            flex: 1;
-            font-size: 0.72rem;
-            color: #5a6070;
-            font-weight: 500;
-        }
-        .ambient-master-btn {
-            background: none; border: none; cursor: pointer; padding: 4px;
-            color: #7c3aed; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.15s;
-        }
-        .ambient-master-btn:hover { background: rgba(124, 58, 237, 0.1); }
-        .ambient-master-btn svg { width: 16px; height: 16px; }
-        .ambient-bar.is-playing .ambient-icon-play { display: none; }
-        .ambient-bar.is-playing .ambient-icon-pause { display: block; }
-        .ambient-bar:not(.is-playing) .ambient-icon-play { display: block; }
-        .ambient-bar:not(.is-playing) .ambient-icon-pause { display: none; }
-        .ambient-bar:not(.has-active) .ambient-master-btn { display: none; }
-        .ambient-chevron {
-            width: 16px; height: 16px; color: #a0aec0;
-            transition: transform 0.3s ease; flex-shrink: 0;
-        }
-        .ambient-bar.expanded .ambient-chevron { transform: rotate(180deg); }
 
-        /* Expanded panel */
-        .ambient-panel {
-            max-height: 0; overflow: hidden;
-            transition: max-height 0.35s ease, padding 0.35s ease;
-            padding: 0 12px;
+        /* Dropdown panel — matches bg-picker-panel style */
+        .ambient-panel-dropdown {
+            position: fixed;
+            right: 48px;
+            top: 80px;
+            width: 320px;
+            max-height: 70vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            overflow: hidden;
+            transform: translateX(110%);
+            transition: transform 0.3s ease-out;
         }
-        .ambient-bar.expanded .ambient-panel {
-            max-height: 400px; padding: 8px 12px 12px;
+        .ambient-panel-dropdown.open { transform: translateX(0); }
+
+        .ambient-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px 10px;
+            font-size: 14px; font-weight: 600; color: #333;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .ambient-header-controls { display: flex; align-items: center; gap: 4px; }
+        .ambient-header-controls button {
+            background: none; border: none; cursor: pointer; padding: 4px;
+            color: #666; border-radius: 50%; display: flex; align-items: center;
+            transition: background 0.15s;
+        }
+        .ambient-header-controls button:hover { background: rgba(0, 0, 0, 0.06); }
+        .ambient-master-btn { color: #7c3aed !important; }
+        .ambient-master-btn svg { width: 18px; height: 18px; }
+        .ambient-panel-dropdown.is-playing .ambient-icon-play { display: none; }
+        .ambient-panel-dropdown.is-playing .ambient-icon-pause { display: block; }
+        .ambient-panel-dropdown:not(.is-playing) .ambient-icon-play { display: block; }
+        .ambient-panel-dropdown:not(.is-playing) .ambient-icon-pause { display: none; }
+        .ambient-panel-dropdown:not(.has-active) .ambient-master-btn { display: none; }
+
+        .ambient-panel-body {
+            padding: 10px 12px 14px;
+            max-height: calc(70vh - 50px);
+            overflow-y: auto;
         }
         .ambient-categories { display: flex; flex-direction: column; gap: 10px; }
         .ambient-cat-label {
@@ -4834,9 +4833,8 @@
         }
 
         @media (max-width: 768px) {
-            .ambient-mini { padding: 5px 12px; gap: 6px; }
+            .ambient-panel-dropdown { right: 8px; width: calc(100vw - 16px); top: 70px; }
             .ambient-cat-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 5px; }
-            .ambient-bar.expanded .ambient-panel { max-height: 50vh; overflow-y: auto; padding: 6px 8px 10px; }
         }
         @media (max-width: 400px) {
             .ambient-cat-grid { grid-template-columns: 1fr 1fr; }
@@ -5800,6 +5798,13 @@
                         <span class="model-indicator" id="model-indicator" onclick="openSettingsModal('advanced')">Gemini 3 Flash</span>
                     </div>
                 </div>
+                <button class="bg-picker-btn" onclick="toggleAmbientPanel()" id="ambient-toggle-btn" title="Ambient sounds">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                </button>
                 <button class="bg-picker-btn" onclick="toggleBgPicker()" title="Change background">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -5809,18 +5814,19 @@
                 </button>
             </header>
 
-            <!-- Ambient Sound Mixer -->
-            <div class="ambient-bar" id="ambient-bar">
-                <div class="ambient-mini" id="ambient-mini" onclick="toggleAmbientPanel()">
-                    <span class="ambient-mini-icon">🎵</span>
-                    <span class="ambient-mini-label" id="ambient-mini-label" data-i18n="ambient.no_sounds">No sounds</span>
-                    <button class="ambient-master-btn" id="ambient-master-btn" onclick="event.stopPropagation(); toggleAmbientMaster()" title="Play/Pause all">
-                        <svg class="ambient-icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
-                        <svg class="ambient-icon-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                    </button>
-                    <svg class="ambient-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <!-- Ambient Sound Panel (dropdown like bg-picker) -->
+            <div class="ambient-panel-dropdown" id="ambient-panel-dropdown">
+                <div class="ambient-panel-header">
+                    <span data-i18n="ambient.no_sounds">Ambient sounds</span>
+                    <div class="ambient-header-controls">
+                        <button class="ambient-master-btn" id="ambient-master-btn" onclick="toggleAmbientMaster()" title="Play/Pause all">
+                            <svg class="ambient-icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
+                            <svg class="ambient-icon-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        </button>
+                        <button onclick="toggleAmbientPanel()">✕</button>
+                    </div>
                 </div>
-                <div class="ambient-panel" id="ambient-panel">
+                <div class="ambient-panel-body">
                     <div class="ambient-categories" id="ambient-categories"></div>
                 </div>
             </div>
@@ -11806,12 +11812,23 @@
         }
 
         function toggleAmbientPanel() {
-            _ambientExpanded = !_ambientExpanded;
-            if (!_ambientRendered) {
-                _renderAmbientPanel();
-                _ambientRendered = true;
+            const panel = document.getElementById('ambient-panel-dropdown');
+            const btn = document.getElementById('ambient-toggle-btn');
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) {
+                panel.classList.remove('open');
+                if (btn) btn.classList.remove('active');
+            } else {
+                // Close bg-picker if open (mutual exclusion)
+                const bgPanel = document.getElementById('bg-picker-panel');
+                if (bgPanel) bgPanel.classList.remove('open');
+                if (!_ambientRendered) {
+                    _renderAmbientPanel();
+                    _ambientRendered = true;
+                }
+                panel.classList.add('open');
+                if (btn) btn.classList.add('active');
             }
-            _updateAmbientUI();
         }
 
         function _renderAmbientPanel() {
@@ -11843,23 +11860,29 @@
         }
 
         function _updateAmbientUI() {
-            const bar = document.getElementById('ambient-bar');
-            if (!bar) return;
-            const label = document.getElementById('ambient-mini-label');
+            const panel = document.getElementById('ambient-panel-dropdown');
+            if (!panel) return;
             const n = Object.keys(_ambientActiveMap).length;
+            const btn = document.getElementById('ambient-toggle-btn');
 
-            bar.classList.toggle('expanded', _ambientExpanded);
-            bar.classList.toggle('is-playing', _ambientPlaying);
-            bar.classList.toggle('has-active', n > 0);
+            panel.classList.toggle('is-playing', _ambientPlaying);
+            panel.classList.toggle('has-active', n > 0);
 
-            if (n === 0) {
-                label.textContent = t('ambient.no_sounds');
-            } else if (n === 1) {
-                const id = Object.keys(_ambientActiveMap)[0];
-                label.textContent = t('ambient.sound.' + id);
-            } else {
-                label.textContent = t('ambient.n_sounds').replace('{n}', n);
+            // Update header label in panel
+            const headerLabel = panel.querySelector('.ambient-panel-header > span');
+            if (headerLabel) {
+                if (n === 0) {
+                    headerLabel.textContent = t('ambient.no_sounds');
+                } else if (n === 1) {
+                    const id = Object.keys(_ambientActiveMap)[0];
+                    headerLabel.textContent = t('ambient.sound.' + id);
+                } else {
+                    headerLabel.textContent = t('ambient.n_sounds').replace('{n}', n);
+                }
             }
+
+            // Show active indicator on header button
+            if (btn) btn.classList.toggle('active', n > 0 && _ambientPlaying);
 
             if (_ambientRendered) {
                 AMBIENT_SOUNDS.forEach(s => {
@@ -11902,6 +11925,11 @@
             if (isOpen) {
                 panel.classList.remove('open');
             } else {
+                // Close ambient panel if open (mutual exclusion)
+                const ambientPanel = document.getElementById('ambient-panel-dropdown');
+                const ambientBtn = document.getElementById('ambient-toggle-btn');
+                if (ambientPanel) ambientPanel.classList.remove('open');
+                if (ambientBtn) ambientBtn.classList.remove('active');
                 if (!bgPickerRendered) {
                     renderBgGrid();
                     bgPickerRendered = true;
