@@ -9927,7 +9927,38 @@
             } catch (error) {
                 console.error('Send message error:', error);
                 hideTyping();
-                addMessageToUI('Connection error. Please check your network.', false);
+                // SSE failed — try to recover saved response from backend
+                if (state.currentConversationId) {
+                    let recovered = false;
+                    for (let _ri = 0; _ri < 3 && !recovered; _ri++) {
+                        await new Promise(r => setTimeout(r, _ri === 0 ? 2000 : 3000));
+                        try {
+                            const convResp = await authFetch(`${CONFIG.API_BASE_URL}/api/conversations/${state.currentConversationId}`);
+                            if (convResp.ok) {
+                                const convData = await convResp.json();
+                                const msgs = convData.messages || [];
+                                if (msgs.length > 0 && msgs[msgs.length - 1].role === 'assistant') {
+                                    const lastAI = msgs[msgs.length - 1];
+                                    if (lastAI.thinking) addThinkingBubble(lastAI.thinking);
+                                    addMessageToUI(lastAI.content, false);
+                                    state.messages.push(
+                                        { role: 'user', content: message, timestamp: new Date().toISOString() },
+                                        { role: 'assistant', content: lastAI.content, thinking: lastAI.thinking || null, timestamp: new Date().toISOString() }
+                                    );
+                                    recovered = true;
+                                }
+                            }
+                        } catch (e) { /* retry */ }
+                    }
+                    if (recovered) {
+                        state.isLoading = false;
+                        input.disabled = false;
+                        sendBtn.disabled = false;
+                        input.focus();
+                        return;
+                    }
+                }
+                addMessageToUI(t('error.network'), false);
             }
             state.isLoading = false;
             input.disabled = false;
