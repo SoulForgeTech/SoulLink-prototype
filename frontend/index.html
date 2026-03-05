@@ -5719,6 +5719,19 @@
                         <div class="form-hint" data-i18n="settings.model.hint">Choose the AI model that powers {companion}</div>
                     </div>
 
+                    <!-- Psychology Knowledge Base Toggle -->
+                    <div class="form-group">
+                        <label data-i18n="settings.kb">Psychology KB</label>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;">
+                            <span style="font-size: 13px; opacity: 0.7;" data-i18n="settings.kb.hint">Enable psychology knowledge for deeper emotional support</span>
+                            <label class="toggle-switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; margin-left: 12px;">
+                                <input type="checkbox" id="kb-toggle" onchange="toggleKB(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                                <span style="position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.15); border-radius: 24px; transition: 0.3s;"></span>
+                                <span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: 0.3s;" id="kb-toggle-dot"></span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- 自定义角色 & 知识库（仅测试用户可见） -->
                     <div class="form-group" id="custom-character-group" style="display:none;">
                         <label data-i18n="settings.custom.title">🔮 Custom Settings</label>
@@ -6227,6 +6240,8 @@
                 'settings.email.hint': 'Email cannot be changed',
                 'settings.model': 'AI Model',
                 'settings.model.hint': 'Choose the AI model that powers {companion}',
+                'settings.kb': '🧠 Psychology KB',
+                'settings.kb.hint': 'Enable psychology knowledge for deeper emotional support',
                 'settings.voice.title': '🔊 AI Voice Reply',
                 'settings.voice.desc': 'AI auto-replies with voice when you send voice messages',
                 'settings.voice.hint': 'Powered by Fish Audio — 2M+ community voices',
@@ -6531,6 +6546,8 @@
                 'settings.email.hint': '邮箱不能修改',
                 'settings.model': 'AI 模型',
                 'settings.model.hint': '选择驱动 {companion} 的AI模型',
+                'settings.kb': '🧠 心理知识库',
+                'settings.kb.hint': '开启心理学知识，提供更深层的情感支持',
                 'settings.voice.title': '🔊 AI 语音回复',
                 'settings.voice.desc': '发送语音消息时，AI 自动语音回复',
                 'settings.voice.hint': '由 Fish Audio 提供 — 200万+ 社区音色',
@@ -10505,6 +10522,16 @@
             toggleSettingsGender(settingsSelectedGender);
             toggleRelationship(settingsSelectedRelationship, true);
 
+            // KB toggle — restore state
+            const kbEnabled = state.user?.settings?.kb_enabled || false;
+            const kbToggle = document.getElementById('kb-toggle');
+            const kbDot = document.getElementById('kb-toggle-dot');
+            if (kbToggle) {
+                kbToggle.checked = kbEnabled;
+                kbDot.style.transform = kbEnabled ? 'translateX(20px)' : 'translateX(0)';
+                kbToggle.parentElement.querySelector('span:first-of-type').style.background = kbEnabled ? '#7c3aed' : 'rgba(255,255,255,0.15)';
+            }
+
             // 自定义角色 & 知识库 — 全量开放
             const customGroup = document.getElementById('custom-character-group');
             customGroup.style.display = '';
@@ -10512,6 +10539,23 @@
 
             // Switch to requested tab (default: profile)
             switchSettingsTab(tab || 'profile');
+        }
+
+        async function toggleKB(enabled) {
+            const dot = document.getElementById('kb-toggle-dot');
+            const bg = document.getElementById('kb-toggle').parentElement.querySelector('span:first-of-type');
+            dot.style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+            bg.style.background = enabled ? '#7c3aed' : 'rgba(255,255,255,0.15)';
+            try {
+                await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kb_enabled: enabled })
+                });
+                state.user.settings.kb_enabled = enabled;
+            } catch (e) {
+                console.error('Failed to toggle KB:', e);
+            }
         }
 
         function closeSettingsModal() {
