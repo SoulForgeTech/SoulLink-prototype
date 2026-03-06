@@ -10059,13 +10059,30 @@
                     addThinkingBubble(thinkingContent);
                 }
 
-                // ===== 打字完成：移除流式气泡，用多气泡组替换 =====
+                // ===== 打字完成：原地替换流式气泡为多气泡组（无闪烁） =====
                 const finalReply = doneData?.reply || streamedText;
                 if (streamCursor) streamCursor.remove();
-                // 移除临时流式气泡
-                messageDiv.remove();
-                // 用多气泡组渲染最终回复
-                addMultiBubbleMessage(finalReply, doneData?.images || [], true);
+                // 先创建多气泡组（不动画，瞬间显示），插到流式气泡前面
+                // 然后移除流式气泡，实现无缝切换
+                const _bubbles = splitIntoBubbles(finalReply);
+                const _hasImages = doneData?.images && doneData.images.length > 0;
+                if (_bubbles.length <= 1 && !_hasImages) {
+                    // 单段落：直接用 markdown 替换流式文本（原逻辑，无闪烁）
+                    streamContentDiv.innerHTML = renderMarkdown(finalReply);
+                    // TTS 按钮
+                    if (isVoiceTTSEnabled() && finalReply.length > 0) {
+                        const ttsBtn = document.createElement('button');
+                        ttsBtn.className = 'tts-btn';
+                        ttsBtn.title = 'Listen';
+                        ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                        ttsBtn.onclick = function() { requestAndPlayTTS(finalReply, this); };
+                        streamContentDiv.appendChild(ttsBtn);
+                    }
+                } else {
+                    // 多段落：先插入多气泡组再移除流式气泡（无闪烁）
+                    addMultiBubbleMessage(finalReply, doneData?.images || [], false);
+                    messageDiv.remove();
+                }
 
                 container.scrollTop = container.scrollHeight;
 
