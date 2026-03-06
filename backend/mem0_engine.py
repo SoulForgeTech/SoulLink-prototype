@@ -55,6 +55,7 @@ def _get_mem0():
             "config": {
                 "model": "gemini-embedding-001",
                 "api_key": gemini_key,
+                "embedding_dims": 768,
             }
         },
         "vector_store": {
@@ -62,6 +63,7 @@ def _get_mem0():
             "config": {
                 "collection_name": "soullink_memories",
                 "path": qdrant_path,
+                "embedding_model_dims": 768,
                 # embedded mode — 无需单独 Qdrant 服务
             }
         },
