@@ -28,11 +28,17 @@ FAL_LORA_PATH = "https://huggingface.co/Ryouko65777/Flux-Uncensored-V2/resolve/m
 DAILY_LIMIT = 20  # 每用户每天限额
 
 # 默认通用外观 — 没有导入自定义角色时使用
-DEFAULT_APPEARANCE = (
+DEFAULT_APPEARANCE_FEMALE = (
     "Anime art style, beautiful young woman with long flowing dark hair, "
     "bright expressive eyes, fair skin, slender build, wearing a stylish casual outfit "
     "with soft pastel colors, gentle and warm aesthetic"
 )
+DEFAULT_APPEARANCE_MALE = (
+    "Realistic photographic style, handsome young man with dark hair, "
+    "warm expressive eyes, fair skin, tall athletic build, wearing a casual stylish outfit, "
+    "warm and charismatic aesthetic"
+)
+DEFAULT_APPEARANCE = DEFAULT_APPEARANCE_FEMALE  # 兼容旧代码引用
 
 # Cloudinary 配置
 _cloudinary_configured = False
@@ -129,11 +135,56 @@ def _extract_appearance_from_persona(persona: str) -> str:
     return ""
 
 
+def _extract_persona_from_workspace(user_id, db) -> str:
+    """
+    兜底方案：当 MongoDB 中没有 persona 数据时，从 AnythingLLM workspace 的 system prompt 中提取。
+    很多早期用户的角色数据只存在 workspace prompt 里，MongoDB 的 custom_persona 是空的。
+    """
+    try:
+        workspace = db.db["workspaces"].find_one({"user_id": user_id})
+        if not workspace:
+            return ""
+        slug = workspace.get("slug", "")
+        if not slug:
+            return ""
+
+        allm_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
+        allm_key = os.getenv("ANYTHINGLLM_API_KEY", "")
+        headers = {"Authorization": f"Bearer {allm_key}", "accept": "application/json"}
+
+        resp = requests.get(f"{allm_url}/api/v1/workspace/{slug}", headers=headers, timeout=5)
+        if not resp.ok:
+            return ""
+
+        data = resp.json()
+        ws = data.get("workspace", [])
+        if isinstance(ws, list) and ws:
+            ws = ws[0]
+        prompt = ws.get("openAiPrompt", "")
+        if not prompt:
+            return ""
+
+        # 提取 Persona 段落（在 "# Persona" 和下一个 "#" 标题之间）
+        import re
+        persona_match = re.search(
+            r'# Persona.*?\n(.*?)(?=\n# |\Z)',
+            prompt, re.DOTALL
+        )
+        if persona_match:
+            persona_text = persona_match.group(1).strip()
+            if len(persona_text) > 30:
+                logger.info(f"[IMAGE_GEN] Extracted persona from workspace for user {user_id} ({len(persona_text)} chars)")
+                return persona_text
+
+    except Exception as e:
+        logger.warning(f"[IMAGE_GEN] Failed to extract persona from workspace: {e}")
+    return ""
+
+
 def get_appearance_prefix(user_id, db) -> str:
     """
     获取用户角色的外观描述前缀。
-    优先使用缓存（settings.image_appearance），否则从 persona 提取并缓存。
-    如果有原始角色名（如明星名），确保 appearance 包含真名以便图片匹配。
+    优先级：缓存 → MongoDB persona → AnythingLLM workspace prompt → 默认外观
     """
     user = db.db["users"].find_one({"_id": user_id})
     if not user:
@@ -141,15 +192,13 @@ def get_appearance_prefix(user_id, db) -> str:
 
     settings = user.get("settings", {})
 
-    # 检查缓存
+    # 1. 检查缓存
     cached = settings.get("image_appearance")
     if cached:
         # 兼容旧数据：如果缓存中没有角色原名引用，尝试注入
         source_name = settings.get("custom_persona_name") or ""
         if source_name and source_name.lower() not in cached.lower():
-            # 角色名不在 appearance 中，补上（不管真人还是虚构都有效）
             cached = f"{source_name}. {cached}"
-            # 更新缓存
             db.db["users"].update_one(
                 {"_id": user_id},
                 {"$set": {"settings.image_appearance": cached}}
@@ -157,20 +206,26 @@ def get_appearance_prefix(user_id, db) -> str:
             logger.info(f"[IMAGE_GEN] Injected source name '{source_name}' into appearance for user {user_id}")
         return cached
 
-    # 从 persona 提取
+    # 2. 从 MongoDB persona 提取
     persona = settings.get("custom_persona") or ""
     if not persona:
         pt = user.get("personality_test") or {}
         persona = pt.get("personality_profile") or ""
 
+    # 3. 兜底：从 AnythingLLM workspace system prompt 提取
     if not persona:
-        # 没有任何 persona，使用默认通用外观
-        logger.info(f"[IMAGE_GEN] No persona for user {user_id}, using default appearance")
-        return DEFAULT_APPEARANCE
+        persona = _extract_persona_from_workspace(user_id, db)
+
+    if not persona:
+        # 根据伴侣性别选择默认外观
+        gender = settings.get("companion_gender", "female")
+        default_app = DEFAULT_APPEARANCE_MALE if gender == "male" else DEFAULT_APPEARANCE_FEMALE
+        logger.info(f"[IMAGE_GEN] No persona for user {user_id}, using default {gender} appearance")
+        return default_app
 
     appearance = _extract_appearance_from_persona(persona)
     if appearance:
-        # 如果有原始角色名但提取结果没包含，补上（真人和虚构都适用）
+        # 如果有原始角色名但提取结果没包含，补上
         source_name = settings.get("custom_persona_name") or ""
         if source_name and source_name.lower() not in appearance.lower():
             appearance = f"{source_name}. {appearance}"
@@ -183,7 +238,6 @@ def get_appearance_prefix(user_id, db) -> str:
         logger.info(f"[IMAGE_GEN] Cached appearance for user {user_id}")
         return appearance
 
-    # 提取失败也用默认
     return DEFAULT_APPEARANCE
 
 
