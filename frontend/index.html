@@ -867,6 +867,54 @@
             color: rgba(45, 55, 72, 0.7);
         }
 
+        /* ===== Multi-Bubble Message Group (微信风格多气泡) ===== */
+        .message-group {
+            display: flex;
+            flex-direction: column;
+            max-width: 70%;
+            margin-bottom: 20px;
+        }
+        .message-group.user { margin-left: auto; }
+        .message-group > .message {
+            margin-bottom: 4px;
+            max-width: 100%;
+            animation: none; /* 覆盖单条消息的 slideUp */
+        }
+        .message-group > .message:last-child { margin-bottom: 0; }
+        /* 后续气泡：用隐形占位符代替头像，保证flex对齐一致 */
+        .message-group .avatar-spacer {
+            width: 45px;
+            height: 0;
+            flex-shrink: 0;
+        }
+        /* 逐条出现动画 */
+        .message-group > .message {
+            opacity: 0;
+            transform: translateY(12px);
+            animation: bubbleAppear 0.35s ease-out forwards;
+        }
+        .message-group > .message:nth-child(1) { animation-delay: 0s; }
+        .message-group > .message:nth-child(2) { animation-delay: 0.15s; }
+        .message-group > .message:nth-child(3) { animation-delay: 0.3s; }
+        .message-group > .message:nth-child(4) { animation-delay: 0.45s; }
+        .message-group > .message:nth-child(n+5) { animation-delay: 0.55s; }
+        @keyframes bubbleAppear {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        /* 历史消息不需要动画 */
+        .message-group.no-animate > .message {
+            opacity: 1;
+            transform: none;
+            animation: none;
+        }
+        /* 图片气泡：透明背景 */
+        .message-group > .message.bubble-image .message-content {
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
         /* Thinking Toggle — 输入框上方的开关 */
         /* Thinking Bubble — AI消息气泡上方的折叠思考卡片，与AI气泡风格统一 */
         .thinking-bubble {
@@ -1786,6 +1834,7 @@
             .message {
                 max-width: 80%;
             }
+            .message-group { max-width: 80%; }
 
             .companion-info h2 {
                 font-size: 1.15rem;
@@ -1924,6 +1973,8 @@
                 gap: 8px;
                 margin-bottom: 14px;
             }
+            .message-group { max-width: 88%; }
+            .message-group .avatar-spacer { width: 32px; }
 
             .message-avatar {
                 width: 32px;
@@ -2248,6 +2299,7 @@
             .message {
                 max-width: 92%;
             }
+            .message-group { max-width: 92%; }
 
             .message-content {
                 padding: 10px 14px;
@@ -6105,6 +6157,11 @@
                 <span class="announcement-link" onclick="openCommunityFromBanner()" data-i18n="announcement.view">View</span>
                 <button class="announcement-never" onclick="dismissAnnouncement(true)" data-i18n="announcement.never">Don't show again</button>
             </div>
+            <!-- 浏览器推荐提示 -->
+            <div class="announcement-bar hidden" id="browser-hint-bar" style="background:linear-gradient(90deg,#fff3e0,#fff8e1);border-bottom:1px solid #ffe0b2;">
+                <span class="announcement-text" data-i18n="browser.hint">🌐 For the best experience, we recommend using Safari or Chrome</span>
+                <button class="announcement-never" onclick="dismissBrowserHint()" data-i18n="announcement.never">Don't show again</button>
+            </div>
 
             <!-- 背景选择面板 -->
             <div class="bg-picker-panel" id="bg-picker-panel">
@@ -6512,6 +6569,7 @@
                 'announcement.community': '💬 Join our WeChat community for updates & feedback!',
                 'announcement.view': 'View',
                 'announcement.never': "Don't show again",
+                'browser.hint': '🌐 For the best experience, we recommend using Safari or Chrome',
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
                 'bg.picker.title': 'Background',
@@ -6824,6 +6882,7 @@
                 'announcement.community': '💬 加入微信社群，获取更新通知和交流反馈！',
                 'announcement.view': '查看',
                 'announcement.never': '不再提示',
+                'browser.hint': '🌐 推荐使用 Safari 或 Chrome 浏览器，体验更流畅',
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
                 'bg.picker.title': '背景',
@@ -7016,6 +7075,7 @@
             showChangelogIfNewVersion();
             // 公告栏
             initAnnouncement();
+            initBrowserHint();
         }
 
         function showCommunityPopupOnce() {
@@ -7048,6 +7108,19 @@
         function dismissAnnouncement(never) {
             document.getElementById('announcement-bar').classList.add('hidden');
             if (never) localStorage.setItem('announcement_never', '1');
+        }
+        // 浏览器推荐提示（QQ浏览器、UC浏览器等）
+        function initBrowserHint() {
+            if (localStorage.getItem('browser_hint_never')) return;
+            const ua = navigator.userAgent;
+            if (/MQQBrowser|UCBrowser|HuaweiBrowser|MiuiBrowser|VivoBrowser|OppoBrowser/i.test(ua)
+                && !/CriOS|Chrome\/[0-9]/.test(ua)) {
+                document.getElementById('browser-hint-bar')?.classList.remove('hidden');
+            }
+        }
+        function dismissBrowserHint() {
+            document.getElementById('browser-hint-bar')?.classList.add('hidden');
+            localStorage.setItem('browser_hint_never', '1');
         }
         function openCommunityFromBanner() {
             document.getElementById('community-popup').classList.add('active');
@@ -8066,7 +8139,7 @@
             const typingIndicator = document.getElementById('typing-indicator');
 
             // 清除现有消息、thinking bubbles 和时间分隔符（保留 welcome 和 typing indicator）
-            const existingElements = container.querySelectorAll('.message, .thinking-bubble, .time-separator');
+            const existingElements = container.querySelectorAll('.message, .message-group, .thinking-bubble, .time-separator');
             existingElements.forEach(el => el.remove());
 
             if (state.messages.length === 0) {
@@ -8103,11 +8176,13 @@
                     if (msg.type === 'voice' && msg.audio_url && msg.role === 'user') {
                         // 用户语音：显示语音气泡
                         addVoiceMessageToUI(true, msg.audio_url, msg.audio_duration || 0, msg.content || '');
-                    } else if (msg.type === 'voice' && msg.role === 'assistant') {
-                        // AI 语音回复：只显示文字（带🔊按钮），不显示额外的语音气泡
-                        addMessageToUI(msg.content, false, false, msg.attachments || []);
+                    } else if (msg.role === 'assistant') {
+                        // AI 回复：多气泡渲染（历史不动画）
+                        const genImgs = (msg.attachments || []).filter(a => a.isGenerated && a.url).map(a => ({ url: a.url, prompt: a.prompt }));
+                        const regularAtts = (msg.attachments || []).filter(a => !a.isGenerated);
+                        addMultiBubbleMessage(msg.content, genImgs, false, regularAtts);
                     } else {
-                        addMessageToUI(msg.content, msg.role === 'user', false, msg.attachments || []);
+                        addMessageToUI(msg.content, true, false, msg.attachments || []);
                     }
                     prevMsg = msg;
                 });
@@ -8237,6 +8312,114 @@
             }
         }
 
+        // ===== 多气泡消息渲染 (微信风格) =====
+        function addMultiBubbleMessage(text, generatedImages = [], animate = true, attachments = []) {
+            const container = document.getElementById('messages-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const welcomeMsg = document.getElementById('welcome-message');
+            welcomeMsg.style.display = 'none';
+
+            const bubbles = splitIntoBubbles(text);
+            const avatarSrc = state.user?.settings?.companion_avatar || 'images/avatar.png';
+
+            // 如果只有一个段落且没有图片，退化成普通单气泡
+            if (bubbles.length <= 1 && (!generatedImages || generatedImages.length === 0)) {
+                addMessageToUI(text, false, false, attachments, generatedImages);
+                return;
+            }
+
+            const group = document.createElement('div');
+            group.className = 'message-group assistant' + (animate ? '' : ' no-animate');
+
+            // 渲染每个文字气泡
+            bubbles.forEach((seg, idx) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'message assistant' + (idx > 0 ? ' bubble-continuation' : '');
+
+                if (idx === 0) {
+                    // 首条：带头像
+                    msgDiv.innerHTML = `
+                        <img class="message-avatar" src="${avatarSrc}" alt="Avatar">
+                        <div class="message-content"></div>
+                    `;
+                } else {
+                    // 后续：隐形占位符 + 内容，flex对齐与首条一致
+                    msgDiv.innerHTML = `<div class="avatar-spacer"></div><div class="message-content"></div>`;
+                }
+
+                const contentDiv = msgDiv.querySelector('.message-content');
+
+                // 首条气泡渲染附件
+                if (idx === 0 && attachments && attachments.length > 0) {
+                    const attDiv = document.createElement('div');
+                    attDiv.className = 'message-attachments';
+                    attachments.forEach(att => {
+                        if (att.isImage && att.dataUrl) {
+                            const img = document.createElement('img');
+                            img.src = att.dataUrl;
+                            img.alt = att.name;
+                            attDiv.appendChild(img);
+                        } else if (att.isGenerated && att.url) {
+                            const img = document.createElement('img');
+                            img.src = att.url;
+                            img.alt = att.prompt || 'AI Generated Image';
+                            img.className = 'generated-image';
+                            img.onclick = () => openImageViewer(img.src);
+                            attDiv.appendChild(img);
+                        } else if (att.isGenerated) {
+                            const tag = document.createElement('span');
+                            tag.className = 'generated-image-placeholder';
+                            tag.textContent = '🖼️ AI Generated Image';
+                            attDiv.appendChild(tag);
+                        } else {
+                            const tag = document.createElement('span');
+                            tag.className = 'message-attachment-file';
+                            tag.textContent = '📄 ' + att.name;
+                            attDiv.appendChild(tag);
+                        }
+                    });
+                    contentDiv.appendChild(attDiv);
+                }
+
+                contentDiv.innerHTML += renderMarkdown(seg);
+
+                // 最后一个文字气泡添加 TTS 按钮
+                if (idx === bubbles.length - 1 && isVoiceTTSEnabled() && text.length > 0) {
+                    const ttsBtn = document.createElement('button');
+                    ttsBtn.className = 'tts-btn';
+                    ttsBtn.title = 'Listen';
+                    ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    ttsBtn.onclick = function() { requestAndPlayTTS(text, this); }; // 读全文
+                    contentDiv.appendChild(ttsBtn);
+                }
+
+                group.appendChild(msgDiv);
+            });
+
+            // 图片作为独立气泡
+            if (generatedImages && generatedImages.length > 0) {
+                const imgMsgDiv = document.createElement('div');
+                imgMsgDiv.className = 'message assistant bubble-continuation bubble-image';
+                imgMsgDiv.innerHTML = `<div class="avatar-spacer"></div><div class="message-content"></div>`;
+                const imgContentDiv = imgMsgDiv.querySelector('.message-content');
+                const imgDiv = document.createElement('div');
+                imgDiv.className = 'generated-images';
+                generatedImages.forEach(img => {
+                    const imgEl = document.createElement('img');
+                    imgEl.className = 'generated-image';
+                    imgEl.src = img.url || ('data:image/png;base64,' + img.b64);
+                    imgEl.alt = img.prompt || 'Generated image';
+                    imgEl.onclick = () => openImageViewer(imgEl.src);
+                    imgDiv.appendChild(imgEl);
+                });
+                imgContentDiv.appendChild(imgDiv);
+                group.appendChild(imgMsgDiv);
+            }
+
+            container.insertBefore(group, typingIndicator);
+            container.scrollTop = container.scrollHeight;
+        }
+
         // 图片全屏查看器
         function openImageViewer(src) {
             const overlay = document.getElementById('image-viewer');
@@ -8316,9 +8499,26 @@
             localStorage.setItem('voiceAutoTTS', checked ? 'true' : 'false');
             // 热更新：立即添加或移除所有 AI 消息上的 TTS 按钮
             if (checked) {
-                // 给所有 AI 消息添加 TTS 按钮
-                document.querySelectorAll('.message.assistant .message-content').forEach(contentDiv => {
-                    if (contentDiv.querySelector('.tts-btn')) return; // 已有
+                // 多气泡组：只在最后一个非图片文字气泡上加按钮，读全文
+                document.querySelectorAll('.message-group.assistant').forEach(group => {
+                    const textBubbles = group.querySelectorAll('.message.assistant:not(.bubble-image) .message-content');
+                    if (textBubbles.length === 0) return;
+                    const lastContent = textBubbles[textBubbles.length - 1];
+                    if (lastContent.querySelector('.tts-btn')) return;
+                    // 收集全组文字
+                    let fullText = '';
+                    textBubbles.forEach(cd => { fullText += (fullText ? '\n\n' : '') + cd.textContent?.trim(); });
+                    if (!fullText) return;
+                    const ttsBtn = document.createElement('button');
+                    ttsBtn.className = 'tts-btn';
+                    ttsBtn.title = 'Listen';
+                    ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+                    ttsBtn.onclick = function() { requestAndPlayTTS(fullText, this); };
+                    lastContent.appendChild(ttsBtn);
+                });
+                // 单条 AI 消息（非多气泡组内的）
+                document.querySelectorAll('.message.assistant:not(.message-group .message) .message-content').forEach(contentDiv => {
+                    if (contentDiv.querySelector('.tts-btn')) return;
                     const text = contentDiv.textContent?.trim();
                     if (!text) return;
                     const ttsBtn = document.createElement('button');
@@ -8764,8 +8964,8 @@
                     if (chatData.conversation_id) state.currentConversationId = chatData.conversation_id;
                     if (chatData.thinking) addThinkingBubble(chatData.thinking);
 
-                    // AI 文字回复
-                    addMessageToUI(chatData.reply, false, true, [], chatData.images || []);
+                    // AI 文字回复（多气泡）
+                    addMultiBubbleMessage(chatData.reply, chatData.images || [], true);
 
                     // 检测 GPT-4o 短回复/拒绝，提示切换 Grok
                     maybeShowGptSwitchHint(chatData.reply);
@@ -8876,7 +9076,7 @@
                                     gotReply = true;
                                     if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
                                     if (payload.thinking) addThinkingBubble(payload.thinking);
-                                    addMessageToUI(payload.text, false, true);
+                                    addMultiBubbleMessage(payload.text, [], true);
                                     maybeShowGptSwitchHint(payload.text);
                                 } else if (currentEvent === 'audio') {
                                     _audioSegmentQueue.push(payload.audio_b64);
@@ -9237,7 +9437,7 @@
                                     gotReply = true;
                                     if (payload.conversation_id) state.currentConversationId = payload.conversation_id;
                                     if (payload.thinking) addThinkingBubble(payload.thinking);
-                                    addMessageToUI(payload.text, false, true, [], payload.images || []);
+                                    addMultiBubbleMessage(payload.text, payload.images || [], true);
                                     maybeShowGptSwitchHint(payload.text);
                                 } else if (evtType === 'error') {
                                     console.error('[VoiceCall] Server error:', payload.message);
@@ -9859,35 +10059,13 @@
                     addThinkingBubble(thinkingContent);
                 }
 
-                // ===== 打字完成：用 markdown 渲染替换纯文本 =====
+                // ===== 打字完成：移除流式气泡，用多气泡组替换 =====
                 const finalReply = doneData?.reply || streamedText;
                 if (streamCursor) streamCursor.remove();
-                streamContentDiv.innerHTML = renderMarkdown(finalReply);
-
-                // TTS 按钮
-                if (isVoiceTTSEnabled() && finalReply.length > 0) {
-                    const ttsBtn = document.createElement('button');
-                    ttsBtn.className = 'tts-btn';
-                    ttsBtn.title = 'Listen';
-                    ttsBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
-                    ttsBtn.onclick = function() { requestAndPlayTTS(finalReply, this); };
-                    streamContentDiv.appendChild(ttsBtn);
-                }
-
-                // 生成图片
-                if (doneData?.images && doneData.images.length > 0) {
-                    const imgDiv = document.createElement('div');
-                    imgDiv.className = 'generated-images';
-                    doneData.images.forEach(img => {
-                        const imgEl = document.createElement('img');
-                        imgEl.className = 'generated-image';
-                        imgEl.src = img.url || ('data:image/png;base64,' + img.b64);
-                        imgEl.alt = img.prompt || 'Generated image';
-                        imgEl.onclick = () => openImageViewer(imgEl.src);
-                        imgDiv.appendChild(imgEl);
-                    });
-                    streamContentDiv.appendChild(imgDiv);
-                }
+                // 移除临时流式气泡
+                messageDiv.remove();
+                // 用多气泡组渲染最终回复
+                addMultiBubbleMessage(finalReply, doneData?.images || [], true);
 
                 container.scrollTop = container.scrollHeight;
 
@@ -9927,6 +10105,9 @@
             } catch (error) {
                 console.error('Send message error:', error);
                 hideTyping();
+                // 清除可能残留的流式气泡（流式气泡是直接子级的 .message.assistant，不在 .message-group 内）
+                const _orphanStream = document.querySelector('#messages-container > .message.assistant:not(.message-group .message)');
+                if (_orphanStream) _orphanStream.remove();
                 // SSE failed — try to recover saved response from backend
                 if (state.currentConversationId) {
                     let recovered = false;
@@ -9940,7 +10121,7 @@
                                 if (msgs.length > 0 && msgs[msgs.length - 1].role === 'assistant') {
                                     const lastAI = msgs[msgs.length - 1];
                                     if (lastAI.thinking) addThinkingBubble(lastAI.thinking);
-                                    addMessageToUI(lastAI.content, false);
+                                    addMultiBubbleMessage(lastAI.content, [], true);
                                     state.messages.push(
                                         { role: 'user', content: message, timestamp: new Date().toISOString() },
                                         { role: 'assistant', content: lastAI.content, thinking: lastAI.thinking || null, timestamp: new Date().toISOString() }
@@ -10185,6 +10366,34 @@
             // Merge consecutive blockquotes
             html = html.replace(/<\/blockquote><br><blockquote>/g, '<br>');
             return html;
+        }
+
+        // ===== 多气泡分割：按段落拆分文本 =====
+        function splitIntoBubbles(text) {
+            if (!text || !text.trim()) return [text || ''];
+            // 按双换行分割
+            const raw = text.split(/\n\n+/);
+            const bubbles = [];
+            for (let i = 0; i < raw.length; i++) {
+                const seg = raw[i].trim();
+                if (!seg) continue;
+                // 短片段（<30字）合并到前一个气泡，避免孤立的 "好的！" 之类
+                if (bubbles.length > 0 && seg.length < 10 && !seg.startsWith('-') && !seg.startsWith('•') && !/^\d+\./.test(seg)) {
+                    bubbles[bubbles.length - 1] += '\n\n' + seg;
+                }
+                // 列表连续项合并到前一个气泡（前一个以 - 或数字. 结尾）
+                else if (bubbles.length > 0 && (seg.startsWith('-') || seg.startsWith('•') || /^\d+\./.test(seg))) {
+                    const prevEndsWithList = /(?:^|\n)[-•]\s|(?:^|\n)\d+\.\s/.test(bubbles[bubbles.length - 1]);
+                    if (prevEndsWithList) {
+                        bubbles[bubbles.length - 1] += '\n\n' + seg;
+                    } else {
+                        bubbles.push(seg);
+                    }
+                } else {
+                    bubbles.push(seg);
+                }
+            }
+            return bubbles.length > 0 ? bubbles : [text];
         }
 
         function addThinkingBubble(thinkingText) {
