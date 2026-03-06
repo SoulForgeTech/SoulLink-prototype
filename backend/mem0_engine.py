@@ -43,7 +43,7 @@ def _get_mem0():
 
     config = {
         "llm": {
-            "provider": "google",
+            "provider": "gemini",
             "config": {
                 "model": "gemini-2.5-flash",
                 "api_key": gemini_key,
@@ -51,7 +51,7 @@ def _get_mem0():
             }
         },
         "embedder": {
-            "provider": "google",
+            "provider": "gemini",
             "config": {
                 "model": "models/text-embedding-004",
                 "api_key": gemini_key,
