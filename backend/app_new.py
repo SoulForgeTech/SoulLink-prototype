@@ -35,6 +35,84 @@ from auth import (
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
 from image_gen import process_image_markers
+import requests as _requests
+
+
+# ==================== Shared Knowledge Base (Psychology) ====================
+KB_WORKSPACE_SLUG = os.getenv("KB_WORKSPACE_SLUG", "soullink_test")
+
+
+def query_shared_kb(user_message: str, top_k: int = 3, min_score: float = 0.25) -> str:
+    """
+    Query the shared psychology knowledge base via vector search (no LLM call).
+    Uses /api/v1/workspace/{slug}/vector-search for pure similarity lookup.
+    Returns relevant context string, or empty string if nothing found.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Quick keyword check — skip KB for casual chat
+    psych_keywords = [
+        '焦虑', '抑郁', '失眠', '压力', '情绪', '心理', '自卑', '社恐', '孤独',
+        '内耗', '焦躁', '恐惧', '创伤', '暴食', '厌食', '强迫', '拖延', '自残',
+        '分手', '失恋', '原生家庭', '依恋', '安全感', '讨好型', '回避型', 'PUA',
+        '冷暴力', '精神内耗', '情绪管理', '正念', '认知', '疗愈', '治愈',
+        'anxiety', 'depress', 'insomnia', 'stress', 'emotion', 'therapy',
+        'mental', 'trauma', 'lonely', 'self-esteem', 'attachment',
+        '不开心', '难过', '痛苦', '绝望', '崩溃', '烦', '累', '想哭',
+    ]
+    msg_lower = user_message.lower()
+    if not any(kw in msg_lower for kw in psych_keywords):
+        return ""
+
+    try:
+        base_url = os.getenv("ANYTHINGLLM_BASE_URL", "http://localhost:3001")
+        api_key = os.getenv("ANYTHINGLLM_API_KEY", "")
+        resp = _requests.post(
+            f"{base_url}/api/v1/workspace/{KB_WORKSPACE_SLUG}/vector-search",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={"query": user_message, "topN": top_k},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            logger.warning(f"[KB] Vector search HTTP {resp.status_code}")
+            return ""
+
+        data = resp.json()
+        results = data.get("results", [])
+
+        # Filter by relevance score and build context
+        context_parts = []
+        for r in results:
+            score = r.get("score", 0)
+            if score < min_score:
+                continue
+            text = r.get("text", "")
+            title = r.get("metadata", {}).get("title", "")
+            # Strip metadata header if present
+            if "<document_metadata>" in text:
+                text = text.split("</document_metadata>")[-1].strip()
+            # Truncate to 400 chars per chunk
+            if len(text) > 400:
+                text = text[:400] + "..."
+            if text:
+                context_parts.append(f"[{title}]: {text}")
+
+        if context_parts:
+            ctx = (
+                "\n\n[心理知识参考 / Psychology Reference — "
+                "请自然融入回复，不要直接引用来源]\n"
+                + "\n".join(context_parts)
+            )
+            return ctx
+
+        return ""
+    except Exception:
+        return ""
+
+
 from personality_engine import (
     get_questions,
     calculate_dimensions,
@@ -391,11 +469,14 @@ def update_profile():
     # 更新头像
     if "avatar_url" in data:
         avatar_url = data["avatar_url"]
-        # 验证头像数据（支持 data URL 或相对路径）
+        # 验证头像数据（支持 Cloudinary URL, data URL, 或相对路径）
         if avatar_url:
-            if avatar_url.startswith("data:image/"):
-                # Base64 图片，限制大小（约 2MB base64）
-                if len(avatar_url) > 3 * 1024 * 1024:
+            if avatar_url.startswith("https://res.cloudinary.com/"):
+                # Cloudinary CDN URL — preferred
+                pass
+            elif avatar_url.startswith("data:image/"):
+                # Base64 图片（color avatar 等小图），限制大小
+                if len(avatar_url) > 500000:
                     return jsonify({"error": "Avatar image is too large"}), 400
             elif avatar_url.startswith("images/"):
                 # 预设头像路径
@@ -431,6 +512,57 @@ def update_profile():
         return jsonify({"error": "No changes made"}), 400
 
 
+@app.route("/api/upload-avatar", methods=["POST"])
+@login_required
+def upload_avatar():
+    """Upload avatar image to Cloudinary, return CDN URL."""
+    user_id = get_current_user_id()
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not file or not file.filename:
+        return jsonify({"error": "Empty file"}), 400
+
+    # Validate MIME type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        return jsonify({"error": "File must be an image"}), 400
+
+    img_data = file.read()
+
+    # Limit: 500KB after frontend compression — should be plenty for avatars
+    if len(img_data) > 512 * 1024:
+        return jsonify({"error": "Image too large (max 500KB)"}), 400
+
+    try:
+        import image_gen as _img_mod
+        import cloudinary.uploader
+        _img_mod._ensure_cloudinary()
+        if not _img_mod._cloudinary_configured:
+            return jsonify({"error": "Cloud storage not configured"}), 500
+
+        from datetime import datetime, timezone
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        public_id = f"soullink/avatars/{user_id}_{timestamp}"
+        result = cloudinary.uploader.upload(
+            img_data,
+            public_id=public_id,
+            resource_type="image",
+            overwrite=True,
+            transformation=[{"width": 400, "height": 400, "crop": "fill", "quality": "auto"}],
+        )
+        url = result.get("secure_url", "")
+        if not url:
+            return jsonify({"error": "Upload failed"}), 500
+
+        logger.info(f"[AVATAR] Uploaded for user {user_id}: {url[:80]}")
+        return jsonify({"success": True, "url": url})
+    except Exception as e:
+        logger.error(f"[AVATAR] Upload error: {e}")
+        return jsonify({"error": "Upload failed"}), 500
+
+
 @app.route("/api/user/settings", methods=["PUT"])
 @login_required
 def update_settings():
@@ -442,7 +574,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "voice_id", "voice_name"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "voice_id", "voice_name", "kb_enabled"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
@@ -465,7 +597,8 @@ def update_settings():
         avatar_val = data["companion_avatar"]
         if not isinstance(avatar_val, str):
             return jsonify({"error": "Invalid avatar data"}), 400
-        # Allow relative paths or data URLs, limit size to ~500KB
+        # Allow: relative paths (images/...), Cloudinary URLs (https://res.cloudinary.com/...),
+        # or small data URLs as fallback
         if avatar_val.startswith("data:") and len(avatar_val) > 500000:
             return jsonify({"error": "Avatar image too large (max 500KB)"}), 400
 
@@ -792,6 +925,20 @@ def chat():
         except Exception as e:
             logger.warning(f"[SEARCH] Enhancement failed, using original: {e}")
             message_to_send = user_message
+
+        # Voice hint so AI knows this was spoken, not typed
+        if msg_type == "voice":
+            message_to_send = f"[Voice message] {message_to_send}"
+
+        # 心理知识库增强：如果用户开启了 KB，查询共享知识库注入上下文
+        try:
+            kb_on = user.get("settings", {}).get("kb_enabled", False)
+            if kb_on:
+                kb_context = query_shared_kb(user_message)
+                if kb_context:
+                    message_to_send = message_to_send + kb_context
+        except Exception:
+            pass
 
         # 检测用户消息是否可能包含改名意图，如果是则追加提醒让 AI 记得输出标记
         import re
@@ -1314,6 +1461,16 @@ def chat_stream():
         except Exception:
             pass
 
+        # KB enhancement: query shared psychology knowledge base
+        try:
+            kb_on = user.get("settings", {}).get("kb_enabled", False)
+            if kb_on:
+                kb_context = query_shared_kb(user_message)
+                if kb_context:
+                    message_to_send = message_to_send + kb_context
+        except Exception:
+            pass
+
         # Rename hint injection
         import re
         ask_name_patterns = r'你叫什么|你叫啥|你的名字是|what.s your name|what do (they|you) call you'
@@ -1365,6 +1522,7 @@ def chat_stream():
     def generate():
         import re as _re
         import threading
+        import queue
 
         # Flush proxy buffers (Cloudflare, nginx) with SSE comment padding
         yield ": " + " " * 2048 + "\n\n"
@@ -1380,75 +1538,138 @@ def chat_stream():
         thinking_content = ""
         initial_buffer = ""
         initial_phase = True  # Buffer initial tokens to detect <think> tags
+        _tag_detect_buf = ""  # Rolling buffer for mid-stream <think> detection
+
+        # Stream LLM in background thread, send keepalive while waiting
+        chunk_queue = queue.Queue()
+
+        def _stream_worker():
+            try:
+                for c in api.send_message_stream(
+                    message_to_send,
+                    session_id=conv_id_str,
+                    attachments=attachments
+                ):
+                    chunk_queue.put(("chunk", c))
+                chunk_queue.put(("done", None))
+            except Exception as exc:
+                chunk_queue.put(("error", exc))
+
+        worker = threading.Thread(target=_stream_worker, daemon=True)
+        worker.start()
 
         try:
-            for chunk in api.send_message_stream(
-                message_to_send,
-                session_id=conv_id_str,
-                attachments=attachments
-            ):
-                if chunk.get("error"):
-                    err_msg = chunk["error"] if isinstance(chunk["error"], str) else "LLM error"
-                    yield _sse_event("error", {"message": err_msg})
-                    return
+          while True:
+            try:
+                msg_type, payload = chunk_queue.get(timeout=3)
+            except queue.Empty:
+                # No data in 3s — send keepalive to prevent connection drop
+                yield ": keepalive\n\n"
+                continue
 
-                token = chunk.get("textResponse", "")
-                if not token:
-                    continue
+            if msg_type == "done":
+                break
+            elif msg_type == "error":
+                if not full_reply:
+                    yield _sse_event("error", {"message": f"LLM error: {str(payload)}"})
+                break
 
-                full_reply += token
+            chunk = payload
+            if chunk.get("error"):
+                err_msg = chunk["error"] if isinstance(chunk["error"], str) else "LLM error"
+                yield _sse_event("error", {"message": err_msg})
+                return
 
-                # --- Initial phase: buffer to detect <think> tags ---
-                if initial_phase:
-                    initial_buffer += token
-                    # Check if we found a thinking tag
-                    lower_buf = initial_buffer.lower()
-                    if "<think>" in lower_buf or "<thought>" in lower_buf:
-                        in_thinking = True
-                        initial_phase = False
-                        # Extract any content after the opening tag
-                        for tag in ["<think>", "<thought>"]:
-                            idx = lower_buf.find(tag)
-                            if idx >= 0:
-                                after_tag = initial_buffer[idx + len(tag):]
-                                if after_tag:
-                                    thinking_content += after_tag
-                                break
-                        continue
-                    # If first char is not '<', no thinking tag — start streaming immediately
-                    # If buffer is long enough (>15 chars) without tag, flush and stream
-                    if (len(initial_buffer) > 1 and not initial_buffer.lstrip().startswith('<')) or len(initial_buffer) > 15:
-                        initial_phase = False
-                        # Flush buffer token by token for smooth typewriter effect
-                        for ch in initial_buffer:
-                            yield _sse_event("text", {"token": ch})
-                    continue
+            token = chunk.get("textResponse", "")
+            if not token:
+                continue
 
-                # --- Thinking mode ---
-                if in_thinking:
-                    # Check for closing tag
-                    combined = thinking_content + token
-                    lower_combined = combined.lower()
-                    for close_tag in ["</think>", "</thought>"]:
-                        close_idx = lower_combined.find(close_tag)
-                        if close_idx >= 0:
-                            # Extract thinking content before closing tag
-                            thinking_content = combined[:close_idx].strip()
-                            in_thinking = False
-                            # Emit thinking event
-                            if thinking_content and show_thinking:
-                                yield _sse_event("thinking", {"content": thinking_content})
-                            # Any content after closing tag is reply text
-                            after_close = combined[close_idx + len(close_tag):]
-                            if after_close.strip():
-                                yield _sse_event("text", {"token": after_close})
+            full_reply += token
+
+            # --- Initial phase: buffer to detect <think> tags ---
+            if initial_phase:
+                initial_buffer += token
+                lower_buf = initial_buffer.lower()
+                stripped_lower = lower_buf.lstrip()
+                if "<think>" in lower_buf or "<thought>" in lower_buf:
+                    in_thinking = True
+                    initial_phase = False
+                    for tag in ["<think>", "<thought>"]:
+                        idx = lower_buf.find(tag)
+                        if idx >= 0:
+                            before_tag = initial_buffer[:idx].strip()
+                            if before_tag:
+                                for ch in before_tag:
+                                    yield _sse_event("text", {"token": ch})
+                            after_tag = initial_buffer[idx + len(tag):]
+                            if after_tag:
+                                thinking_content += after_tag
                             break
-                    else:
-                        thinking_content += token
                     continue
+                # Gemini-style thinking (e.g. "思考：...", "Thinking: ...")
+                _gemini_think = _re.match(
+                    r'^\s*(?:思考|Thinking|思考过程|Let me think|我(?:先)?(?:想想|思考一下|分析一下))[\s：:]+',
+                    initial_buffer, _re.IGNORECASE
+                )
+                if _gemini_think:
+                    in_thinking = True
+                    initial_phase = False
+                    thinking_content = initial_buffer[_gemini_think.end():]
+                    continue
+                # Flush as text when confident it's not thinking
+                should_flush = False
+                if len(initial_buffer) > 60:
+                    should_flush = True
+                elif len(initial_buffer) > 5:
+                    if not stripped_lower.startswith('<') and not _re.match(
+                        r'(?:思考|think|let\s)', stripped_lower, _re.IGNORECASE
+                    ):
+                        should_flush = True
+                if should_flush:
+                    initial_phase = False
+                    for ch in initial_buffer:
+                        yield _sse_event("text", {"token": ch})
+                continue
 
-                # --- Normal streaming ---
-                yield _sse_event("text", {"token": token})
+            # --- Thinking mode ---
+            if in_thinking:
+                combined = thinking_content + token
+                lower_combined = combined.lower()
+                for close_tag in ["</think>", "</thought>"]:
+                    close_idx = lower_combined.find(close_tag)
+                    if close_idx >= 0:
+                        thinking_content = combined[:close_idx].strip()
+                        in_thinking = False
+                        if thinking_content and show_thinking:
+                            yield _sse_event("thinking", {"content": thinking_content})
+                        after_close = combined[close_idx + len(close_tag):]
+                        if after_close.strip():
+                            yield _sse_event("text", {"token": after_close})
+                        break
+                else:
+                    thinking_content += token
+                continue
+
+            # --- Normal streaming ---
+            # Mid-stream <think> detection (tag split across tokens)
+            _tag_detect_buf += token
+            if len(_tag_detect_buf) > 20:
+                _tag_detect_buf = _tag_detect_buf[-20:]
+            _lower_tdb = _tag_detect_buf.lower()
+            _found_mid_tag = False
+            for _mtag in ["<think>", "<thought>"]:
+                if _mtag in _lower_tdb:
+                    in_thinking = True
+                    _tidx = _lower_tdb.find(_mtag)
+                    _after = _tag_detect_buf[_tidx + len(_mtag):]
+                    if _after:
+                        thinking_content = _after
+                    _tag_detect_buf = ""
+                    _found_mid_tag = True
+                    break
+            if _found_mid_tag:
+                continue
+            yield _sse_event("text", {"token": token})
 
         except Exception as e:
             logger.error(f"[CHAT-STREAM] LLM error: {e}")
@@ -1696,11 +1917,24 @@ def voice_chat_stream():
             else:
                 conversation = db.get_active_conversation(user_id)
 
-            audio_url = _save_audio_file(audio_data, prefix="user", ext=audio_format or "webm")
-            db.add_message_to_conversation(
-                conversation["_id"], user_id, "user", transcript,
-                msg_type="voice", audio_url=audio_url,
-            )
+            # ⚡ PERF: Upload audio in background thread to avoid blocking pipeline (~0.5s saved)
+            import threading as _thr
+            _conv_id_for_bg = conversation["_id"]
+            _uid_for_bg = user_id
+            _transcript_for_bg = transcript
+            _audio_data_bg = audio_data
+            _audio_fmt_bg = audio_format or "webm"
+            def _bg_save_user_audio():
+                try:
+                    audio_url = _save_audio_file(_audio_data_bg, prefix="user", ext=_audio_fmt_bg)
+                    db.add_message_to_conversation(
+                        _conv_id_for_bg, _uid_for_bg, "user", _transcript_for_bg,
+                        msg_type="voice", audio_url=audio_url,
+                    )
+                except Exception as e:
+                    logger.warning(f"[STREAM] Background audio save failed: {e}")
+            _thr.Thread(target=_bg_save_user_audio, daemon=True).start()
+
             is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
         except Exception as e:
             logger.error(f"[STREAM] DB error: {e}")
@@ -1716,23 +1950,8 @@ def voice_chat_stream():
 
             workspace_slug = workspace_result["workspace"]["slug"]
 
-            # Sync model setting
-            user_model = settings.get("model", "gemini")
-            if user_model in workspace_manager.SUPPORTED_MODELS:
-                model_config = workspace_manager.SUPPORTED_MODELS[user_model]
-                import requests as req
-                try:
-                    req.post(
-                        f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update",
-                        headers={
-                            "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
-                            "Content-Type": "application/json"
-                        },
-                        json={"chatProvider": model_config["chatProvider"], "chatModel": model_config["chatModel"]},
-                        timeout=3
-                    )
-                except Exception:
-                    pass
+            # ⚡ PERF: Skip model sync during voice calls — model doesn't change mid-call (~0.5s saved)
+            # Model sync is already done when user opens settings/starts chat.
 
             api = AnythingLLMAPI(
                 base_url=workspace_manager.anythingllm_base_url,
@@ -1740,15 +1959,8 @@ def voice_chat_stream():
                 workspace_slug=workspace_slug
             )
 
-            # Web search enhancement
+            # ⚡ PERF: Skip web search during voice calls — latency matters more than search quality
             message_to_send = transcript
-            try:
-                from web_search import enhance_message_with_search
-                enhanced, did_search = enhance_message_with_search(transcript)
-                if did_search:
-                    message_to_send = enhanced
-            except Exception:
-                pass
         except Exception as e:
             logger.error(f"[STREAM] Setup error: {e}")
             yield _sse_event("error", {"message": f"Setup error: {str(e)}"})
@@ -1790,12 +2002,10 @@ def voice_chat_stream():
                     out.append(buf)
             return out
 
-        # Voice call instruction: encourage concise responses
-        voice_prefix = (
-            "[语音通话模式] 请用简短自然的口语回复，1-3句话即可，"
-            "不要太长，像真人打电话聊天一样。\n\n"
-        )
-        message_with_prefix = voice_prefix + message_to_send
+        # NOTE: Do NOT add voice-mode prefix here — it gets saved into
+        # AnythingLLM chat history and pollutes subsequent text chats,
+        # causing all replies to be unnaturally short.
+        message_with_prefix = message_to_send
 
         full_reply = ""
         sentence_buffer = ""
@@ -2712,12 +2922,15 @@ def import_persona():
     result = extract_persona_with_ai(text, language=language)
 
     if result.get("success"):
+        preview = {
+            "name": result.get("name"),
+            "core_persona": result.get("core_persona")
+        }
+        if result.get("appearance"):
+            preview["appearance"] = result["appearance"]
         return jsonify({
             "success": True,
-            "preview": {
-                "name": result.get("name"),
-                "core_persona": result.get("core_persona")
-            }
+            "preview": preview
         })
     else:
         return jsonify({
@@ -2741,6 +2954,7 @@ def confirm_persona():
         return jsonify({"error": "core_persona is required"}), 400
 
     persona_name = (data.get("name") or "").strip() or None
+    appearance = (data.get("appearance") or "").strip() or None
 
     try:
         from datetime import datetime
@@ -2755,11 +2969,19 @@ def confirm_persona():
         else:
             update_fields["settings.custom_persona_name"] = None
 
+        # 如果有提取到的外观描述，直接缓存到 image_appearance（用于图片生成）
+        # 这样即使用户改了昵称，图片生成仍然使用原始角色的外貌特征
+        unset_fields = {"settings.voice_style": ""}
+        if appearance:
+            update_fields["settings.image_appearance"] = appearance
+        else:
+            unset_fields["settings.image_appearance"] = ""
+
         db.db["users"].update_one(
             {"_id": user_id},
             {
                 "$set": update_fields,
-                "$unset": {"settings.voice_style": "", "settings.image_appearance": ""}
+                "$unset": unset_fields
             }
         )
 
@@ -3097,7 +3319,7 @@ def _upload_audio_to_cloudinary(audio_data: bytes, prefix: str = "tts", ext: str
         result = cloudinary.uploader.upload(
             audio_data,
             public_id=public_id,
-            resource_type="video",  # Cloudinary uses "video" for audio files
+            resource_type="raw",  # Raw avoids media processing, prevents Range request 400s on free tier
             overwrite=True,
             format=ext,
         )
@@ -3401,8 +3623,10 @@ def voice_upload():
             except Exception as e:
                 logger.warning(f"[VoiceUpload] Could not read WAV duration: {e}")
 
-        # Save the uploaded audio file (keep original format extension)
-        audio_url = _save_audio_file(audio_data, prefix="user", ext=audio_format or "webm")
+        # Convert to wav for reliable storage & playback (handles mislabeled formats)
+        from voice_service import _ensure_wav
+        save_data, save_fmt = _ensure_wav(audio_data, audio_format or "webm")
+        audio_url = _save_audio_file(save_data, prefix="user", ext=save_fmt)
 
         # Run STT to get text transcription
         text = ""

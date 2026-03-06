@@ -914,6 +914,27 @@
             background: transparent;
             box-shadow: none;
         }
+        /* 图片生成中指示器 */
+        .image-generating-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            margin-top: 6px;
+            margin-left: 57px;
+            font-size: 13px;
+            color: #7c3aed;
+            opacity: 0;
+            animation: bubbleAppear 0.3s ease-out forwards;
+        }
+        .img-gen-spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(124, 58, 237, 0.2);
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Thinking Toggle — 输入框上方的开关 */
         /* Thinking Bubble — AI消息气泡上方的折叠思考卡片，与AI气泡风格统一 */
@@ -1975,6 +1996,7 @@
             }
             .message-group { max-width: 88%; }
             .message-group .avatar-spacer { width: 32px; }
+            .image-generating-indicator { margin-left: 40px; }
 
             .message-avatar {
                 width: 32px;
@@ -9934,9 +9956,64 @@
                     setTimeout(_renderNextChar, delay);
                 }
 
+                // IMAGE 标记过滤：流式输出时隐藏 [IMAGE: ...] 内容
+                const _IMG_TAG_PREFIX = '[IMAGE:';
+                let _imgTagBuf = '';
+                let _inImgTag = false;
+                let _imgIndicatorShown = false;
+
                 function _enqueueText(text) {
-                    _typeQueue += text;
+                    for (let i = 0; i < text.length; i++) {
+                        const ch = text[i];
+
+                        if (_inImgTag) {
+                            // 已进入 IMAGE 标记内部，吃掉所有字符直到 ]
+                            _imgTagBuf += ch;
+                            if (ch === ']') {
+                                _inImgTag = false;
+                                _imgTagBuf = '';
+                                // 显示图片生成中动画
+                                if (!_imgIndicatorShown) {
+                                    _imgIndicatorShown = true;
+                                    _showImageGenerating();
+                                }
+                            }
+                            continue;
+                        }
+
+                        if (_imgTagBuf || ch === '[') {
+                            // 正在匹配前缀
+                            _imgTagBuf += ch;
+                            if (_IMG_TAG_PREFIX.startsWith(_imgTagBuf)) {
+                                // 还在匹配中，继续缓冲
+                                if (_imgTagBuf.length >= _IMG_TAG_PREFIX.length) {
+                                    // 完整前缀匹配成功，进入 IMAGE 标记
+                                    _inImgTag = true;
+                                }
+                            } else {
+                                // 匹配失败，不是 IMAGE 标记，把缓冲区内容全部入队
+                                _typeQueue += _imgTagBuf;
+                                _imgTagBuf = '';
+                            }
+                        } else {
+                            _typeQueue += ch;
+                        }
+                    }
                     if (!_typeRendering) _renderNextChar();
+                }
+
+                function _showImageGenerating() {
+                    // 在流式气泡下方显示图片生成指示器
+                    const indicator = document.createElement('div');
+                    indicator.className = 'image-generating-indicator';
+                    indicator.id = 'stream-img-indicator';
+                    indicator.innerHTML = `
+                        <div class="img-gen-spinner"></div>
+                        <span>🎨 ${state.user?.settings?.language?.startsWith('zh') ? '图片生成中...' : 'Generating image...'}</span>
+                    `;
+                    // 插到流式气泡的 message-content 后面
+                    messageDiv.appendChild(indicator);
+                    container.scrollTop = container.scrollHeight;
                 }
 
                 const reader = sseResponse.body.getReader();
@@ -10062,6 +10139,9 @@
                 // ===== 打字完成：原地替换流式气泡为多气泡组（无闪烁） =====
                 const finalReply = doneData?.reply || streamedText;
                 if (streamCursor) streamCursor.remove();
+                // 移除图片生成指示器（如有）
+                const imgIndicator = document.getElementById('stream-img-indicator');
+                if (imgIndicator) imgIndicator.remove();
                 // 先创建多气泡组（不动画，瞬间显示），插到流式气泡前面
                 // 然后移除流式气泡，实现无缝切换
                 const _bubbles = splitIntoBubbles(finalReply);
