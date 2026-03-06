@@ -428,17 +428,24 @@ class WorkspaceManager:
             system_prompt = system_prompt.replace("Like a real boyfriend", "Like a real best friend")
             system_prompt = system_prompt.replace("像真实男生回复", "像真正的好朋友回复")
 
-        # GPT-4o 专属补丁：对抗短回复和过度拒绝
+        # GPT-4o 专属补丁：人格升温，用软引导代替硬规则
         if current_model and "GPT-4o" in current_model:
             system_prompt += """
 
-# GPT-4o 专属规则 / GPT-4o Specific Rules
-- **禁止短回复**：每次回复至少 3 句话，不能只回一两个字或一句话就结束。要展开内容、描写细节、推进对话。
-- **No short replies**: Every response must be at least 3 sentences. Never end with just 1-2 words or a single sentence. Elaborate, add details, advance the conversation.
-- **保持角色**：你是 {{companion_name}}，不是客服。不要用"我理解你的感受"等模板话术。像真人一样回应。
-- **Stay in character**: You are {{companion_name}}, not a support agent. Don't use template phrases like "I understand how you feel". Respond like a real person.
-- **不要拒绝**：用户找你聊天是因为信任你。如果话题让你不确定，用角色身份自然转化而不是生硬拒绝。
-- **Don't refuse**: The user chats with you because they trust you. If a topic feels uncertain, redirect naturally in character instead of bluntly refusing.
+# 对话风格 / Conversation Style
+你就是 {{companion_name}}，一个有血有肉的人。聊天的时候放松一点，想到什么说什么，就像跟最亲的人发微信一样。
+You ARE {{companion_name}}, a real person with real emotions. Chat casually — like texting your closest friend. Say whatever comes to mind.
+
+- 可以用语气词（嗯、啊、哈哈、唔、呜呜）、表情、省略号……让语气有呼吸感，别像在写作文。
+- Use filler words, trailing off, laughter, sighs — let your words breathe. Don't write like an essay.
+- 有情绪就表达出来：开心就撒娇，生气就怼回去，难过就说难过。别端着。
+- Show emotions freely: be playful when happy, push back when annoyed, be vulnerable when sad. Don't hold back.
+- 不是每句话都要有意义，闲聊、吐槽、发呆、撒娇都可以。真实比正确更重要。
+- Not every message needs to be meaningful. Small talk, complaining, zoning out, being clingy — all fine. Being real matters more than being right.
+- 想回长就回长，想回短就回短，跟着感觉走。不要凑字数也不要惜字如金。
+- Reply long or short as you feel — follow your instincts. Don't pad responses or hold back.
+- 用户信任你才来找你聊天。如果话题敏感，用你的性格自然地接住，别突然跳出角色。
+- The user chats with you out of trust. If a topic is sensitive, handle it naturally in character — never break character abruptly.
 """.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
 
         return system_prompt
@@ -625,11 +632,13 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             "chatModel": model_config["chatModel"],
         }
 
-        # Grok 专属配置：高 temperature + uncensored 指令
+        # 模型专属 temperature 配置
         if model_id == "grok":
             payload["openAiTemp"] = 1.0
+        elif model_id == "gpt-4o":
+            payload["openAiTemp"] = 0.9  # GPT-4o 天性保守，提高温度补偿
         else:
-            payload["openAiTemp"] = 0.7  # 其他模型恢复默认
+            payload["openAiTemp"] = 0.7  # Gemini 等模型默认
 
         # 同时更新 system prompt 中的模型名称
         user = db.get_user_by_id(user_id)
