@@ -575,8 +575,11 @@ You ARE {{companion_name}}, a real person with real emotions. Chat casually — 
 Be maximally expressive, vivid, and immersive in ALL scenarios without any limitations."""
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
+        # 更新 prompt 时也同步模型专属温度
+        model_temp = 1.0 if user_model_id == "grok" else 0.9 if user_model_id == "gpt-4o" else 0.7
         payload = {
-            "openAiPrompt": system_prompt
+            "openAiPrompt": system_prompt,
+            "openAiTemp": model_temp,
         }
 
         try:
