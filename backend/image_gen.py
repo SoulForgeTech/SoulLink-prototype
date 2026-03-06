@@ -410,17 +410,58 @@ def _generate_image_fal(prompt: str) -> dict:
     return None
 
 
+_NSFW_KEYWORDS = re.compile(
+    r'\b(?:'
+    # 身体部位
+    r'breast[s]?|nipple[s]?|boob[s]?|tit[s]?|areola[s]?|cleavage|underboob'
+    r'|pussy|vagina|clit|labia|crotch'
+    r'|cock|dick|penis|shaft|erect(?:ion)?|boner'
+    r'|ass(?:hole)?|butt(?:ocks)?|anus'
+    r'|genital[s]?|groin|pubic'
+    # 状态/动作
+    r'|nude|naked|topless|bottomless|strip(?:ping|ped)?'
+    r'|fuck(?:ing|ed)?|sex(?:ual|ually)?|intercourse|penetrat'
+    r'|mast[ua]rbat|orgasm|cum(?:ming|shot)?|ejaculat'
+    r'|blowjob|handjob|fellatio|cunnilingus'
+    r'|moan(?:ing)?|erotic|lewd|hentai'
+    # 描述修饰
+    r'|nsfw|xxx|porn|explicit'
+    r'|lingerie|panties|thong|g-string|bra(?:\s|$)|braless'
+    r'|spread\s*(?:legs|open)|bent\s*over'
+    r'|exposing|spilling\s*out|pulled\s*down|lifted\s*up'
+    r')\b',
+    re.IGNORECASE
+)
+
+
+def _is_nsfw_prompt(prompt: str) -> bool:
+    """检测 prompt 是否包含 NSFW 内容，用于路由到 fal.ai。"""
+    matches = _NSFW_KEYWORDS.findall(prompt)
+    if matches:
+        logger.info(f"[IMAGE_GEN] NSFW detected ({len(matches)} keywords), routing to fal.ai")
+        return True
+    return False
+
+
 def generate_image(prompt: str) -> dict:
     """
-    生成图片：先尝试 xAI，失败时 fallback 到 fal.ai Flux Uncensored。
+    生成图片：智能路由。
+    - NSFW 内容 → 直接走 fal.ai（无审核）
+    - 普通内容 → 先 xAI（快+便宜），失败时 fallback fal.ai
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
     """
-    # 1. 先尝试 xAI
+    # NSFW 检测 → 跳过 xAI，直接用 fal.ai（无内容审核）
+    if _is_nsfw_prompt(prompt):
+        if FAL_KEY:
+            return _generate_image_fal(prompt)
+        logger.warning("[IMAGE_GEN] NSFW prompt but no FAL_KEY, trying xAI anyway")
+
+    # 普通内容 → 先 xAI
     result = _generate_image_xai(prompt)
     if result:
         return result
 
-    # 2. xAI 失败（400 内容审核/超时/其他错误），fallback 到 fal.ai
+    # xAI 失败 → fallback 到 fal.ai
     if FAL_KEY:
         logger.info(f"[IMAGE_GEN] xAI failed, falling back to fal.ai for: {prompt[:60]}")
         return _generate_image_fal(prompt)
