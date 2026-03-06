@@ -75,8 +75,8 @@ When the conversation naturally calls for visual expression (selfie, scene, outf
 [IMAGE: short English scene description]
 
 规则 / Rules:
-- **不要描写角色外观**（系统会自动补充角色外观描述）/ **Do NOT describe character appearance** (system auto-injects character appearance)
-- 只描写**场景、动作、表情、服装、环境**/ Only describe **scene, action, expression, outfit, environment**
+- **不要描写脸型、体型、肤色、瞳色等固定外貌**（系统会自动补充）/ **Do NOT describe face shape, body type, skin tone, eye color** (system auto-injects base appearance)
+- 描写**场景、动作、表情、服装、发型、环境**/ Describe **scene, action, expression, outfit, hairstyle, environment**
 - 描述必须是**英文**，简洁自然，30-50词 / Description must be in **English**, concise and natural, 30-50 words
 - **禁止夸张形容词**如 perfect/flawless/superior/stunning/gorgeous — 用简单自然的词 / **No exaggerated adjectives** like perfect/flawless/superior/stunning/gorgeous — use simple natural words
 - 谨慎使用，仅在特殊时刻，每次对话最多 1-2 次 / Use sparingly, only at special moments, max 1-2 per conversation
