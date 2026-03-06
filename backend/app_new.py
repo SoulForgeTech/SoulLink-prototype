@@ -845,23 +845,38 @@ def chat():
     workspace = workspace_result["workspace"]
     workspace_slug = workspace["slug"]
 
-    # 确保 AnythingLLM workspace 的 model 与用户设置一致
-    # （防止 MongoDB 和 AnythingLLM 不同步的情况）
+    # Sync model + prompt (with Mem0 semantic memory if enabled)
     try:
         user_model = user.get("settings", {}).get("model", "gemini")
         if user_model in workspace_manager.SUPPORTED_MODELS:
             model_config = workspace_manager.SUPPORTED_MODELS[user_model]
+            model_temp = 1.0 if user_model == "grok" else 0.9 if user_model == "gpt4o" else 0.7
             import requests as req
-            sync_url = f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update"
-            sync_headers = {
-                "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
-                "Content-Type": "application/json"
-            }
             sync_payload = {
                 "chatProvider": model_config["chatProvider"],
                 "chatModel": model_config["chatModel"],
+                "openAiTemp": model_temp,
             }
-            req.post(sync_url, headers=sync_headers, json=sync_payload, timeout=3)
+            if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
+                try:
+                    from mem0_engine import search_relevant_memories, get_permanent_memories, build_memory_text as mem0_build_text
+                    uid_str = str(user_id)
+                    permanent = get_permanent_memories(uid_str)
+                    relevant = search_relevant_memories(uid_str, user_message)
+                    memory_text = mem0_build_text(permanent, relevant)
+                    fresh_prompt = workspace_manager.build_prompt_for_user(user_id, memory_text=memory_text)
+                    sync_payload["openAiPrompt"] = fresh_prompt
+                except Exception as e:
+                    logger.warning(f"[MEM0] Pre-chat search failed: {e}")
+            req.post(
+                f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update",
+                headers={
+                    "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json=sync_payload,
+                timeout=5
+            )
     except Exception as e:
         logger.warning(f"Model sync check failed (non-fatal): {e}")
 
@@ -1322,8 +1337,15 @@ def chat():
         import threading
         def _async_memory_extraction(uid, umsg, areply):
             try:
-                from memory_engine import process_memory
-                process_memory(uid, umsg, areply)
+                if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
+                    from mem0_engine import process_memory, cleanup_expired_memories
+                    process_memory(uid, umsg, areply)
+                    import random
+                    if random.random() < 0.05:
+                        cleanup_expired_memories(str(uid))
+                else:
+                    from memory_engine import process_memory
+                    process_memory(uid, umsg, areply)
             except Exception as e:
                 logger.warning(f"[MEMORY] Async extraction error: {e}")
         threading.Thread(
@@ -1405,20 +1427,38 @@ def chat_stream():
         workspace = workspace_result["workspace"]
         workspace_slug = workspace["slug"]
 
-        # Sync model setting
+        # Sync model + prompt (with Mem0 semantic memory if enabled)
         try:
             user_model = user.get("settings", {}).get("model", "gemini")
             if user_model in workspace_manager.SUPPORTED_MODELS:
                 model_config = workspace_manager.SUPPORTED_MODELS[user_model]
+                model_temp = 1.0 if user_model == "grok" else 0.9 if user_model == "gpt4o" else 0.7
                 import requests as req
+                sync_payload = {
+                    "chatProvider": model_config["chatProvider"],
+                    "chatModel": model_config["chatModel"],
+                    "openAiTemp": model_temp,
+                }
+                # Mem0: 语义搜索记忆 → 实时注入 prompt
+                if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
+                    try:
+                        from mem0_engine import search_relevant_memories, get_permanent_memories, build_memory_text as mem0_build_text
+                        uid_str = str(user_id)
+                        permanent = get_permanent_memories(uid_str)
+                        relevant = search_relevant_memories(uid_str, user_message)
+                        memory_text = mem0_build_text(permanent, relevant)
+                        fresh_prompt = workspace_manager.build_prompt_for_user(user_id, memory_text=memory_text)
+                        sync_payload["openAiPrompt"] = fresh_prompt
+                    except Exception as e:
+                        logger.warning(f"[MEM0] Pre-chat search failed, prompt unchanged: {e}")
                 req.post(
                     f"{workspace_manager.anythingllm_base_url}/api/v1/workspace/{workspace_slug}/update",
                     headers={
                         "Authorization": f"Bearer {workspace_manager.anythingllm_api_key}",
                         "Content-Type": "application/json"
                     },
-                    json={"chatProvider": model_config["chatProvider"], "chatModel": model_config["chatModel"]},
-                    timeout=3
+                    json=sync_payload,
+                    timeout=5
                 )
         except Exception:
             pass
@@ -1796,8 +1836,15 @@ def chat_stream():
         # Async tasks: memory + title
         def _async_tasks():
             try:
-                from memory_engine import process_memory
-                process_memory(user_id, user_message, reply)
+                if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
+                    from mem0_engine import process_memory, cleanup_expired_memories
+                    process_memory(user_id, user_message, reply)
+                    import random
+                    if random.random() < 0.05:
+                        cleanup_expired_memories(str(user_id))
+                else:
+                    from memory_engine import process_memory
+                    process_memory(user_id, user_message, reply)
             except Exception as e:
                 logger.warning(f"[CHAT-STREAM] Memory error: {e}")
         threading.Thread(target=_async_tasks, daemon=True).start()
@@ -2141,8 +2188,15 @@ def voice_chat_stream():
         try:
             def _async_tasks():
                 try:
-                    from memory_engine import process_memory
-                    process_memory(user_id, transcript, reply)
+                    if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
+                        from mem0_engine import process_memory, cleanup_expired_memories
+                        process_memory(user_id, transcript, reply)
+                        import random
+                        if random.random() < 0.05:
+                            cleanup_expired_memories(str(user_id))
+                    else:
+                        from memory_engine import process_memory
+                        process_memory(user_id, transcript, reply)
                 except Exception:
                     pass
                 if is_first_message:
