@@ -576,7 +576,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
 
         update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{slug}/update"
         # 更新 prompt 时也同步模型专属温度
-        model_temp = 1.0 if user_model_id == "grok" else 0.9 if user_model_id == "gpt-4o" else 0.7
+        model_temp = 1.0 if user_model_id == "grok" else 0.9 if user_model_id == "gpt4o" else 0.7
         payload = {
             "openAiPrompt": system_prompt,
             "openAiTemp": model_temp,
@@ -638,7 +638,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
         # 模型专属 temperature 配置
         if model_id == "grok":
             payload["openAiTemp"] = 1.0
-        elif model_id == "gpt-4o":
+        elif model_id == "gpt4o":
             payload["openAiTemp"] = 0.9  # GPT-4o 天性保守，提高温度补偿
         else:
             payload["openAiTemp"] = 0.7  # Gemini 等模型默认
