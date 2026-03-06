@@ -109,7 +109,7 @@ def _extract_appearance_from_persona(persona: str) -> str:
             "Extract a concise visual appearance description from this character persona for AI image generation. "
             "Output ONLY the appearance in English, max 100 words. MUST include:\n"
             "1. Art style — if the character is from anime/game/manga, state 'Anime art style' and the source (e.g. 'Genshin Impact aesthetic'). If realistic, state 'Realistic/photographic style'.\n"
-            "2. Character name (if identifiable)\n"
+            "2. If the character is based on a REAL person/celebrity, START with 'Resembling [real name]' (e.g. 'Resembling Cai Xukun, male idol...'). This is critical for accurate likeness.\n"
             "3. Gender, body type, skin tone\n"
             "4. Hair: color, style, distinctive features\n"
             "5. Eyes: color, distinctive features\n"
@@ -130,18 +130,35 @@ def get_appearance_prefix(user_id, db) -> str:
     """
     获取用户角色的外观描述前缀。
     优先使用缓存（settings.image_appearance），否则从 persona 提取并缓存。
+    如果有原始角色名（如明星名），确保 appearance 包含真名以便图片匹配。
     """
     user = db.db["users"].find_one({"_id": user_id})
     if not user:
         return ""
 
+    settings = user.get("settings", {})
+
     # 检查缓存
-    cached = user.get("settings", {}).get("image_appearance")
+    cached = settings.get("image_appearance")
     if cached:
+        # 兼容旧数据：如果缓存中没有 "Resembling" 但有原始角色名（真人），尝试注入
+        source_name = settings.get("custom_persona_name") or ""
+        if source_name and "Resembling" not in cached:
+            # 简单检查：如果角色名看起来是真人名（非虚构），补充真名引用
+            # 真人名通常不含"酱/ちゃん/sama/桑"等虚构角色后缀
+            # 这里我们保守处理：只要 cached 中没有 source_name，就补上
+            if source_name.lower() not in cached.lower():
+                cached = f"Resembling {source_name}. {cached}"
+                # 更新缓存
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {"settings.image_appearance": cached}}
+                )
+                logger.info(f"[IMAGE_GEN] Injected source name '{source_name}' into appearance for user {user_id}")
         return cached
 
     # 从 persona 提取
-    persona = user.get("settings", {}).get("custom_persona") or ""
+    persona = settings.get("custom_persona") or ""
     if not persona:
         pt = user.get("personality_test") or {}
         persona = pt.get("personality_profile") or ""
@@ -153,6 +170,11 @@ def get_appearance_prefix(user_id, db) -> str:
 
     appearance = _extract_appearance_from_persona(persona)
     if appearance:
+        # 如果有原始角色名但提取结果没包含，补上
+        source_name = settings.get("custom_persona_name") or ""
+        if source_name and "Resembling" not in appearance and source_name.lower() not in appearance.lower():
+            appearance = f"Resembling {source_name}. {appearance}"
+
         # 缓存到 settings
         db.db["users"].update_one(
             {"_id": user_id},
