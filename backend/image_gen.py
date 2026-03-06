@@ -87,6 +87,37 @@ def upload_to_cloudinary(b64_data: str, user_id: str) -> str:
         return ""
 
 
+def _clean_image_prompt(prompt: str) -> str:
+    """
+    清理 AI 生成的 IMAGE 描述，去除夸张形容词和冗余外观描述。
+    让 prompt 更简洁自然，避免图片模型产生夸张/畸形的结果。
+    """
+    # 去除常见的夸张形容词
+    exaggerated_words = [
+        r'\bperfect\b', r'\bflawless\b', r'\bstunning\b', r'\bgorgeous\b',
+        r'\bsuperior\b', r'\bexquisite\b', r'\bimmaculate\b', r'\bimpeccable\b',
+        r'\bporcelain\b', r'\bmodel-like\b', r'\bmodel-long\b', r'\bmodel-tall\b',
+        r'\bbreathtak\w+\b', r'\bmesmeriz\w+\b', r'\bcaptivat\w+\b',
+        r'\bideal\b', r'\bsculpted\b', r'\bchiseled\b', r'\bethere\w+\b',
+        r'\bangelic\b', r'\bdivine\b', r'\bravishing\b', r'\bmagnificent\b',
+        r'\bextraordinar\w+\b', r'\bunparalleled\b', r'\bsupremely\b',
+    ]
+    result = prompt
+    for word in exaggerated_words:
+        result = re.sub(word, '', result, flags=re.IGNORECASE)
+
+    # 清理多余空格
+    result = re.sub(r'  +', ' ', result).strip()
+    # 清理连续的逗号
+    result = re.sub(r',\s*,', ',', result)
+    result = re.sub(r'^\s*,\s*', '', result)
+
+    if result != prompt:
+        logger.info(f"[IMAGE_GEN] Cleaned prompt: removed exaggerated words")
+
+    return result
+
+
 def extract_image_markers(reply: str):
     """
     从 AI 回复中提取 [IMAGE: ...] 标记。
@@ -99,6 +130,8 @@ def extract_image_markers(reply: str):
         return reply, []
 
     prompt = match.group(1).strip()
+    # 清理夸张形容词
+    prompt = _clean_image_prompt(prompt)
     # 从回复中移除标记（包括前后可能的空白行）
     cleaned = re.sub(r'\s*\[IMAGE:\s*.+?\]', '', reply, count=1, flags=re.DOTALL).strip()
     return cleaned, [prompt]
@@ -421,11 +454,18 @@ def process_image_markers(reply: str, user_id, db):
 
     images = []
     for prompt in prompts:
-        # 拼接外观前缀到 prompt
+        # 拼接外观前缀到 prompt，控制总长度
         if appearance:
-            full_prompt = f"Character appearance: {appearance}. Scene: {prompt}"
+            # 截断外观前缀避免过长（保留核心特征）
+            app_text = appearance[:200] if len(appearance) > 200 else appearance
+            # 截断场景描述避免过长
+            scene_text = prompt[:250] if len(prompt) > 250 else prompt
+            full_prompt = f"Character appearance: {app_text}. Scene: {scene_text}"
         else:
-            full_prompt = prompt
+            full_prompt = prompt[:350] if len(prompt) > 350 else prompt
+
+        logger.info(f"[IMAGE_GEN] Full prompt ({len(full_prompt)} chars): {full_prompt[:200]}...")
+
         result = generate_image(full_prompt)
         if result:
             # 保存原始短 prompt（不含 appearance 前缀），用于 DB 存储和前端显示
