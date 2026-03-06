@@ -116,12 +116,15 @@ EXTRACTION_PROMPT_ZH = """你是一个角色设定提取专家。用户会给你
    - 用于AI图片生成，必须是英文
    - 包含：性别、发色/发型、瞳色、肤色、体型、标志性服装/配饰
    - 如果原文没有外貌信息，根据角色名和性格合理推断
-   - **重要：如果角色是真实人物/明星/名人，必须在 appearance 开头写 "Resembling [真实姓名]"**
-   - 例如蔡徐坤→"Resembling Cai Xukun, male, dark hair..."，刘亦菲→"Resembling Liu Yifei, female, long black hair..."
-   - 这能让图片生成模型准确还原真人外貌，即使用户后续改了角色昵称也不影响
-   - 如果角色是虚构的（动漫/游戏等），则不需要加 "Resembling"，直接描述外貌即可
-   - 示例（虚构）："Female, long blue hair, pink eyes, fair skin, petite build, maid outfit with white headband"
+   - **最重要：如果角色是已知的人物（无论真人还是虚构），必须在 appearance 开头标注角色原始身份，帮助图片模型精准匹配形象**
+   - 真人/明星/名人 → 开头写 "Resembling [原名]"
+   - 动漫/游戏/漫画角色 → 开头写 "[角色名] from [作品名]"
+   - Vtuber/虚拟偶像 → 开头写 "[名字], virtual idol / Vtuber"
+   - 用户原创角色（无已知来源）→ 不加前缀，直接描述外貌
    - 示例（真人）："Resembling Cai Xukun, male idol, dark hair slightly wavy, sharp V-shaped jawline, warm amber eyes, fair skin, tall slender build, stylish streetwear"
+   - 示例（动漫）："Rem from Re:Zero, anime art style, female, short blue hair covering right eye, light blue eyes, fair skin, petite build, maid outfit with white headband and hair ornament"
+   - 示例（游戏）："Ganyu from Genshin Impact, anime art style, female, long blue gradient hair with red horns, purple eyes, fair skin, cryo vision holder, elegant Liyue-style outfit"
+   - 示例（原创）："Female, long silver hair, heterochromia (red and blue eyes), fair skin, slender build, gothic lolita dress"
 4. **用中文输出** core_persona，**用英文输出** appearance
 5. **输出格式**严格为JSON：
 
@@ -163,12 +166,15 @@ Your task is to extract the core character persona and output a JSON object.
    - Used for AI image generation, must be in English
    - Include: gender, hair color/style, eye color, skin tone, body type, signature clothing/accessories
    - If appearance is not described in the text, make reasonable inferences based on the character name and personality
-   - **IMPORTANT: If the character is a real person/celebrity/public figure, you MUST start appearance with "Resembling [real name]"**
-   - E.g., Cai Xukun → "Resembling Cai Xukun, male idol, dark hair..." / Liu Yifei → "Resembling Liu Yifei, female, long black hair..."
-   - This helps the image model accurately reproduce their likeness even if the user later changes the character's display name
-   - For fictional characters (anime/game), do NOT add "Resembling" — just describe appearance directly
-   - Example (fictional): "Female, long blue hair, pink eyes, fair skin, petite build, maid outfit with white headband"
+   - **MOST IMPORTANT: If the character is a KNOWN figure (real OR fictional), you MUST identify them at the start of appearance to help the image model match their look accurately**
+   - Real person/celebrity → Start with "Resembling [real name]"
+   - Anime/game/manga character → Start with "[Character name] from [Source work]"
+   - Vtuber/virtual idol → Start with "[Name], virtual idol / Vtuber"
+   - Original character (no known source) → No prefix, just describe appearance directly
    - Example (real person): "Resembling Cai Xukun, male idol, dark hair slightly wavy, sharp V-shaped jawline, warm amber eyes, fair skin, tall slender build, stylish streetwear"
+   - Example (anime): "Rem from Re:Zero, anime art style, female, short blue hair covering right eye, light blue eyes, fair skin, petite build, maid outfit with white headband and hair ornament"
+   - Example (game): "Ganyu from Genshin Impact, anime art style, female, long blue gradient hair with red horns, purple eyes, fair skin, cryo vision holder, elegant Liyue-style outfit"
+   - Example (original): "Female, long silver hair, heterochromia (red and blue eyes), fair skin, slender build, gothic lolita dress"
 4. **Output core_persona in English**, **appearance in English**
 5. **Output format** must be strict JSON:
 
