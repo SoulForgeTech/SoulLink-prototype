@@ -53,7 +53,7 @@ def _get_mem0():
         "embedder": {
             "provider": "gemini",
             "config": {
-                "model": "models/text-embedding-004",
+                "model": "gemini-embedding-001",
                 "api_key": gemini_key,
             }
         },
