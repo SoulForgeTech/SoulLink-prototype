@@ -7,6 +7,7 @@ import os
 import re
 import time
 import uuid
+import threading
 from typing import Optional, Dict, Any
 from bson import ObjectId
 
@@ -54,9 +55,25 @@ class WorkspaceManager:
         )
         self.anythingllm_api_key = os.getenv("ANYTHINGLLM_API_KEY", "")
 
+        # 定位模板文件目录：优先同目录，否则找 backend/ 子目录
+        self._template_dir = self._find_template_dir()
+
         # 如果没有设置环境变量，尝试从配置文件读取
         if not self.anythingllm_api_key:
             self._load_from_config()
+
+    def _find_template_dir(self) -> str:
+        """智能查找模板文件所在目录（解决根目录 vs backend/ 两套文件问题）"""
+        my_dir = os.path.dirname(__file__)
+        # 如果模板就在同目录（正常 git 结构：backend/ 下运行）
+        if os.path.exists(os.path.join(my_dir, "system_prompt_template.txt")):
+            return my_dir
+        # 如果从根目录运行，模板在 backend/ 子目录
+        backend_dir = os.path.join(my_dir, "backend")
+        if os.path.exists(os.path.join(backend_dir, "system_prompt_template.txt")):
+            return backend_dir
+        # 兜底：返回当前目录
+        return my_dir
 
     def _load_from_config(self):
         """从配置文件加载设置"""
@@ -98,7 +115,7 @@ class WorkspaceManager:
         """从文件或环境变量加载 system prompt 模板（根据性别选择不同模板）"""
         # 根据性别选择模板文件
         suffix = "_male" if companion_gender == "male" else ""
-        template_path = os.path.join(os.path.dirname(__file__), f"system_prompt_template{suffix}.txt")
+        template_path = os.path.join(self._template_dir, f"system_prompt_template{suffix}.txt")
         try:
             if os.path.exists(template_path):
                 with open(template_path, "r", encoding="utf-8") as f:
@@ -242,10 +259,16 @@ class WorkspaceManager:
                 # Step 2: 更新 workspace 配置（传入用户名用于个性化 prompt）
                 self._configure_workspace(actual_slug, headers, user_name)
 
-                # Step 3: 复制模板文档（可选）
+                # Step 3: 复制模板文档（后台异步，不阻塞用户）
                 template_workspace = os.getenv("ANYTHINGLLM_TEMPLATE_WORKSPACE")
                 if template_workspace:
-                    self._copy_template_documents(template_workspace, actual_slug, headers)
+                    thread = threading.Thread(
+                        target=self._copy_template_documents,
+                        args=(template_workspace, actual_slug, headers),
+                        daemon=True
+                    )
+                    thread.start()
+                    print(f"[KB] Started background document copy for {actual_slug}")
 
                 return {
                     "success": True,
@@ -306,7 +329,7 @@ class WorkspaceManager:
 
     def _load_custom_template(self) -> str:
         """加载自定义角色专用模板"""
-        template_path = os.path.join(os.path.dirname(__file__), "system_prompt_template_custom.txt")
+        template_path = os.path.join(self._template_dir, "system_prompt_template_custom.txt")
         try:
             if os.path.exists(template_path):
                 with open(template_path, "r", encoding="utf-8") as f:
@@ -738,14 +761,50 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             print(f"Document paths to copy: {doc_paths}")
 
             if doc_paths:
+                # Batch embed to avoid timeout (50 docs per batch)
+                BATCH_SIZE = 50
                 update_url = f"{self.anythingllm_base_url}/api/v1/workspace/{target_slug}/update-embeddings"
-                payload = {
-                    "adds": doc_paths,
-                    "deletes": []
-                }
-                response = requests.post(update_url, headers=headers, json=payload)
-                print(f"Copy documents response: {response.status_code} - {response.text[:200]}")
-                return response.status_code == 200
+                total = len(doc_paths)
+                success_count = 0
+
+                for i in range(0, total, BATCH_SIZE):
+                    batch = doc_paths[i:i+BATCH_SIZE]
+                    batch_num = i // BATCH_SIZE + 1
+                    total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
+
+                    for attempt in range(3):
+                        try:
+                            response = requests.post(
+                                update_url,
+                                headers=headers,
+                                json={"adds": batch, "deletes": []},
+                                timeout=600
+                            )
+                            if response.status_code == 200:
+                                success_count += len(batch)
+                                if batch_num % 20 == 0 or batch_num <= 1 or batch_num == total_batches:
+                                    print(f"[KB] {target_slug}: batch {batch_num}/{total_batches} - {success_count}/{total}")
+                                break
+                            else:
+                                if attempt < 2:
+                                    import time as _time
+                                    _time.sleep(5)
+                                else:
+                                    print(f"[KB] {target_slug}: batch {batch_num} FAILED HTTP {response.status_code}")
+                        except Exception as batch_err:
+                            if attempt < 2:
+                                import time as _time
+                                _time.sleep(5)
+                            else:
+                                print(f"[KB] {target_slug}: batch {batch_num} FAILED: {batch_err}")
+
+                    # Small delay between batches
+                    if i + BATCH_SIZE < total:
+                        import time as _time
+                        _time.sleep(1)
+
+                print(f"[KB] {target_slug}: embedding complete - {success_count}/{total}")
+                return success_count == total
 
             return True
 
