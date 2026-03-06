@@ -300,10 +300,24 @@ def _strip_real_names(prompt: str) -> str:
     return result
 
 
+def _is_black_image(b64_data: str) -> bool:
+    """
+    检测 xAI 返回的图片是否是纯黑图（内容审核被拦截的标志）。
+    纯黑的 1024x1024 JPEG base64 长度通常 < 30000 字符（正常图片 > 100000）。
+    """
+    # base64 长度检测：纯黑 1024x1024 JPEG 约 20K-25K chars base64
+    # 正常图片一般 > 100K chars base64
+    if len(b64_data) < 35000:
+        logger.warning(f"[IMAGE_GEN] Suspected black/censored image: b64 length={len(b64_data)} (too small for real image)")
+        return True
+    return False
+
+
 def _generate_image_xai(prompt: str) -> dict:
     """
     调用 xAI grok-imagine-image API 生成图片。
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
+    xAI 内容审核不返回错误码，而是返回纯黑图片 — 需要检测并 fallback。
     """
     if not XAI_API_KEY:
         return None
@@ -326,6 +340,12 @@ def _generate_image_xai(prompt: str) -> dict:
         resp.raise_for_status()
         data = resp.json()
         b64 = data["data"][0]["b64_json"]
+
+        # 检测纯黑图（xAI 内容审核返回的哑图）
+        if _is_black_image(b64):
+            logger.warning(f"[IMAGE_GEN] xAI returned black/censored image for: {prompt[:80]}...")
+            return None
+
         logger.info(f"[IMAGE_GEN] xAI generated image for prompt: {prompt[:80]}... ({len(b64)} chars b64)")
         return {"b64": b64, "prompt": prompt}
     except requests.exceptions.Timeout:
