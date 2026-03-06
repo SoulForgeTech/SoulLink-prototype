@@ -146,17 +146,18 @@ def _extract_appearance_from_persona(persona: str) -> str:
         from memory_engine import _call_gemini
         extraction_prompt = (
             "Extract a concise visual appearance description from this character persona for AI image generation. "
-            "Output ONLY the appearance in English, max 100 words. MUST include:\n"
+            "Output ONLY the appearance in English, max 80 words. MUST include:\n"
             "1. CRITICAL — Identify the character for the image model:\n"
-            "   - Real person/celebrity → START with 'Resembling [name]' (e.g. 'Resembling Cai Xukun, male idol...')\n"
-            "   - Anime/game character → START with '[Name] from [Source]' (e.g. 'Rem from Re:Zero, anime art style...')\n"
+            "   - Real person/celebrity → START with 'Resembling [Full English Name]' (e.g. 'Resembling Cai Xukun', 'Resembling Taylor Swift')\n"
+            "   - Anime/game character → START with '[Name] from [Source]' (e.g. 'Rem from Re:Zero, anime art style')\n"
             "   - Original character → just describe, no prefix\n"
-            "2. Art style — anime/game → 'Anime art style'; realistic → 'Realistic/photographic style'\n"
-            "3. Gender, body type, skin tone\n"
-            "4. Hair: color, style, distinctive features\n"
-            "5. Eyes: color, distinctive features\n"
-            "6. Typical outfit & accessories\n"
-            "If details are missing, infer from context. Output a single descriptive paragraph, no bullet points.\n\n"
+            "2. Art style — anime/game → 'Anime art style'; realistic → 'Realistic photographic style'\n"
+            "3. Gender, hair color and style, eye features\n"
+            "4. Typical outfit style\n"
+            "IMPORTANT: Use simple, natural language. Do NOT use exaggerated words like: "
+            "perfect, flawless, exquisite, stunning, gorgeous, model-like, porcelain, chiseled, sculpted, divine, angelic. "
+            "Just describe factually.\n"
+            "Output a single descriptive paragraph, no bullet points.\n\n"
             f"Character persona:\n{persona[:2000]}"
         )
         result = _call_gemini(extraction_prompt)
@@ -451,6 +452,9 @@ def process_image_markers(reply: str, user_id, db):
 
     # 获取角色外观前缀
     appearance = get_appearance_prefix(user_id, db)
+    # 也清理 appearance 中的夸张形容词
+    if appearance:
+        appearance = _clean_image_prompt(appearance)
 
     images = []
     for prompt in prompts:
