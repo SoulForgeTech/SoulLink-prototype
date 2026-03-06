@@ -412,23 +412,52 @@ def _generate_image_fal(prompt: str) -> dict:
 
 _NSFW_KEYWORDS = re.compile(
     r'\b(?:'
-    # 身体部位
-    r'breast[s]?|nipple[s]?|boob[s]?|tit[s]?|areola[s]?|cleavage|underboob'
-    r'|pussy|vagina|clit|labia|crotch'
-    r'|cock|dick|penis|shaft|erect(?:ion)?|boner'
-    r'|ass(?:hole)?|butt(?:ocks)?|anus'
-    r'|genital[s]?|groin|pubic'
-    # 状态/动作
-    r'|nude|naked|topless|bottomless|strip(?:ping|ped)?'
+    # === 身体部位 ===
+    r'breast[s]?|nipple[s]?|boob[s]?|tit[s]?|areola[s]?|cleavage|underboob|sideboob'
+    r'|pussy|vagina|clit(?:oris)?|labia|crotch|vulva'
+    r'|cock|dick|penis|shaft|erect(?:ion)?|boner|phallus'
+    r'|ass(?:hole)?|butt(?:ocks)?|anus|anal'
+    r'|genital[s]?|groin|pubic|crotch'
+    r'|bosom|bust(?:y)|busty'
+    # === 裸体/暴露状态 ===
+    r'|nude|naked|topless|bottomless|undress(?:ed|ing)?'
+    r'|strip(?:ping|ped|tease)?|uncloth'
+    r'|bare\s*(?:chest|breast|skin|body|ass|butt)'
+    # === 性行为/动作 ===
     r'|fuck(?:ing|ed)?|sex(?:ual|ually)?|intercourse|penetrat'
-    r'|mast[ua]rbat|orgasm|cum(?:ming|shot)?|ejaculat'
-    r'|blowjob|handjob|fellatio|cunnilingus'
-    r'|moan(?:ing)?|erotic|lewd|hentai'
-    # 描述修饰
-    r'|nsfw|xxx|porn|explicit'
+    r'|mast[ua]rbat|orgasm|cum(?:ming|shot)?|ejaculat|climax'
+    r'|blowjob|handjob|fellatio|cunnilingus|deepthroat'
+    r'|gangbang|threesome|foursome|orgy'
+    r'|riding\s*(?:him|her|cock|dick)'
+    r'|thrust(?:ing)?|grind(?:ing)?|hump(?:ing)?'
+    r'|creampie|facial|squirt'
+    # === 身体接触（性暗示）===
+    r'|grope|groping|fondle|fondling|spank(?:ing)?'
+    r'|lick(?:ing)?\s*(?:nipple|breast|pussy|cock|body)'
+    r'|suck(?:ing)?\s*(?:nipple|breast|cock|dick|tit)'
+    r'|moan(?:ing)?|erotic|lewd|hentai|aroused|horny'
+    # === BDSM/Fetish ===
+    r'|bondage|bdsm|tied\s*up|handcuff|rope\s*(?:bound|tied)'
+    r'|dominat(?:e|ing|ion|rix)|submissive|slave'
+    r'|whip(?:ping|ped)?|collar(?:ed)?|gagged?|blindfold'
+    r'|fetish|kinky|sadomaso'
+    # === 衣着相关 ===
     r'|lingerie|panties|thong|g-string|bra(?:\s|$)|braless'
-    r'|spread\s*(?:legs|open)|bent\s*over'
-    r'|exposing|spilling\s*out|pulled\s*down|lifted\s*up'
+    r'|see[\s-]?through|transparent\s*(?:cloth|dress|top|shirt)'
+    r'|sheer\s*(?:cloth|dress|top|fabric)'
+    r'|fishnet|garter|stockings\s*only'
+    r'|micro[\s-]?bikini|slingshot\s*bikini'
+    # === 姿势/动作描述 ===
+    r'|spread\s*(?:legs?|open|eagle)|bent\s*over|on\s*(?:all\s*)?fours'
+    r'|legs?\s*(?:wide\s*)?(?:spread|open|apart)'
+    r'|straddle|straddling|mounting|mounted'
+    r'|exposing|spilling\s*out|pulled\s*down|lifted\s*up|ripped\s*off'
+    r'|clothes?\s*(?:off|removed|torn)|taking\s*off\s*(?:clothes|shirt|pants|dress)'
+    # === 通用标记 ===
+    r'|nsfw|xxx|porn(?:ographic)?|explicit|r[\s-]?rated|x[\s-]?rated'
+    r'|slutty|slut|whore|bitch'
+    r'|seduct(?:ive|ion|ress)|provocat(?:ive|ively)'
+    r'|sensual(?:ly)?|intimate(?:ly)?\s*(?:touch|kiss|embrace)'
     r')\b',
     re.IGNORECASE
 )
