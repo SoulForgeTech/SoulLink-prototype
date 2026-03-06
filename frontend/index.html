@@ -10388,13 +10388,14 @@
         // ===== 多气泡分割：按段落拆分文本 =====
         function splitIntoBubbles(text) {
             if (!text || !text.trim()) return [text || ''];
+            const MAX_BUBBLES = 4; // 最多4个气泡，避免长篇内容碎片化
             // 按双换行分割
             const raw = text.split(/\n\n+/);
             const bubbles = [];
             for (let i = 0; i < raw.length; i++) {
                 const seg = raw[i].trim();
                 if (!seg) continue;
-                // 短片段（<30字）合并到前一个气泡，避免孤立的 "好的！" 之类
+                // 短片段（<10字）合并到前一个气泡，避免孤立的 "好的！" 之类
                 if (bubbles.length > 0 && seg.length < 10 && !seg.startsWith('-') && !seg.startsWith('•') && !/^\d+\./.test(seg)) {
                     bubbles[bubbles.length - 1] += '\n\n' + seg;
                 }
@@ -10410,7 +10411,17 @@
                     bubbles.push(seg);
                 }
             }
-            return bubbles.length > 0 ? bubbles : [text];
+            if (bubbles.length <= 1) return bubbles.length > 0 ? bubbles : [text];
+            // 超过上限时，均匀合并到 MAX_BUBBLES 组
+            if (bubbles.length > MAX_BUBBLES) {
+                const merged = [];
+                const perGroup = Math.ceil(bubbles.length / MAX_BUBBLES);
+                for (let i = 0; i < bubbles.length; i += perGroup) {
+                    merged.push(bubbles.slice(i, i + perGroup).join('\n\n'));
+                }
+                return merged;
+            }
+            return bubbles;
         }
 
         function addThinkingBubble(thinkingText) {
