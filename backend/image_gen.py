@@ -7,6 +7,7 @@ AI 在回复中插入 [IMAGE: description] 标记，后端检测并生成图片
 
 import os
 import re
+import io
 import base64
 import logging
 import requests
@@ -302,15 +303,25 @@ def _strip_real_names(prompt: str) -> str:
 
 def _is_black_image(b64_data: str) -> bool:
     """
-    检测 xAI 返回的图片是否是纯黑图（内容审核被拦截的标志）。
-    纯黑的 1024x1024 JPEG base64 长度通常 < 30000 字符（正常图片 > 100000）。
+    检测图片是否是纯黑/近黑图（内容审核被拦截的标志）。
+    用 Pillow 缩到 1x1 取平均亮度，低于阈值判定为黑图。
     """
-    # base64 长度检测：纯黑 1024x1024 JPEG 约 20K-25K chars base64
-    # 正常图片一般 > 100K chars base64
-    if len(b64_data) < 35000:
-        logger.warning(f"[IMAGE_GEN] Suspected black/censored image: b64 length={len(b64_data)} (too small for real image)")
-        return True
-    return False
+    try:
+        from PIL import Image
+        img_bytes = base64.b64decode(b64_data)
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        # 缩到 1x1 = 整张图的平均颜色
+        avg_color = img.resize((1, 1)).getpixel((0, 0))
+        avg_brightness = sum(avg_color) / 3
+        if avg_brightness < 15:
+            logger.warning(f"[IMAGE_GEN] Black/censored image detected: avg_brightness={avg_brightness:.1f}, avg_color={avg_color}, b64_len={len(b64_data)}")
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"[IMAGE_GEN] Black image check failed: {e}, falling back to size check")
+        if len(b64_data) < 35000:
+            return True
+        return False
 
 
 def _generate_image_xai(prompt: str) -> dict:
@@ -401,6 +412,11 @@ def _generate_image_fal(prompt: str) -> dict:
         img_resp.raise_for_status()
         b64 = base64.b64encode(img_resp.content).decode("utf-8")
         logger.info(f"[IMAGE_GEN] fal.ai image downloaded and encoded ({len(b64)} chars b64)")
+
+        # 检测黑图（fal.ai 也可能返回纯黑图）
+        if _is_black_image(b64):
+            logger.warning(f"[IMAGE_GEN] fal.ai returned black/censored image for: {prompt[:80]}...")
+            return None
 
         return {"b64": b64, "prompt": prompt}
     except requests.exceptions.Timeout:
