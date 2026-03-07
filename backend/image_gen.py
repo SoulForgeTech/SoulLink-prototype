@@ -554,32 +554,42 @@ def _detect_anime_style(prompt: str) -> bool:
 
 def generate_image(prompt: str) -> dict:
     """
-    双引擎路由生成图片：
-    - NSFW prompt → Venice（无审查） → BFL fallback
-    - Normal prompt → BFL（高质量） → Venice fallback
+    三路由生成图片：
+    - NSFW → Venice（无审查） → BFL fallback
+    - Anime（非 NSFW） → Venice wai-Illustrious（动漫专用） → BFL fallback
+    - Normal → BFL Flux Pro（高质量） → Venice fallback
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
     """
     nsfw = _is_nsfw_prompt(prompt)
+    anime = _detect_anime_style(prompt)
 
     if nsfw:
         # NSFW → Venice 优先（完全无审查）
-        model = VENICE_MODEL_ANIME if _detect_anime_style(prompt) else VENICE_MODEL_PHOTO
+        model = VENICE_MODEL_ANIME if anime else VENICE_MODEL_PHOTO
         logger.info(f"[IMAGE_GEN] NSFW routing → Venice [{model}]")
         result = _generate_image_venice(prompt, model=model)
         if result:
             return result
-        # Venice 失败 → BFL fallback（tolerance=6，细节可能模糊但能出图）
         logger.info("[IMAGE_GEN] Venice failed, fallback → BFL (tolerance=6)")
         result = _generate_image_bfl(prompt, safety_tolerance=6)
         if result:
             return result
+    elif anime:
+        # Anime → Venice wai-Illustrious（BFL 不认识动漫角色）
+        logger.info(f"[IMAGE_GEN] Anime routing → Venice [{VENICE_MODEL_ANIME}]")
+        result = _generate_image_venice(prompt, model=VENICE_MODEL_ANIME)
+        if result:
+            return result
+        logger.info("[IMAGE_GEN] Venice anime failed, fallback → BFL")
+        result = _generate_image_bfl(prompt, safety_tolerance=6)
+        if result:
+            return result
     else:
-        # Normal → BFL 优先（高质量）
+        # Normal → BFL 优先（高质量真人/风景）
         logger.info("[IMAGE_GEN] Normal routing → BFL")
         result = _generate_image_bfl(prompt, safety_tolerance=6)
         if result:
             return result
-        # BFL 失败 → Venice fallback
         logger.info("[IMAGE_GEN] BFL failed, fallback → Venice")
         result = _generate_image_venice(prompt)
         if result:

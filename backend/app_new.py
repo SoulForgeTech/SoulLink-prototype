@@ -1757,12 +1757,29 @@ def chat_stream():
                 else:
                     thinking_content = ""
 
-        # Process image markers
+        # Process image markers (threaded + keepalive to prevent SSE timeout)
         generated_images = []
-        try:
-            reply, generated_images = process_image_markers(reply, user_id, db)
-        except Exception:
-            pass
+        from image_gen import extract_image_markers
+        reply, _img_prompts = extract_image_markers(reply)
+        if _img_prompts:
+            yield _sse_event("image_generating", {"prompt": _img_prompts[0][:80]})
+            _img_result = [None]
+            def _img_worker():
+                try:
+                    # Re-run with original reply to get full processing
+                    _, _img_result[0] = process_image_markers(
+                        f"[IMAGE: {_img_prompts[0]}]", user_id, db
+                    )
+                except Exception as e:
+                    logger.warning(f"[CHAT-STREAM] Image gen error: {e}")
+                    _img_result[0] = []
+            _img_thread = threading.Thread(target=_img_worker, daemon=True)
+            _img_thread.start()
+            while _img_thread.is_alive():
+                _img_thread.join(timeout=3)
+                if _img_thread.is_alive():
+                    yield ": keepalive\n\n"
+            generated_images = _img_result[0] or []
 
         # Rename detection
         companion_name_changed = None
