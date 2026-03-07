@@ -5336,6 +5336,19 @@
             </div>
             <div class="changelog-body">
 
+                <!-- v0.1.5-beta -->
+                <div class="changelog-version">
+                    <div class="changelog-version-tag">
+                        <span class="ver">v0.1.5-beta</span>
+                        <span class="date">2026-03-07</span>
+                    </div>
+                    <ul class="changelog-list">
+                        <li><span class="changelog-badge badge-feat">UPGRADE</span> <span data-i18n="changelog.v215.1">Memory engine upgrade — switched from full memory dump to semantic search, AI now recalls only the most relevant memories for each message</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v215.2">Every message now automatically extracts and saves key facts — your name, hobbies, preferences, family, work, life events</span></li>
+                        <li><span class="changelog-badge badge-feat">NEW</span> <span data-i18n="changelog.v215.3">Core memories (name, family, job) are always remembered; temporary events (next week's interview) auto-expire after 14 days</span></li>
+                    </ul>
+                </div>
+
                 <!-- v0.1.4-beta -->
                 <div class="changelog-version">
                     <div class="changelog-version-tag">
@@ -6533,6 +6546,9 @@
                 'games.colormix': 'Color Mix',
                 'games.shapes': 'Shape Catcher',
                 'games.exit': 'Exit',
+                'changelog.v215.1': 'Memory engine upgrade — switched from full memory dump to semantic search, AI now recalls only the most relevant memories for each message',
+                'changelog.v215.2': 'Every message now automatically extracts and saves key facts — your name, hobbies, preferences, family, work, life events',
+                'changelog.v215.3': 'Core memories (name, family, job) are always remembered; temporary events (next week\'s interview) auto-expire after 14 days',
                 'changelog.v214.1': 'Image generation upgrade — smarter character matching, imported characters are now accurately depicted',
                 'changelog.v214.2': 'WeChat-style multi-bubble — AI replies auto-split into chat bubbles + image generating placeholder',
                 'changelog.v214.3': 'Fixed image tags leaking as raw text during streaming replies',
@@ -6849,6 +6865,9 @@
                 'games.shapes': '捕捉图形',
                 'games.exit': '退出',
                 'changelog.title': '版本日志',
+                'changelog.v215.1': '记忆引擎升级 — 从全量记忆注入改为语义搜索，每条消息只召回最相关的记忆',
+                'changelog.v215.2': '每条消息自动提取并保存关键事实 — 姓名、兴趣爱好、个人偏好、家人、工作、生活事件',
+                'changelog.v215.3': '核心记忆（姓名、家人、工作）永久保存；临时事件（下周的面试）14天后自动过期',
                 'changelog.v214.1': '图片生成升级 — 角色智能匹配，导入的角色现在能准确还原形象',
                 'changelog.v214.2': '微信风格多气泡 — AI 回复自动分段为多个气泡 + 图片生成等待动画',
                 'changelog.v214.3': '修复流式回复中图片标签泄露为原始文本的问题',
@@ -10770,7 +10789,7 @@
         });
 
         // 版本更新弹窗：当用户上次看到的版本 < 当前版本时自动弹出 changelog
-        const CURRENT_APP_VERSION = 'v0.1.4-beta';
+        const CURRENT_APP_VERSION = 'v0.1.5-beta';
         function showChangelogIfNewVersion() {
             const lastSeen = localStorage.getItem('last_seen_version');
             if (lastSeen === CURRENT_APP_VERSION) return;
