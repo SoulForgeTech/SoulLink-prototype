@@ -355,6 +355,7 @@ def _generate_image_venice(prompt: str, model: str = None) -> dict:
                 "width": 1024,
                 "height": 1024,
                 "safe_mode": False,
+                "hide_watermark": True,
             },
             timeout=30,
         )
