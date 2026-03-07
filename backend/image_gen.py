@@ -1,7 +1,8 @@
 """
-SoulLink Image Generation — xAI + BFL Flux Pro + fal.ai fallback
+SoulLink Image Generation — BFL Flux Pro 统一生成 + xAI 兜底
 AI 在回复中插入 [IMAGE: description] 标记，后端检测并生成图片
-普通内容 → xAI（快+便宜），NSFW → BFL Flux Pro（safety_tolerance=6）
+普通内容 → BFL Flux Pro（tolerance=2，高质量）→ xAI 兜底
+NSFW 内容 → BFL Flux Pro（tolerance=6，细节可能模糊）→ xAI 兜底
 生成后上传到 Cloudinary 持久化存储
 """
 
@@ -27,11 +28,6 @@ BFL_API_KEY = os.getenv("BFL_API_KEY", "")
 BFL_MODEL = os.getenv("BFL_MODEL", "flux-pro-1.1")  # flux-pro-1.1 / flux-dev
 BFL_SUBMIT_URL = "https://api.bfl.ai/v1"
 BFL_RESULT_URL = "https://api.bfl.ai/v1/get_result"
-
-# ==================== fal.ai 配置（兜底）====================
-FAL_KEY = os.getenv("FAL_KEY", "")
-FAL_API_URL = "https://fal.run/fal-ai/flux-lora"
-FAL_LORA_PATH = "https://huggingface.co/Ryouko65777/Flux-Uncensored-V2/resolve/main/lora.safetensors"
 
 DAILY_LIMIT = 20  # 每用户每天限额
 
@@ -465,64 +461,6 @@ def _generate_image_bfl(prompt: str, safety_tolerance: int = 6) -> dict:
     return None
 
 
-def _generate_image_fal(prompt: str) -> dict:
-    """
-    调用 fal.ai Flux LoRA (Uncensored V2) 生成图片（兜底方案）。
-    返回 {"b64": base64_string, "prompt": prompt} 或 None。
-    """
-    if not FAL_KEY:
-        logger.warning("[IMAGE_GEN] FAL_KEY not configured, cannot fallback")
-        return None
-
-    try:
-        # 为 fal.ai 去掉真人名字
-        clean_prompt = _strip_real_names(prompt)
-
-        resp = requests.post(
-            FAL_API_URL,
-            headers={
-                "Authorization": f"Key {FAL_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "prompt": clean_prompt,
-                "image_size": "square_hd",
-                "num_inference_steps": 28,
-                "guidance_scale": 3.5,
-                "num_images": 1,
-                "output_format": "jpeg",
-                "enable_safety_checker": False,
-                "loras": [
-                    {
-                        "path": FAL_LORA_PATH,
-                        "scale": 1.0,
-                    }
-                ],
-            },
-            timeout=180,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        image_url = data["images"][0]["url"]
-        logger.info(f"[IMAGE_GEN] fal.ai generated image: {image_url[:80]}")
-
-        # 下载图片转 base64（保持与现有流程一致）
-        img_resp = requests.get(image_url, timeout=30)
-        img_resp.raise_for_status()
-        b64 = base64.b64encode(img_resp.content).decode("utf-8")
-        logger.info(f"[IMAGE_GEN] fal.ai image downloaded and encoded ({len(b64)} chars b64)")
-
-        # 检测黑图（fal.ai 也可能返回纯黑图）
-        if _is_black_image(b64):
-            logger.warning(f"[IMAGE_GEN] fal.ai returned black/censored image for: {prompt[:80]}...")
-            return None
-
-        return {"b64": b64, "prompt": prompt}
-    except requests.exceptions.Timeout:
-        logger.warning(f"[IMAGE_GEN] fal.ai timeout for: {prompt[:60]}")
-    except Exception as e:
-        logger.error(f"[IMAGE_GEN] fal.ai failed: {e}")
-    return None
 
 
 _NSFW_KEYWORDS = re.compile(
@@ -579,50 +517,37 @@ _NSFW_KEYWORDS = re.compile(
 
 
 def _is_nsfw_prompt(prompt: str) -> bool:
-    """检测 prompt 是否包含 NSFW 内容，用于路由到 BFL (safety_tolerance=6)。"""
+    """检测 prompt 是否包含 NSFW 内容，用于路由到无审查 provider。"""
     matches = _NSFW_KEYWORDS.findall(prompt)
     if matches:
-        logger.info(f"[IMAGE_GEN] NSFW detected ({len(matches)} keywords), routing to BFL")
+        logger.info(f"[IMAGE_GEN] NSFW detected ({len(matches)} keywords), routing to uncensored provider")
         return True
     return False
 
 
 def generate_image(prompt: str) -> dict:
     """
-    生成图片：智能路由。
-    - NSFW 内容 → BFL Flux Pro (safety_tolerance=6) → fallback fal.ai
-    - 普通内容 → xAI（快+便宜） → fallback BFL → fallback fal.ai
+    生成图片：智能路由，BFL 统一主力。
+    - NSFW 内容 → BFL（tolerance=6，细节可能模糊但能出图）→ xAI 兜底
+    - 普通内容 → BFL（tolerance=2，高质量）→ xAI 兜底
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
     """
-    # NSFW 检测 → 跳过 xAI，直接用 BFL（safety_tolerance=6，最宽松）
-    if _is_nsfw_prompt(prompt):
-        if BFL_API_KEY:
-            result = _generate_image_bfl(prompt, safety_tolerance=6)
-            if result:
-                return result
-            logger.warning("[IMAGE_GEN] BFL failed for NSFW, trying fal.ai fallback")
-        # BFL 失败或无 key → fal.ai 兜底
-        if FAL_KEY:
-            return _generate_image_fal(prompt)
-        logger.warning("[IMAGE_GEN] NSFW prompt but no BFL/FAL key, trying xAI anyway")
+    is_nsfw = _is_nsfw_prompt(prompt)
+    tolerance = 6 if is_nsfw else 2
 
-    # 普通内容 → 先 xAI（$0.01，最快最便宜）
+    # 1st: BFL Flux Pro（主力，NSFW 和普通统一走这里）
+    if BFL_API_KEY:
+        result = _generate_image_bfl(prompt, safety_tolerance=tolerance)
+        if result:
+            return result
+        logger.warning(f"[IMAGE_GEN] BFL failed (nsfw={is_nsfw}), trying xAI")
+
+    # 2nd: xAI 兜底（便宜，NSFW 部分可过）
     result = _generate_image_xai(prompt)
     if result:
         return result
 
-    # xAI 失败 → fallback 到 BFL
-    if BFL_API_KEY:
-        logger.info(f"[IMAGE_GEN] xAI failed, falling back to BFL for: {prompt[:60]}")
-        result = _generate_image_bfl(prompt, safety_tolerance=2)
-        if result:
-            return result
-
-    # BFL 也失败 → 最后 fallback 到 fal.ai
-    if FAL_KEY:
-        logger.info(f"[IMAGE_GEN] Falling back to fal.ai for: {prompt[:60]}")
-        return _generate_image_fal(prompt)
-
+    logger.warning(f"[IMAGE_GEN] All providers failed for prompt (nsfw={is_nsfw})")
     return None
 
 
@@ -660,7 +585,7 @@ def process_image_markers(reply: str, user_id, db):
     if not prompts:
         return reply, []
 
-    if not XAI_API_KEY and not BFL_API_KEY and not FAL_KEY:
+    if not XAI_API_KEY and not BFL_API_KEY:
         logger.warning("[IMAGE_GEN] No image generation API keys configured, skipping")
         return cleaned_reply, []
 
