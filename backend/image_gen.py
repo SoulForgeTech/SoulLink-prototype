@@ -1,7 +1,8 @@
 """
-SoulLink Image Generation — BFL Flux Pro 统一生成
+SoulLink Image Generation — BFL + Venice 双引擎
 AI 在回复中插入 [IMAGE: description] 标记，后端检测并生成图片
-所有内容 → BFL Flux Pro（safety_tolerance=6，最宽松）
+Normal → BFL Flux Pro（高质量） → Venice fallback
+NSFW  → Venice lustify-sdxl（无审查） → BFL fallback
 生成后上传到 Cloudinary 持久化存储
 """
 
@@ -18,9 +19,11 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-# ==================== xAI 配置 ====================
-XAI_API_KEY = os.getenv("XAI_API_KEY", "")
-XAI_IMAGE_URL = "https://api.x.ai/v1/images/generations"
+# ==================== Venice.ai 配置 ====================
+VENICE_API_KEY = os.getenv("VENICE_API_KEY", "")
+VENICE_IMAGE_URL = "https://api.venice.ai/api/v1/image/generate"
+VENICE_MODEL_PHOTO = "lustify-sdxl"       # 真人风格 NSFW ($0.01/张)
+VENICE_MODEL_ANIME = "wai-Illustrious"    # 动漫风格 NSFW ($0.01/张)
 
 # ==================== BFL (Black Forest Labs) 配置 ====================
 BFL_API_KEY = os.getenv("BFL_API_KEY", "")
@@ -326,45 +329,58 @@ def _is_black_image(b64_data: str) -> bool:
         return False
 
 
-def _generate_image_xai(prompt: str) -> dict:
+def _generate_image_venice(prompt: str, model: str = None) -> dict:
     """
-    调用 xAI grok-imagine-image API 生成图片。
+    调用 Venice.ai API 生成图片（同步 API，~3 秒返回）。
+    safe_mode=false 禁用 Mature Filter，支持完全无审查 NSFW。
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
-    xAI 内容审核不返回错误码，而是返回纯黑图片 — 需要检测并 fallback。
     """
-    if not XAI_API_KEY:
+    if not VENICE_API_KEY:
+        logger.warning("[IMAGE_GEN] VENICE_API_KEY not configured")
         return None
+
+    if not model:
+        model = VENICE_MODEL_PHOTO
 
     try:
         resp = requests.post(
-            XAI_IMAGE_URL,
+            VENICE_IMAGE_URL,
             headers={
-                "Authorization": f"Bearer {XAI_API_KEY}",
+                "Authorization": f"Bearer {VENICE_API_KEY}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": "grok-imagine-image",
+                "model": model,
                 "prompt": prompt,
-                "n": 1,
-                "response_format": "b64_json",
+                "width": 1024,
+                "height": 1024,
+                "safe_mode": False,
             },
-            timeout=60,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
-        b64 = data["data"][0]["b64_json"]
-
-        # 检测纯黑图（xAI 内容审核返回的哑图）
-        if _is_black_image(b64):
-            logger.warning(f"[IMAGE_GEN] xAI returned black/censored image for: {prompt[:80]}...")
+        images = data.get("images", [])
+        if not images:
+            logger.error(f"[IMAGE_GEN] Venice returned no images: {data}")
             return None
 
-        logger.info(f"[IMAGE_GEN] xAI generated image for prompt: {prompt[:80]}... ({len(b64)} chars b64)")
+        b64 = images[0]  # Venice 直接返回 base64 字符串列表
+
+        # 检测黑图/模糊图
+        if _is_black_image(b64):
+            logger.warning(f"[IMAGE_GEN] Venice returned black/censored image for: {prompt[:80]}...")
+            return None
+
+        timing = data.get("timing", {})
+        duration = timing.get("total", "?")
+        logger.info(f"[IMAGE_GEN] Venice [{model}] generated image ({len(b64)} chars b64, {duration}ms) for: {prompt[:80]}")
         return {"b64": b64, "prompt": prompt}
+
     except requests.exceptions.Timeout:
-        logger.warning(f"[IMAGE_GEN] xAI timeout for: {prompt[:60]}")
+        logger.warning(f"[IMAGE_GEN] Venice timeout for: {prompt[:60]}")
     except Exception as e:
-        logger.warning(f"[IMAGE_GEN] xAI failed: {e}")
+        logger.error(f"[IMAGE_GEN] Venice failed: {e}")
     return None
 
 
@@ -524,21 +540,52 @@ def _is_nsfw_prompt(prompt: str) -> bool:
     return False
 
 
+def _detect_anime_style(prompt: str) -> bool:
+    """检测 prompt 是否为动漫/二次元风格（用于选择 Venice 模型）。"""
+    anime_keywords = re.compile(
+        r'\b(?:anime|manga|hentai|2D|illustration|wai[-\s]?illustrious'
+        r'|chibi|cel[\s-]?shad|cartoon|animated'
+        r'|from\s+(?:re:zero|naruto|one\s*piece|attack\s*on\s*titan|demon\s*slayer'
+        r'|jujutsu|my\s*hero|genshin|honkai|fate|sword\s*art|evangelion))\b',
+        re.IGNORECASE
+    )
+    return bool(anime_keywords.search(prompt))
+
+
 def generate_image(prompt: str) -> dict:
     """
-    生成图片：BFL Flux Pro 统一处理。
-    所有内容统一 safety_tolerance=6（最宽松），NSFW 细节可能模糊但能出图。
+    双引擎路由生成图片：
+    - NSFW prompt → Venice（无审查） → BFL fallback
+    - Normal prompt → BFL（高质量） → Venice fallback
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
     """
-    if not BFL_API_KEY:
-        logger.warning("[IMAGE_GEN] BFL_API_KEY not configured")
-        return None
+    nsfw = _is_nsfw_prompt(prompt)
 
-    result = _generate_image_bfl(prompt, safety_tolerance=6)
-    if result:
-        return result
+    if nsfw:
+        # NSFW → Venice 优先（完全无审查）
+        model = VENICE_MODEL_ANIME if _detect_anime_style(prompt) else VENICE_MODEL_PHOTO
+        logger.info(f"[IMAGE_GEN] NSFW routing → Venice [{model}]")
+        result = _generate_image_venice(prompt, model=model)
+        if result:
+            return result
+        # Venice 失败 → BFL fallback（tolerance=6，细节可能模糊但能出图）
+        logger.info("[IMAGE_GEN] Venice failed, fallback → BFL (tolerance=6)")
+        result = _generate_image_bfl(prompt, safety_tolerance=6)
+        if result:
+            return result
+    else:
+        # Normal → BFL 优先（高质量）
+        logger.info("[IMAGE_GEN] Normal routing → BFL")
+        result = _generate_image_bfl(prompt, safety_tolerance=6)
+        if result:
+            return result
+        # BFL 失败 → Venice fallback
+        logger.info("[IMAGE_GEN] BFL failed, fallback → Venice")
+        result = _generate_image_venice(prompt)
+        if result:
+            return result
 
-    logger.warning(f"[IMAGE_GEN] BFL failed for prompt: {prompt[:80]}")
+    logger.warning(f"[IMAGE_GEN] All providers failed for prompt: {prompt[:80]}")
     return None
 
 
@@ -576,7 +623,7 @@ def process_image_markers(reply: str, user_id, db):
     if not prompts:
         return reply, []
 
-    if not BFL_API_KEY:
+    if not BFL_API_KEY and not VENICE_API_KEY:
         logger.warning("[IMAGE_GEN] No image generation API keys configured, skipping")
         return cleaned_reply, []
 
