@@ -124,23 +124,23 @@ def _clean_image_prompt(prompt: str) -> str:
     return result
 
 
+MAX_IMAGES_PER_REPLY = 2  # 单条回复最多生成几张图
+
+
 def extract_image_markers(reply: str):
     """
-    从 AI 回复中提取 [IMAGE: ...] 标记。
+    从 AI 回复中提取所有 [IMAGE: ...] 标记（最多 MAX_IMAGES_PER_REPLY 个）。
     返回 (cleaned_reply, prompts_list)
-    只提取第一个标记（控制成本）。
     """
     pattern = r'\[IMAGE:\s*(.+?)\]'
-    match = re.search(pattern, reply, re.DOTALL)
-    if not match:
+    matches = re.findall(pattern, reply, re.DOTALL)
+    if not matches:
         return reply, []
 
-    prompt = match.group(1).strip()
-    # 清理夸张形容词
-    prompt = _clean_image_prompt(prompt)
-    # 移除所有 [IMAGE:] 标记（防止多余标记泄露到聊天里），但只生成第一个
+    prompts = [_clean_image_prompt(m.strip()) for m in matches[:MAX_IMAGES_PER_REPLY]]
+    # 移除所有 [IMAGE:] 标记（防止泄露到聊天）
     cleaned = re.sub(r'\s*\[IMAGE:\s*.+?\]', '', reply, flags=re.DOTALL).strip()
-    return cleaned, [prompt]
+    return cleaned, prompts
 
 
 def _extract_appearance_from_persona(persona: str) -> str:

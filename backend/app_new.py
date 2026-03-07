@@ -1762,13 +1762,14 @@ def chat_stream():
         from image_gen import extract_image_markers
         reply, _img_prompts = extract_image_markers(reply)
         if _img_prompts:
-            yield _sse_event("image_generating", {"prompt": _img_prompts[0][:80]})
+            yield _sse_event("image_generating", {"count": len(_img_prompts), "prompt": _img_prompts[0][:80]})
+            # 重建带所有 [IMAGE:] 标记的文本，交给 process_image_markers 处理
+            _fake_reply = " ".join(f"[IMAGE: {p}]" for p in _img_prompts)
             _img_result = [None]
             def _img_worker():
                 try:
-                    # Re-run with original reply to get full processing
                     _, _img_result[0] = process_image_markers(
-                        f"[IMAGE: {_img_prompts[0]}]", user_id, db
+                        _fake_reply, user_id, db
                     )
                 except Exception as e:
                     logger.warning(f"[CHAT-STREAM] Image gen error: {e}")
