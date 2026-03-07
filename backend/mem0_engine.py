@@ -64,6 +64,7 @@ def _get_mem0():
                 "collection_name": "soullink_memories",
                 "path": qdrant_path,
                 "embedding_model_dims": 768,
+                "on_disk": True,
                 # embedded mode — 无需单独 Qdrant 服务
             }
         },
