@@ -167,14 +167,13 @@ def _classify_tier(fact: str) -> str:
 
 
 def _calculate_expiry(tier: str) -> Optional[str]:
-    """计算过期时间 ISO 字符串，permanent 返回 None"""
-    now = datetime.utcnow()
-    if tier == "permanent":
+    """计算过期时间 ISO 字符串，permanent/long_term 返回 None"""
+    if tier in ("permanent", "long_term"):
         return None
     elif tier == "short_term":
+        now = datetime.utcnow()
         return (now + timedelta(days=SHORT_TERM_DAYS)).isoformat()
-    else:
-        return (now + timedelta(days=LONG_TERM_DAYS)).isoformat()
+    return None
 
 
 # ==================== 核心 API ====================
