@@ -1,8 +1,7 @@
 """
-SoulLink Image Generation — BFL Flux Pro 统一生成 + xAI 兜底
+SoulLink Image Generation — BFL Flux Pro 统一生成
 AI 在回复中插入 [IMAGE: description] 标记，后端检测并生成图片
-普通内容 → BFL Flux Pro（tolerance=2，高质量）→ xAI 兜底
-NSFW 内容 → BFL Flux Pro（tolerance=6，细节可能模糊）→ xAI 兜底
+所有内容 → BFL Flux Pro（safety_tolerance=6，最宽松）
 生成后上传到 Cloudinary 持久化存储
 """
 
@@ -527,27 +526,19 @@ def _is_nsfw_prompt(prompt: str) -> bool:
 
 def generate_image(prompt: str) -> dict:
     """
-    生成图片：智能路由，BFL 统一主力。
-    - NSFW 内容 → BFL（tolerance=6，细节可能模糊但能出图）→ xAI 兜底
-    - 普通内容 → BFL（tolerance=2，高质量）→ xAI 兜底
+    生成图片：BFL Flux Pro 统一处理。
+    所有内容统一 safety_tolerance=6（最宽松），NSFW 细节可能模糊但能出图。
     返回 {"b64": base64_string, "prompt": prompt} 或 None。
     """
-    is_nsfw = _is_nsfw_prompt(prompt)
-    tolerance = 6 if is_nsfw else 2
+    if not BFL_API_KEY:
+        logger.warning("[IMAGE_GEN] BFL_API_KEY not configured")
+        return None
 
-    # 1st: BFL Flux Pro（主力，NSFW 和普通统一走这里）
-    if BFL_API_KEY:
-        result = _generate_image_bfl(prompt, safety_tolerance=tolerance)
-        if result:
-            return result
-        logger.warning(f"[IMAGE_GEN] BFL failed (nsfw={is_nsfw}), trying xAI")
-
-    # 2nd: xAI 兜底（便宜，NSFW 部分可过）
-    result = _generate_image_xai(prompt)
+    result = _generate_image_bfl(prompt, safety_tolerance=6)
     if result:
         return result
 
-    logger.warning(f"[IMAGE_GEN] All providers failed for prompt (nsfw={is_nsfw})")
+    logger.warning(f"[IMAGE_GEN] BFL failed for prompt: {prompt[:80]}")
     return None
 
 
@@ -585,7 +576,7 @@ def process_image_markers(reply: str, user_id, db):
     if not prompts:
         return reply, []
 
-    if not XAI_API_KEY and not BFL_API_KEY:
+    if not BFL_API_KEY:
         logger.warning("[IMAGE_GEN] No image generation API keys configured, skipping")
         return cleaned_reply, []
 
