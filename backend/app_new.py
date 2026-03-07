@@ -1707,6 +1707,18 @@ def chat_stream():
                     _tag_detect_buf = ""
                     _found_mid_tag = True
                     break
+            # Also detect Grok reasoning pattern: "\nAssistant:" mid-stream
+            if not _found_mid_tag:
+                for _grok_marker in ["\nassistant:", "\nassistant\uff1a"]:
+                    if _grok_marker in _lower_tdb:
+                        in_thinking = True
+                        _tidx = _lower_tdb.find(_grok_marker)
+                        _after = _tag_detect_buf[_tidx + len(_grok_marker):]
+                        if _after:
+                            thinking_content = _after
+                        _tag_detect_buf = ""
+                        _found_mid_tag = True
+                        break
             if _found_mid_tag:
                 continue
             yield _sse_event("text", {"token": token})
@@ -1746,6 +1758,31 @@ def chat_stream():
             if gemini_think_match:
                 thinking_content = gemini_think_match.group(1).strip()
                 reply = reply[gemini_think_match.end():].strip()
+
+        # Handle Grok reasoning leak: "Assistant:" meta-reasoning or Chinese analysis headers
+        # Grok sometimes appends internal reasoning as plain text after the roleplay response
+        # Always check regardless of existing thinking_content — Grok may leak even after <think> tags
+        grok_match = _re.search(r'\n\s*Assistant\s*[:：]', reply)
+        if not grok_match:
+            # Pattern 2: Standalone Chinese analysis headers at line start
+            grok_match = _re.search(
+                r'\n\s*(?:角色保持|亲密规则|情节推进|回复内容|场景设定|注意事项|互动建议|下一步)\s*[:：]',
+                reply
+            )
+        if grok_match:
+            candidate_reply = reply[:grok_match.start()].strip()
+            candidate_think = reply[grok_match.start():].strip()
+            if candidate_reply and len(candidate_reply) >= 10:
+                if thinking_content:
+                    thinking_content += "\n\n" + candidate_think
+                else:
+                    thinking_content = candidate_think
+                reply = candidate_reply
+                logger.info(f"[CHAT-STREAM] Stripped Grok reasoning ({len(candidate_think)} chars)")
+
+        # Strip IMAGE tags from thinking content (prevent [IMAGE:] leak in thinking display)
+        if thinking_content:
+            thinking_content = _re.sub(r'\[IMAGE:\s*.+?\]', '', thinking_content, flags=_re.DOTALL).strip()
 
         # Fallback: if reply empty but thinking has content
         if not reply and thinking_content:

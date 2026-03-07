@@ -124,12 +124,9 @@ def _clean_image_prompt(prompt: str) -> str:
     return result
 
 
-MAX_IMAGES_PER_REPLY = 2  # 单条回复最多生成几张图
-
-
 def extract_image_markers(reply: str):
     """
-    从 AI 回复中提取所有 [IMAGE: ...] 标记（最多 MAX_IMAGES_PER_REPLY 个）。
+    从 AI 回复中提取所有 [IMAGE: ...] 标记（无数量限制）。
     返回 (cleaned_reply, prompts_list)
     """
     pattern = r'\[IMAGE:\s*(.+?)\]'
@@ -137,7 +134,7 @@ def extract_image_markers(reply: str):
     if not matches:
         return reply, []
 
-    prompts = [_clean_image_prompt(m.strip()) for m in matches[:MAX_IMAGES_PER_REPLY]]
+    prompts = [_clean_image_prompt(m.strip()) for m in matches]
     # 移除所有 [IMAGE:] 标记（防止泄露到聊天）
     cleaned = re.sub(r'\s*\[IMAGE:\s*.+?\]', '', reply, flags=re.DOTALL).strip()
     return cleaned, prompts
