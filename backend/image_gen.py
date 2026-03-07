@@ -138,8 +138,8 @@ def extract_image_markers(reply: str):
     prompt = match.group(1).strip()
     # 清理夸张形容词
     prompt = _clean_image_prompt(prompt)
-    # 从回复中移除标记（包括前后可能的空白行）
-    cleaned = re.sub(r'\s*\[IMAGE:\s*.+?\]', '', reply, count=1, flags=re.DOTALL).strip()
+    # 移除所有 [IMAGE:] 标记（防止多余标记泄露到聊天里），但只生成第一个
+    cleaned = re.sub(r'\s*\[IMAGE:\s*.+?\]', '', reply, flags=re.DOTALL).strip()
     return cleaned, [prompt]
 
 
