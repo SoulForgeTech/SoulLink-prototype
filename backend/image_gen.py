@@ -541,10 +541,22 @@ def _is_nsfw_prompt(prompt: str) -> bool:
 def _detect_anime_style(prompt: str) -> bool:
     """检测 prompt 是否为动漫/二次元风格（用于选择 Venice 模型）。"""
     anime_keywords = re.compile(
+        r'(?:'
+        # 通用动漫/二次元风格关键词
         r'\b(?:anime|manga|hentai|2D|illustration|wai[-\s]?illustrious'
-        r'|chibi|cel[\s-]?shad|cartoon|animated'
-        r'|from\s+(?:re:zero|naruto|one\s*piece|attack\s*on\s*titan|demon\s*slayer'
-        r'|jujutsu|my\s*hero|genshin|honkai|fate|sword\s*art|evangelion))\b',
+        r'|chibi|cel[\s-]?shad|cartoon|animated|anime\s*art\s*style)\b'
+        # 英文作品名（from XXX 格式 + 独立匹配）
+        r'|\b(?:from\s+)?(?:re:?\s*zero|naruto|one\s*piece|attack\s*on\s*titan|demon\s*slayer'
+        r'|jujutsu|my\s*hero|genshin\s*impact|honkai|fate[\s/]*(?:grand|stay|zero)?'
+        r'|sword\s*art|evangelion|love\s*and\s*deepspace|arknights|azur\s*lane'
+        r'|blue\s*archive|tears\s*of\s*themis|light\s*and\s*night'
+        r'|spy\s*x\s*family|chainsaw\s*man|bocchi|frieren|oshi\s*no\s*ko'
+        r'|konosuba|mushoku|violet\s*evergarden|miku|vocaloid)\b'
+        # 中文作品名
+        r'|恋与深空|原神|崩坏|明日方舟|碧蓝航线|蔚蓝档案|光与夜之恋|未定事件簿'
+        r'|进击的巨人|鬼灭之刃|咒术回战|间谍过家家|电锯人|孤独摇滚|葬送的芙莉莲'
+        r'|从零开始|刀剑神域|命运之夜|初音未来|二次元|动漫风'
+        r')',
         re.IGNORECASE
     )
     return bool(anime_keywords.search(prompt))
