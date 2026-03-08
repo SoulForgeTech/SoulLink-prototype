@@ -1656,6 +1656,16 @@ def chat_stream():
                     initial_phase = False
                     thinking_content = initial_buffer[_gemini_think.end():]
                     continue
+                # Bare "think " / "THOUGHT " prefix (e.g. "think The user wants...")
+                _think_prefix = _re.match(
+                    r'^\s*(?:THOUGHT|think)\s+',
+                    initial_buffer, _re.IGNORECASE
+                )
+                if _think_prefix and len(initial_buffer) > 15:
+                    in_thinking = True
+                    initial_phase = False
+                    thinking_content = initial_buffer[_think_prefix.end():]
+                    continue
                 # Flush as text when confident it's not thinking
                 should_flush = False
                 if len(initial_buffer) > 60:
@@ -1742,12 +1752,18 @@ def chat_stream():
         # Handle THOUGHT/think prefix (no tags)
         if not thinking_content and _re.match(r'^(?:THOUGHT|think)\s', reply, _re.IGNORECASE):
             raw = _re.sub(r'^(?:THOUGHT|think)\s+', '', reply, flags=_re.IGNORECASE).strip()
+            _found_delim = False
             for m in _re.finditer(r'\n([\u4e00-\u9fff（\uff08*「【《""])', raw):
                 candidate = raw[m.start(1):].strip()
                 if len(candidate) >= 10:
                     thinking_content = raw[:m.start(1)].rstrip()
                     reply = candidate
+                    _found_delim = True
                     break
+            if not _found_delim:
+                # No Chinese delimiter — entire content after "think" is thinking
+                thinking_content = raw
+                reply = ""
 
         # Handle Gemini "思考：..." prefix
         if not thinking_content:
