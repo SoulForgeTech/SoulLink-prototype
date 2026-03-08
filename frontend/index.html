@@ -10133,13 +10133,19 @@
                                             addThinkingBubble(thinkingContent);
                                         }
                                     } else if (currentEvent === 'image_limit') {
-                                        // 图片额度用完提示
-                                        const limitMsg = eventData.message || '今日图片额度已用完～';
-                                        const _t = document.createElement('div');
-                                        _t.textContent = limitMsg;
-                                        _t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:20px;font-size:14px;z-index:10001;pointer-events:none;transition:opacity 0.5s;';
-                                        document.body.appendChild(_t);
-                                        setTimeout(() => { _t.style.opacity = '0'; setTimeout(() => _t.remove(), 500); }, 3500);
+                                        // 图片额度用完提示（防重复：同一页面只弹一次）
+                                        if (!window._imgLimitShown) {
+                                            window._imgLimitShown = true;
+                                            const isZh = (state.user?.settings?.language || '').startsWith('zh');
+                                            const limitMsg = isZh
+                                                ? '今日图片额度已用完啦～明天再来吧！'
+                                                : "Today's image quota is used up — come back tomorrow!";
+                                            const _t = document.createElement('div');
+                                            _t.textContent = limitMsg;
+                                            _t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:20px;font-size:14px;z-index:10001;pointer-events:none;transition:opacity 0.5s;';
+                                            document.body.appendChild(_t);
+                                            setTimeout(() => { _t.style.opacity = '0'; setTimeout(() => _t.remove(), 500); }, 3500);
+                                        }
                                     } else if (currentEvent === 'done') {
                                         doneData = eventData;
                                     } else if (currentEvent === 'error') {
