@@ -1812,10 +1812,15 @@ def chat_stream():
 
         # Process image markers (threaded + keepalive to prevent SSE timeout)
         generated_images = []
-        from image_gen import extract_image_markers
+        from image_gen import extract_image_markers, check_daily_limit
         reply, _img_prompts = extract_image_markers(reply)
         if _img_prompts:
-            yield _sse_event("image_generating", {"count": len(_img_prompts), "prompt": _img_prompts[0][:80]})
+            if not check_daily_limit(user_id, db):
+                logger.info(f"[CHAT-STREAM] Image daily limit reached for user {user_id}, notifying frontend")
+                yield _sse_event("image_limit", {"message": "今日图片额度已用完啦～明天再来吧！"})
+                _img_prompts = []  # skip image generation
+            else:
+                yield _sse_event("image_generating", {"count": len(_img_prompts), "prompt": _img_prompts[0][:80]})
             # 重建带所有 [IMAGE:] 标记的文本，交给 process_image_markers 处理
             _fake_reply = " ".join(f"[IMAGE: {p}]" for p in _img_prompts)
             _img_result = [None]
