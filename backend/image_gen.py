@@ -10,14 +10,27 @@ import os
 import re
 import io
 import time
+import uuid
 import base64
 import logging
+import threading
 import requests
 import cloudinary
 import cloudinary.uploader
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+
+# 全局 HTTP 连接池 — 复用 TCP 连接，避免 socket 耗尽
+_http_session = requests.Session()
+_http_adapter = requests.adapters.HTTPAdapter(
+    pool_connections=10,
+    pool_maxsize=20,
+    max_retries=requests.adapters.Retry(total=2, backoff_factor=0.5,
+                                         status_forcelist=[502, 503, 504]),
+)
+_http_session.mount("https://", _http_adapter)
+_http_session.mount("http://", _http_adapter)
 
 # ==================== Venice.ai 配置 ====================
 VENICE_API_KEY = os.getenv("VENICE_API_KEY", "")
@@ -31,7 +44,7 @@ BFL_MODEL = os.getenv("BFL_MODEL", "flux-pro-1.1")  # flux-pro-1.1 / flux-dev
 BFL_SUBMIT_URL = "https://api.bfl.ai/v1"
 BFL_RESULT_URL = "https://api.bfl.ai/v1/get_result"
 
-DAILY_LIMIT = 20  # 每用户每天限额
+DAILY_LIMIT = 0  # 0 = 不限制
 
 # 默认通用外观 — 没有导入自定义角色时使用
 DEFAULT_APPEARANCE_FEMALE = (
@@ -46,11 +59,16 @@ DEFAULT_APPEARANCE_MALE = (
 )
 DEFAULT_APPEARANCE = DEFAULT_APPEARANCE_FEMALE  # 兼容旧代码引用
 
-# Cloudinary 配置
+# Cloudinary 配置（线程安全）
 _cloudinary_configured = False
+_cloudinary_lock = threading.Lock()
 def _ensure_cloudinary():
     global _cloudinary_configured
-    if not _cloudinary_configured:
+    if _cloudinary_configured:
+        return
+    with _cloudinary_lock:
+        if _cloudinary_configured:
+            return
         cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "")
         api_key = os.getenv("CLOUDINARY_API_KEY", "")
         api_secret = os.getenv("CLOUDINARY_API_SECRET", "")
@@ -67,30 +85,37 @@ def _ensure_cloudinary():
             logger.warning("[IMAGE_GEN] Cloudinary env vars not set, images won't persist")
 
 
-def upload_to_cloudinary(b64_data: str, user_id: str) -> str:
+def upload_to_cloudinary(b64_data: str, user_id: str, max_retries: int = 2) -> str:
     """
-    上传 base64 图片到 Cloudinary。
+    上传 base64 图片到 Cloudinary，带重试。
     返回永久 URL 或空字符串（失败时）。
     """
     _ensure_cloudinary()
     if not _cloudinary_configured:
         return ""
-    try:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        public_id = f"soullink/chat_images/{user_id}/{timestamp}"
-        result = cloudinary.uploader.upload(
-            f"data:image/png;base64,{b64_data}",
-            public_id=public_id,
-            resource_type="image",
-            overwrite=True,
-        )
-        url = result.get("secure_url", "")
-        if url:
-            logger.info(f"[IMAGE_GEN] Uploaded to Cloudinary: {url[:80]}")
-        return url
-    except Exception as e:
-        logger.error(f"[IMAGE_GEN] Cloudinary upload failed: {e}")
-        return ""
+
+    # 用 uuid4 短码避免同秒碰撞
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]
+    public_id = f"soullink/chat_images/{user_id}/{timestamp}_{unique_id}"
+
+    for attempt in range(max_retries + 1):
+        try:
+            result = cloudinary.uploader.upload(
+                f"data:image/png;base64,{b64_data}",
+                public_id=public_id,
+                resource_type="image",
+                overwrite=False,
+            )
+            url = result.get("secure_url", "")
+            if url:
+                logger.info(f"[IMAGE_GEN] Uploaded to Cloudinary: {url[:80]}")
+            return url
+        except Exception as e:
+            logger.error(f"[IMAGE_GEN] Cloudinary upload failed (attempt {attempt+1}/{max_retries+1}): {e}")
+            if attempt < max_retries:
+                time.sleep(1 * (attempt + 1))  # 递增等待
+    return ""
 
 
 def _clean_image_prompt(prompt: str) -> str:
@@ -340,7 +365,7 @@ def _generate_image_venice(prompt: str, model: str = None) -> dict:
         model = VENICE_MODEL_PHOTO
 
     try:
-        resp = requests.post(
+        resp = _http_session.post(
             VENICE_IMAGE_URL,
             headers={
                 "Authorization": f"Bearer {VENICE_API_KEY}",
@@ -410,7 +435,7 @@ def _generate_image_bfl(prompt: str, safety_tolerance: int = 6) -> dict:
             payload["steps"] = 28
             payload["guidance"] = 3.5
 
-        resp = requests.post(
+        resp = _http_session.post(
             submit_url,
             headers={"x-key": BFL_API_KEY, "Content-Type": "application/json"},
             json=payload,
@@ -427,7 +452,7 @@ def _generate_image_bfl(prompt: str, safety_tolerance: int = 6) -> dict:
         # Step 2: 轮询结果（最多 120 秒）
         for i in range(40):  # 40 x 3s = 120s
             time.sleep(3)
-            result_resp = requests.get(
+            result_resp = _http_session.get(
                 BFL_RESULT_URL,
                 params={"id": task_id},
                 headers={"x-key": BFL_API_KEY},
@@ -446,7 +471,7 @@ def _generate_image_bfl(prompt: str, safety_tolerance: int = 6) -> dict:
                 logger.info(f"[IMAGE_GEN] BFL generated image: {image_url[:80]}")
 
                 # 下载图片转 base64
-                img_resp = requests.get(image_url, timeout=30)
+                img_resp = _http_session.get(image_url, timeout=30)
                 img_resp.raise_for_status()
                 b64 = base64.b64encode(img_resp.content).decode("utf-8")
 
@@ -613,7 +638,10 @@ def check_daily_limit(user_id, db) -> bool:
     """
     检查用户今日图片生成是否超过限额。
     返回 True = 还可以生成, False = 已达限额。
+    DAILY_LIMIT = 0 表示不限制。
     """
+    if DAILY_LIMIT <= 0:
+        return True
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     count = db.db["image_gen_usage"].count_documents({
         "user_id": user_id,

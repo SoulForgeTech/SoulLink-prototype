@@ -5,6 +5,7 @@ SoulLink Backend - 支持多用户的版本
 
 import os
 import json
+import time
 import logging
 import uuid
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
@@ -1954,9 +1955,13 @@ def chat_stream():
                     _img_result[0] = []
             _img_thread = threading.Thread(target=_img_worker, daemon=True)
             _img_thread.start()
+            _img_deadline = time.time() + 150  # 总超时 150 秒
             while _img_thread.is_alive():
                 _img_thread.join(timeout=3)
                 if _img_thread.is_alive():
+                    if time.time() > _img_deadline:
+                        logger.warning("[CHAT-STREAM] Image generation thread exceeded 150s timeout, giving up")
+                        break
                     yield ": keepalive\n\n"
             generated_images = _img_result[0] or []
 
