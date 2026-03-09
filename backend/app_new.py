@@ -556,6 +556,18 @@ def upload_avatar():
         if not url:
             return jsonify({"error": "Upload failed"}), 500
 
+        # Delete old avatar from Cloudinary if provided
+        old_url = request.form.get("old_url", "")
+        if old_url and "res.cloudinary.com" in old_url and "soullink/avatars/" in old_url:
+            try:
+                import re as _re_av
+                m = _re_av.search(r'/upload/(?:v\d+/)?(soullink/avatars/[^.]+)', old_url)
+                if m:
+                    cloudinary.uploader.destroy(m.group(1), resource_type="image")
+                    logger.info(f"[AVATAR] Deleted old: {m.group(1)}")
+            except Exception as de:
+                logger.warning(f"[AVATAR] Old delete failed: {de}")
+
         logger.info(f"[AVATAR] Uploaded for user {user_id}: {url[:80]}")
         return jsonify({"success": True, "url": url})
     except Exception as e:
@@ -616,6 +628,37 @@ def upload_background():
     except Exception as e:
         logger.error(f"[BG] Upload error: {e}")
         return jsonify({"error": "Upload failed"}), 500
+
+
+@app.route("/api/delete-background", methods=["POST"])
+@login_required
+def delete_background():
+    """Delete custom background from Cloudinary and clear user setting."""
+    user_id = get_current_user_id()
+    try:
+        user = db.db["users"].find_one({"_id": user_id}, {"settings.custom_background_url": 1})
+        bg_url = user.get("settings", {}).get("custom_background_url", "") if user else ""
+
+        if bg_url and "res.cloudinary.com" in bg_url:
+            import image_gen as _img_mod
+            import cloudinary.uploader
+            _img_mod._ensure_cloudinary()
+            # Extract public_id from URL: .../upload/v123/soullink/backgrounds/xxx.jpg
+            import re
+            m = re.search(r'/upload/(?:v\d+/)?(soullink/backgrounds/[^.]+)', bg_url)
+            if m and _img_mod._cloudinary_configured:
+                public_id = m.group(1)
+                cloudinary.uploader.destroy(public_id, resource_type="image")
+                logger.info(f"[BG] Deleted Cloudinary image: {public_id}")
+
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$unset": {"settings.custom_background_url": ""}}
+        )
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"[BG] Delete error: {e}")
+        return jsonify({"success": True})  # Don't fail even if Cloudinary delete fails
 
 
 @app.route("/api/user/settings", methods=["PUT"])

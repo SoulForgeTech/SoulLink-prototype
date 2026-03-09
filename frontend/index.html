@@ -11069,9 +11069,12 @@
             });
         }
 
-        async function uploadAvatarToCloud(blob) {
+        async function uploadAvatarToCloud(blob, oldUrl) {
             const form = new FormData();
             form.append('file', blob, 'avatar.jpg');
+            if (oldUrl && oldUrl.includes('res.cloudinary.com')) {
+                form.append('old_url', oldUrl);
+            }
             const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/upload-avatar`, {
                 method: 'POST',
                 body: form,
@@ -11136,7 +11139,8 @@
                     avatarUrl = pendingCompanionAvatar;
                 } else {
                     // Upload compressed blob to Cloudinary
-                    avatarUrl = await uploadAvatarToCloud(pendingCompanionAvatar.blob);
+                    const oldCompAvatar = state.user?.settings?.companion_avatar || '';
+                    avatarUrl = await uploadAvatarToCloud(pendingCompanionAvatar.blob, oldCompAvatar);
                 }
                 const response = await authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
                     method: 'PUT',
@@ -12252,7 +12256,8 @@
                 } else if (pendingAvatarData.type === 'upload') {
                     if (pendingAvatarData.blob) {
                         // Upload compressed image to Cloudinary
-                        updates.avatar_url = await uploadAvatarToCloud(pendingAvatarData.blob);
+                        const oldUserAvatar = state.user?.avatar_url || '';
+                        updates.avatar_url = await uploadAvatarToCloud(pendingAvatarData.blob, oldUserAvatar);
                     } else if (pendingAvatarData.dataUrl) {
                         // Color avatar — small canvas data URL, OK to store directly
                         updates.avatar_url = pendingAvatarData.dataUrl;
@@ -12326,7 +12331,8 @@
                     if (typeof _pendingSettingsCompanionAvatar === 'string') {
                         settingsPayload.companion_avatar = _pendingSettingsCompanionAvatar;
                     } else if (_pendingSettingsCompanionAvatar?.blob) {
-                        settingsPayload.companion_avatar = await uploadAvatarToCloud(_pendingSettingsCompanionAvatar.blob);
+                        const oldSettingsAvatar = state.user?.settings?.companion_avatar || '';
+                        settingsPayload.companion_avatar = await uploadAvatarToCloud(_pendingSettingsCompanionAvatar.blob, oldSettingsAvatar);
                     }
                 }
                 if (modelChanged) settingsPayload.model = selectedModel;
@@ -13392,10 +13398,8 @@
             delete state.user.settings.custom_background_url;
             localStorage.setItem('soullink_user', JSON.stringify(state.user));
             if (state.token) {
-                authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ custom_background_url: '' })
+                authFetch(`${CONFIG.API_BASE_URL}/api/delete-background`, {
+                    method: 'POST',
                 }).catch(err => console.error('Delete custom bg error:', err));
             }
             renderBgGrid();
