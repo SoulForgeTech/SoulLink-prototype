@@ -5237,6 +5237,16 @@
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white; font-size: 0.9rem; font-weight: 500; cursor: pointer;
         }
+        /* ===== Button Loading Spinner ===== */
+        .btn-loading { pointer-events: none; opacity: 0.7; position: relative; }
+        .btn-loading .btn-spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+            vertical-align: middle; margin-right: 6px;
+        }
+        @keyframes btn-spin { to { transform: rotate(360deg); } }
         /* ===== Custom Background Upload Tile ===== */
         .bg-upload-tile {
             display: flex; flex-direction: column;
@@ -11046,6 +11056,19 @@
         // Init crop drag on load
         initCropDrag();
 
+        // ==================== Button Loading Helper ====================
+        function btnLoading(btn, loading) {
+            if (!btn) return;
+            if (loading) {
+                btn._origText = btn.innerHTML;
+                btn.innerHTML = '<span class="btn-spinner"></span>' + btn.textContent;
+                btn.classList.add('btn-loading');
+            } else {
+                btn.innerHTML = btn._origText || btn.textContent;
+                btn.classList.remove('btn-loading');
+            }
+        }
+
         // ==================== Avatar 压缩 & Cloudinary 上传 ====================
         function compressImage(file, maxSize = 400) {
             return new Promise((resolve, reject) => {
@@ -11132,13 +11155,13 @@
                 closeCompanionAvatarModal();
                 return;
             }
+            const saveBtn = document.querySelector('.companion-avatar-btn-save');
+            btnLoading(saveBtn, true);
             try {
                 let avatarUrl;
                 if (typeof pendingCompanionAvatar === 'string') {
-                    // Reset to default path
                     avatarUrl = pendingCompanionAvatar;
                 } else {
-                    // Upload compressed blob to Cloudinary
                     const oldCompAvatar = state.user?.settings?.companion_avatar || '';
                     avatarUrl = await uploadAvatarToCloud(pendingCompanionAvatar.blob, oldCompAvatar);
                 }
@@ -11160,6 +11183,8 @@
             } catch (err) {
                 console.error('Save companion avatar error:', err);
                 alert('Network error');
+            } finally {
+                btnLoading(saveBtn, false);
             }
         }
 
@@ -12301,6 +12326,8 @@
                 return;
             }
 
+            const saveBtn = document.querySelector('#settings-modal .modal-btn.primary');
+            btnLoading(saveBtn, true);
             try {
                 // 1. 保存头像/昵称变化
                 if (updates.name || updates.avatar_url) {
@@ -12389,6 +12416,8 @@
             } catch (error) {
                 console.error('Save settings error:', error);
                 alert('Network error. Please try again.');
+            } finally {
+                btnLoading(saveBtn, false);
             }
         }
 
