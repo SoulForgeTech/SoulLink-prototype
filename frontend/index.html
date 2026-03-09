@@ -10883,6 +10883,28 @@
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.lineWidth = 2;
             ctx.stroke();
+
+            // Rule of thirds grid (clipped to circle)
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, cropRadius - 1, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 1;
+            const left = cx - cropRadius, top = cy - cropRadius, d = cropRadius * 2;
+            for (let i = 1; i <= 2; i++) {
+                // Vertical lines
+                ctx.beginPath();
+                ctx.moveTo(left + d * i / 3, top);
+                ctx.lineTo(left + d * i / 3, top + d);
+                ctx.stroke();
+                // Horizontal lines
+                ctx.beginPath();
+                ctx.moveTo(left, top + d * i / 3);
+                ctx.lineTo(left + d, top + d * i / 3);
+                ctx.stroke();
+            }
+            ctx.restore();
         }
 
         function clampCropPan() {
