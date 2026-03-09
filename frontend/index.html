@@ -8704,7 +8704,7 @@
             const img = document.getElementById('image-viewer-img');
             img.style.transform = `translate(${_ivPanX}px, ${_ivPanY}px) scale(${_ivZoom})`;
         }
-        (function initImageViewer() {
+        function _initImageViewer() {
             const overlay = document.getElementById('image-viewer');
             if (!overlay) return;
             // Double-tap to zoom
@@ -8778,7 +8778,8 @@
                 if (_ivZoom <= 1.05) { _ivPanX = 0; _ivPanY = 0; }
                 _ivApply();
             }, { passive: false });
-        })();
+        }
+        document.addEventListener('DOMContentLoaded', _initImageViewer);
 
         // 打字机效果函数
         function typewriterEffect(element, text, onComplete) {
@@ -13995,7 +13996,7 @@
     </script>
 
     <!-- 图片全屏查看器 -->
-    <div class="image-viewer-overlay" id="image-viewer" onclick="closeImageViewer()">
+    <div class="image-viewer-overlay" id="image-viewer">
         <img id="image-viewer-img" src="" alt="Full size image">
     </div>
 
