@@ -2049,10 +2049,19 @@
             }
 
             /* 侧边栏关闭按钮 */
+            .sidebar-header {
+                position: relative;
+                padding-right: 52px;
+            }
             .sidebar-close-btn {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                margin-left: 0;
             }
 
             /* 侧边栏：默认隐藏，从左侧滑入 */
