@@ -5782,6 +5782,28 @@
         </div>
     </div>
 
+    <!-- Image Crop Modal -->
+    <div class="crop-modal-overlay" id="crop-modal">
+        <div class="crop-modal">
+            <div class="crop-modal-header">
+                <span data-i18n="crop.title">Crop Image</span>
+                <button onclick="cancelCrop()">&#10005;</button>
+            </div>
+            <div class="crop-canvas-container" id="crop-canvas-container">
+                <canvas id="crop-canvas"></canvas>
+                <canvas id="crop-overlay-canvas"></canvas>
+            </div>
+            <div class="crop-controls">
+                <input type="range" id="crop-zoom" min="100" max="300" value="100" oninput="updateCropZoom(this.value)">
+                <span class="crop-zoom-label" id="crop-zoom-label">100%</span>
+            </div>
+            <div class="crop-modal-btns">
+                <button class="crop-btn-cancel" onclick="cancelCrop()" data-i18n="rename.cancel">Cancel</button>
+                <button class="crop-btn-confirm" onclick="confirmCrop()" data-i18n="crop.confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Companion 头像修改模态框 -->
     <div class="companion-avatar-modal-overlay" id="companion-avatar-modal">
         <div class="companion-avatar-modal">
@@ -6356,28 +6378,6 @@
                     <!-- JS 动态生成 -->
                 </div>
                 <input type="file" id="bg-upload-input" accept="image/*" style="display:none" onchange="handleBgUpload(this)">
-            </div>
-
-            <!-- Image Crop Modal -->
-            <div class="crop-modal-overlay" id="crop-modal">
-                <div class="crop-modal">
-                    <div class="crop-modal-header">
-                        <span data-i18n="crop.title">Crop Image</span>
-                        <button onclick="cancelCrop()">&#10005;</button>
-                    </div>
-                    <div class="crop-canvas-container" id="crop-canvas-container">
-                        <canvas id="crop-canvas"></canvas>
-                        <canvas id="crop-overlay-canvas"></canvas>
-                    </div>
-                    <div class="crop-controls">
-                        <input type="range" id="crop-zoom" min="100" max="300" value="100" oninput="updateCropZoom(this.value)">
-                        <span class="crop-zoom-label" id="crop-zoom-label">100%</span>
-                    </div>
-                    <div class="crop-modal-btns">
-                        <button class="crop-btn-cancel" onclick="cancelCrop()" data-i18n="rename.cancel">Cancel</button>
-                        <button class="crop-btn-confirm" onclick="confirmCrop()" data-i18n="crop.confirm">Confirm</button>
-                    </div>
-                </div>
             </div>
 
             <!-- Mini Games Panel -->
