@@ -1680,6 +1680,8 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            touch-action: none;
+            overflow: hidden;
         }
         .image-viewer-overlay.active {
             display: flex;
@@ -1689,6 +1691,8 @@
             max-height: 90vh;
             object-fit: contain;
             border-radius: 8px;
+            transition: transform 0.2s ease;
+            transform-origin: center center;
         }
 
         /* 加载动画 - typing indicator 带头像 */
@@ -8673,15 +8677,108 @@
         }
 
         // 图片全屏查看器
+        // ==================== Image Viewer with Zoom ====================
+        let _ivZoom = 1, _ivPanX = 0, _ivPanY = 0;
+        let _ivPinchDist = 0, _ivPinchZoom = 1;
+        let _ivDragging = false, _ivLastX = 0, _ivLastY = 0;
+        let _ivLastTap = 0;
+
         function openImageViewer(src) {
             const overlay = document.getElementById('image-viewer');
             const img = document.getElementById('image-viewer-img');
+            _ivZoom = 1; _ivPanX = 0; _ivPanY = 0;
+            img.style.transform = '';
             img.src = src;
             overlay.classList.add('active');
         }
         function closeImageViewer() {
+            if (_ivZoom > 1.1) {
+                // If zoomed in, reset zoom instead of closing
+                _ivZoom = 1; _ivPanX = 0; _ivPanY = 0;
+                document.getElementById('image-viewer-img').style.transform = '';
+                return;
+            }
             document.getElementById('image-viewer').classList.remove('active');
         }
+        function _ivApply() {
+            const img = document.getElementById('image-viewer-img');
+            img.style.transform = `translate(${_ivPanX}px, ${_ivPanY}px) scale(${_ivZoom})`;
+        }
+        (function initImageViewer() {
+            const overlay = document.getElementById('image-viewer');
+            if (!overlay) return;
+            // Double-tap to zoom
+            overlay.addEventListener('click', function(e) {
+                const now = Date.now();
+                if (now - _ivLastTap < 300) {
+                    e.stopPropagation();
+                    if (_ivZoom > 1.1) {
+                        _ivZoom = 1; _ivPanX = 0; _ivPanY = 0;
+                    } else {
+                        _ivZoom = 2.5;
+                        // Zoom toward tap point
+                        const rect = overlay.getBoundingClientRect();
+                        _ivPanX = (rect.width / 2 - e.clientX) * 0.6;
+                        _ivPanY = (rect.height / 2 - e.clientY) * 0.6;
+                    }
+                    _ivApply();
+                    _ivLastTap = 0;
+                    return;
+                }
+                _ivLastTap = now;
+                // Delay single tap close
+                setTimeout(() => {
+                    if (Date.now() - _ivLastTap >= 280) closeImageViewer();
+                }, 300);
+            });
+            // Pinch zoom
+            overlay.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    _ivPinchDist = Math.sqrt(dx * dx + dy * dy);
+                    _ivPinchZoom = _ivZoom;
+                } else if (e.touches.length === 1 && _ivZoom > 1.1) {
+                    e.preventDefault();
+                    _ivDragging = true;
+                    _ivLastX = e.touches[0].clientX;
+                    _ivLastY = e.touches[0].clientY;
+                }
+            }, { passive: false });
+            overlay.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (_ivPinchDist > 0) {
+                        _ivZoom = Math.max(1, Math.min(5, _ivPinchZoom * (dist / _ivPinchDist)));
+                        if (_ivZoom <= 1.05) { _ivPanX = 0; _ivPanY = 0; }
+                        _ivApply();
+                    }
+                } else if (_ivDragging && e.touches.length === 1) {
+                    e.preventDefault();
+                    _ivPanX += e.touches[0].clientX - _ivLastX;
+                    _ivPanY += e.touches[0].clientY - _ivLastY;
+                    _ivLastX = e.touches[0].clientX;
+                    _ivLastY = e.touches[0].clientY;
+                    _ivApply();
+                }
+            }, { passive: false });
+            overlay.addEventListener('touchend', function() {
+                _ivPinchDist = 0;
+                _ivDragging = false;
+            });
+            // Mouse wheel zoom
+            overlay.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.3 : 0.3;
+                _ivZoom = Math.max(1, Math.min(5, _ivZoom + delta));
+                if (_ivZoom <= 1.05) { _ivPanX = 0; _ivPanY = 0; }
+                _ivApply();
+            }, { passive: false });
+        })();
 
         // 打字机效果函数
         function typewriterEffect(element, text, onComplete) {
