@@ -8682,7 +8682,8 @@
         let _ivZoom = 1, _ivPanX = 0, _ivPanY = 0;
         let _ivPinchDist = 0, _ivPinchZoom = 1;
         let _ivDragging = false, _ivLastX = 0, _ivLastY = 0;
-        let _ivLastTap = 0;
+        let _ivDidDrag = false;
+        let _ivLastTap = 0, _ivTapTimer = 0;
 
         function openImageViewer(src) {
             const overlay = document.getElementById('image-viewer');
@@ -8710,14 +8711,16 @@
             if (!overlay) return;
             // Double-tap to zoom
             overlay.addEventListener('click', function(e) {
+                if (_ivDidDrag) { _ivDidDrag = false; return; }
                 const now = Date.now();
                 if (now - _ivLastTap < 300) {
+                    // Double-tap: cancel pending single-tap close
+                    clearTimeout(_ivTapTimer);
                     e.stopPropagation();
                     if (_ivZoom > 1.1) {
                         _ivZoom = 1; _ivPanX = 0; _ivPanY = 0;
                     } else {
                         _ivZoom = 2.5;
-                        // Zoom toward tap point
                         const rect = overlay.getBoundingClientRect();
                         _ivPanX = (rect.width / 2 - e.clientX) * 0.6;
                         _ivPanY = (rect.height / 2 - e.clientY) * 0.6;
@@ -8727,10 +8730,8 @@
                     return;
                 }
                 _ivLastTap = now;
-                // Delay single tap close
-                setTimeout(() => {
-                    if (Date.now() - _ivLastTap >= 280) closeImageViewer();
-                }, 300);
+                // Delay single tap → close (cancelled if double-tap follows)
+                _ivTapTimer = setTimeout(() => { closeImageViewer(); }, 300);
             });
             // Pinch zoom
             overlay.addEventListener('touchstart', function(e) {
@@ -8770,6 +8771,34 @@
             overlay.addEventListener('touchend', function() {
                 _ivPinchDist = 0;
                 _ivDragging = false;
+            });
+            // Mouse drag to pan (desktop)
+            overlay.addEventListener('mousedown', function(e) {
+                if (_ivZoom > 1.1 && e.button === 0) {
+                    _ivDragging = true;
+                    _ivLastX = e.clientX;
+                    _ivLastY = e.clientY;
+                    overlay.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            });
+            overlay.addEventListener('mousemove', function(e) {
+                if (_ivDragging) {
+                    const dx = e.clientX - _ivLastX, dy = e.clientY - _ivLastY;
+                    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) _ivDidDrag = true;
+                    _ivPanX += dx;
+                    _ivPanY += dy;
+                    _ivLastX = e.clientX;
+                    _ivLastY = e.clientY;
+                    _ivApply();
+                    e.preventDefault();
+                }
+            });
+            overlay.addEventListener('mouseup', function() {
+                if (_ivDragging) { _ivDragging = false; overlay.style.cursor = ''; }
+            });
+            overlay.addEventListener('mouseleave', function() {
+                if (_ivDragging) { _ivDragging = false; overlay.style.cursor = ''; }
             });
             // Mouse wheel zoom
             overlay.addEventListener('wheel', function(e) {
