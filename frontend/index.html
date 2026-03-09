@@ -8327,10 +8327,11 @@
                 const attDiv = document.createElement('div');
                 attDiv.className = 'message-attachments';
                 attachments.forEach(att => {
-                    if (att.isImage && att.dataUrl) {
+                    if (att.isImage && (att.dataUrl || att.url)) {
                         const img = document.createElement('img');
-                        img.src = att.dataUrl;
-                        img.alt = att.name;
+                        img.src = att.dataUrl || att.url;
+                        img.alt = att.name || 'Image';
+                        img.onclick = () => openImageViewer(img.src);
                         attDiv.appendChild(img);
                     } else if (att.isGenerated && att.url) {
                         // 历史消息中有 Cloudinary URL 的 AI 生成图片 — 显示真实图片
@@ -8460,10 +8461,11 @@
                     const attDiv = document.createElement('div');
                     attDiv.className = 'message-attachments';
                     attachments.forEach(att => {
-                        if (att.isImage && att.dataUrl) {
+                        if (att.isImage && (att.dataUrl || att.url)) {
                             const img = document.createElement('img');
-                            img.src = att.dataUrl;
-                            img.alt = att.name;
+                            img.src = att.dataUrl || att.url;
+                            img.alt = att.name || 'Image';
+                            img.onclick = () => openImageViewer(img.src);
                             attDiv.appendChild(img);
                         } else if (att.isGenerated && att.url) {
                             const img = document.createElement('img');

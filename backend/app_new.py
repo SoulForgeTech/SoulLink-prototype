@@ -896,10 +896,23 @@ def chat():
     # 记录是否是新对话的第一条消息（用于后续自动生成标题）
     is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
 
-    # 保存用户消息（附件只存元数据，不存base64）
+    # 保存用户消息（图片附件上传 Cloudinary 持久化）
     attachment_meta = None
     if attachments:
-        attachment_meta = [{"name": a.get("name", "file"), "mime": a.get("mime", ""), "isImage": a.get("mime", "").startswith("image/")} for a in attachments]
+        attachment_meta = []
+        for a in attachments:
+            meta = {"name": a.get("name", "file"), "mime": a.get("mime", ""), "isImage": a.get("mime", "").startswith("image/")}
+            # 用户图片 → 上传 Cloudinary 保存 URL
+            if meta["isImage"] and a.get("contentString"):
+                try:
+                    from image_gen import upload_to_cloudinary
+                    b64 = a["contentString"].split(",", 1)[-1] if "," in a["contentString"] else a["contentString"]
+                    url = upload_to_cloudinary(b64, str(user_id))
+                    if url:
+                        meta["url"] = url
+                except Exception as e:
+                    logger.warning(f"[CHAT] User image upload failed: {e}")
+            attachment_meta.append(meta)
     db.add_message_to_conversation(
         conversation["_id"],
         user_id,
@@ -1475,14 +1488,23 @@ def chat_stream():
 
         is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
 
-        # Save user message
+        # Save user message（图片附件上传 Cloudinary 持久化）
         attachment_meta = None
         if attachments:
-            attachment_meta = [
-                {"name": a.get("name", "file"), "mime": a.get("mime", ""),
-                 "isImage": a.get("mime", "").startswith("image/")}
-                for a in attachments
-            ]
+            attachment_meta = []
+            for a in attachments:
+                meta = {"name": a.get("name", "file"), "mime": a.get("mime", ""),
+                        "isImage": a.get("mime", "").startswith("image/")}
+                if meta["isImage"] and a.get("contentString"):
+                    try:
+                        from image_gen import upload_to_cloudinary
+                        b64 = a["contentString"].split(",", 1)[-1] if "," in a["contentString"] else a["contentString"]
+                        url = upload_to_cloudinary(b64, str(user_id))
+                        if url:
+                            meta["url"] = url
+                    except Exception as e:
+                        logger.warning(f"[CHAT-STREAM] User image upload failed: {e}")
+                attachment_meta.append(meta)
         db.add_message_to_conversation(
             conversation["_id"], user_id, "user", user_message,
             attachments=attachment_meta,
