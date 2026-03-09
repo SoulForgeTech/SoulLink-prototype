@@ -563,6 +563,61 @@ def upload_avatar():
         return jsonify({"error": "Upload failed"}), 500
 
 
+@app.route("/api/upload-background", methods=["POST"])
+@login_required
+def upload_background():
+    """Upload custom background image to Cloudinary."""
+    user_id = get_current_user_id()
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not file or not file.filename:
+        return jsonify({"error": "Empty file"}), 400
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        return jsonify({"error": "File must be an image"}), 400
+
+    img_data = file.read()
+
+    if len(img_data) > 2 * 1024 * 1024:
+        return jsonify({"error": "Image too large (max 2MB)"}), 400
+
+    try:
+        import image_gen as _img_mod
+        import cloudinary.uploader
+        _img_mod._ensure_cloudinary()
+        if not _img_mod._cloudinary_configured:
+            return jsonify({"error": "Cloud storage not configured"}), 500
+
+        from datetime import datetime, timezone
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        public_id = f"soullink/backgrounds/{user_id}_{timestamp}"
+        result = cloudinary.uploader.upload(
+            img_data,
+            public_id=public_id,
+            resource_type="image",
+            overwrite=True,
+            transformation=[{"width": 1080, "quality": "auto:good", "crop": "limit"}],
+        )
+        url = result.get("secure_url", "")
+        if not url:
+            return jsonify({"error": "Upload failed"}), 500
+
+        # Save to user settings
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$set": {"settings.custom_background_url": url}}
+        )
+
+        logger.info(f"[BG] Uploaded custom background for user {user_id}: {url[:80]}")
+        return jsonify({"success": True, "url": url})
+    except Exception as e:
+        logger.error(f"[BG] Upload error: {e}")
+        return jsonify({"error": "Upload failed"}), 500
+
+
 @app.route("/api/user/settings", methods=["PUT"])
 @login_required
 def update_settings():
@@ -574,7 +629,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "voice_id", "voice_name", "kb_enabled"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "custom_background_url", "voice_id", "voice_name", "kb_enabled"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:

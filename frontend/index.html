@@ -5176,6 +5176,95 @@
             .game-tile { padding: 14px 6px; }
             .bubble-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
         }
+
+        /* ===== Image Crop Modal ===== */
+        .crop-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10001;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .crop-modal-overlay.active {
+            opacity: 1; pointer-events: auto;
+        }
+        .crop-modal {
+            background: #1a1a2e; border-radius: 20px;
+            width: 92%; max-width: 400px;
+            transform: scale(0.9); transition: transform 0.25s;
+            overflow: hidden;
+        }
+        .crop-modal-overlay.active .crop-modal {
+            transform: scale(1);
+        }
+        .crop-modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; color: #fff; font-size: 15px; font-weight: 600;
+        }
+        .crop-modal-header button {
+            background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;
+        }
+        .crop-canvas-container {
+            position: relative; width: 100%; aspect-ratio: 1;
+            overflow: hidden; cursor: grab; touch-action: none;
+            background: #000;
+        }
+        .crop-canvas-container canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        #crop-overlay-canvas { pointer-events: none; }
+        .crop-controls {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 18px;
+        }
+        .crop-controls input[type="range"] {
+            flex: 1; accent-color: #7c3aed;
+        }
+        .crop-zoom-label {
+            color: #aaa; font-size: 12px; min-width: 36px;
+        }
+        .crop-modal-btns {
+            display: flex; gap: 10px; justify-content: flex-end;
+            padding: 10px 18px 16px;
+        }
+        .crop-btn-cancel {
+            padding: 8px 20px; border-radius: 10px; border: none;
+            background: #2d2d44; color: #aaa; font-size: 0.9rem; cursor: pointer;
+        }
+        .crop-btn-confirm {
+            padding: 8px 20px; border-radius: 10px; border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+        }
+        /* ===== Custom Background Upload Tile ===== */
+        .bg-upload-tile {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(124, 58, 237, 0.08);
+            border: 2px dashed rgba(124, 58, 237, 0.3);
+            transition: all 0.2s;
+        }
+        .bg-upload-tile:hover {
+            background: rgba(124, 58, 237, 0.15);
+            border-color: rgba(124, 58, 237, 0.5);
+        }
+        .bg-upload-icon { color: #7c3aed; margin-bottom: 2px; }
+        .bg-upload-tile .bg-thumb-label {
+            background: transparent; color: #7c3aed;
+            font-size: 10px; font-weight: 500;
+            position: static; padding: 0;
+        }
+        .bg-custom-delete {
+            position: absolute; top: 2px; right: 2px;
+            width: 18px; height: 18px;
+            background: rgba(0,0,0,0.6); color: #fff;
+            border: none; border-radius: 50%;
+            font-size: 10px; line-height: 18px;
+            cursor: pointer; padding: 0;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .bg-thumb-item:hover .bg-custom-delete { opacity: 1; }
     </style>
 </head>
 <body>
@@ -6266,6 +6355,29 @@
                 <div class="bg-thumb-grid" id="bg-thumb-grid">
                     <!-- JS 动态生成 -->
                 </div>
+                <input type="file" id="bg-upload-input" accept="image/*" style="display:none" onchange="handleBgUpload(this)">
+            </div>
+
+            <!-- Image Crop Modal -->
+            <div class="crop-modal-overlay" id="crop-modal">
+                <div class="crop-modal">
+                    <div class="crop-modal-header">
+                        <span data-i18n="crop.title">Crop Image</span>
+                        <button onclick="cancelCrop()">&#10005;</button>
+                    </div>
+                    <div class="crop-canvas-container" id="crop-canvas-container">
+                        <canvas id="crop-canvas"></canvas>
+                        <canvas id="crop-overlay-canvas"></canvas>
+                    </div>
+                    <div class="crop-controls">
+                        <input type="range" id="crop-zoom" min="100" max="300" value="100" oninput="updateCropZoom(this.value)">
+                        <span class="crop-zoom-label" id="crop-zoom-label">100%</span>
+                    </div>
+                    <div class="crop-modal-btns">
+                        <button class="crop-btn-cancel" onclick="cancelCrop()" data-i18n="rename.cancel">Cancel</button>
+                        <button class="crop-btn-confirm" onclick="confirmCrop()" data-i18n="crop.confirm">Confirm</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Mini Games Panel -->
@@ -6673,6 +6785,10 @@
                 'about.survey': 'Survey',
                 'about.survey.desc': 'Help us improve — take our quick 4-5 min survey!',
                 'bg.picker.title': 'Background',
+                'bg.upload': 'Upload',
+                'bg.custom.label': 'Custom',
+                'crop.title': 'Crop Image',
+                'crop.confirm': 'Confirm',
                 'thinking.header': 'Thought Process',
                 'hint.switch.grok': 'GPT-4o may have content restrictions. Try Grok for a more open & immersive experience',
                 'hint.switch.grok.btn': 'Switch to Grok →',
@@ -6992,6 +7108,10 @@
                 'about.survey': '调查问卷',
                 'about.survey.desc': '帮助我们做得更好 — 仅需4-5分钟！',
                 'bg.picker.title': '背景',
+                'bg.upload': '上传',
+                'bg.custom.label': '自定义',
+                'crop.title': '裁剪图片',
+                'crop.confirm': '确认',
                 'thinking.header': '思考过程',
                 'hint.switch.grok': 'GPT-4o 可能有内容限制，试试切换 Grok 获得更开放沉浸的体验',
                 'hint.switch.grok.btn': '切换到 Grok →',
@@ -10672,6 +10792,199 @@
         // ==================== 用户设置模态框 ====================
         let pendingAvatarData = null; // 临时存储待保存的头像
 
+        // ==================== Image Crop Modal ====================
+        let _cropResolve = null;
+        let _cropReject = null;
+        let _cropImg = null;
+        let _cropZoom = 1;
+        let _cropBaseScale = 1;
+        let _cropPanX = 0;
+        let _cropPanY = 0;
+        let _cropDragging = false;
+        let _cropLastX = 0;
+        let _cropLastY = 0;
+        let _cropContainerSize = 0;
+
+        function showCropModal(file) {
+            return new Promise((resolve, reject) => {
+                _cropResolve = resolve;
+                _cropReject = reject;
+
+                const img = new Image();
+                img.onload = () => {
+                    _cropImg = img;
+                    _cropZoom = 1;
+                    _cropPanX = 0;
+                    _cropPanY = 0;
+
+                    const container = document.getElementById('crop-canvas-container');
+                    _cropContainerSize = container.offsetWidth;
+
+                    const canvas = document.getElementById('crop-canvas');
+                    const overlay = document.getElementById('crop-overlay-canvas');
+                    const dpr = window.devicePixelRatio || 1;
+                    const size = _cropContainerSize * dpr;
+                    canvas.width = size;
+                    canvas.height = size;
+                    overlay.width = size;
+                    overlay.height = size;
+
+                    document.getElementById('crop-zoom').value = 100;
+                    document.getElementById('crop-zoom-label').textContent = '100%';
+
+                    // Base scale: image covers the crop circle area
+                    const minDim = Math.min(img.width, img.height);
+                    _cropBaseScale = size / minDim;
+
+                    drawCrop();
+                    drawCropOverlay(size);
+
+                    document.getElementById('crop-modal').classList.add('active');
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function drawCrop() {
+            const canvas = document.getElementById('crop-canvas');
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            const scale = _cropBaseScale * _cropZoom;
+            const dpr = window.devicePixelRatio || 1;
+
+            ctx.clearRect(0, 0, size, size);
+            const drawW = _cropImg.width * scale;
+            const drawH = _cropImg.height * scale;
+            const x = (size - drawW) / 2 + _cropPanX * dpr;
+            const y = (size - drawH) / 2 + _cropPanY * dpr;
+            ctx.drawImage(_cropImg, x, y, drawW, drawH);
+        }
+
+        function drawCropOverlay(size) {
+            const overlay = document.getElementById('crop-overlay-canvas');
+            const ctx = overlay.getContext('2d');
+            ctx.clearRect(0, 0, size, size);
+
+            // Dark mask
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, size, size);
+
+            // Clear circle
+            const margin = size * 0.08;
+            const cropRadius = (size - margin * 2) / 2;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, cropRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+
+            // Circle border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, cropRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function clampCropPan() {
+            const dpr = window.devicePixelRatio || 1;
+            const canvasSize = _cropContainerSize * dpr;
+            const margin = canvasSize * 0.08;
+            const cropRadius = (canvasSize - margin * 2) / 2;
+            const scale = _cropBaseScale * _cropZoom;
+            const drawW = _cropImg.width * scale;
+            const drawH = _cropImg.height * scale;
+            const maxPanX = Math.max(0, (drawW / 2 - cropRadius)) / dpr;
+            const maxPanY = Math.max(0, (drawH / 2 - cropRadius)) / dpr;
+            _cropPanX = Math.max(-maxPanX, Math.min(maxPanX, _cropPanX));
+            _cropPanY = Math.max(-maxPanY, Math.min(maxPanY, _cropPanY));
+        }
+
+        function initCropDrag() {
+            const container = document.getElementById('crop-canvas-container');
+            function getPos(e) {
+                if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
+            }
+            function onStart(e) {
+                e.preventDefault();
+                _cropDragging = true;
+                const pos = getPos(e);
+                _cropLastX = pos.x;
+                _cropLastY = pos.y;
+                container.style.cursor = 'grabbing';
+            }
+            function onMove(e) {
+                if (!_cropDragging) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                _cropPanX += pos.x - _cropLastX;
+                _cropPanY += pos.y - _cropLastY;
+                _cropLastX = pos.x;
+                _cropLastY = pos.y;
+                clampCropPan();
+                drawCrop();
+            }
+            function onEnd() {
+                _cropDragging = false;
+                container.style.cursor = 'grab';
+            }
+            container.addEventListener('mousedown', onStart);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onEnd);
+            container.addEventListener('touchstart', onStart, { passive: false });
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
+        }
+
+        function updateCropZoom(val) {
+            _cropZoom = val / 100;
+            document.getElementById('crop-zoom-label').textContent = val + '%';
+            clampCropPan();
+            drawCrop();
+        }
+
+        function confirmCrop() {
+            const dpr = window.devicePixelRatio || 1;
+            const canvasSize = _cropContainerSize * dpr;
+            const margin = canvasSize * 0.08;
+            const cropSize = canvasSize - margin * 2;
+
+            const srcCanvas = document.getElementById('crop-canvas');
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = 400;
+            outCanvas.height = 400;
+            const outCtx = outCanvas.getContext('2d');
+            outCtx.drawImage(srcCanvas, margin, margin, cropSize, cropSize, 0, 0, 400, 400);
+
+            outCanvas.toBlob(blob => {
+                if (!blob) {
+                    _cropReject?.(new Error('Crop failed'));
+                    closeCropModal();
+                    return;
+                }
+                const previewUrl = URL.createObjectURL(blob);
+                _cropResolve?.({ blob, previewUrl });
+                closeCropModal();
+            }, 'image/jpeg', 0.9);
+        }
+
+        function cancelCrop() {
+            _cropReject?.(new Error('Cancelled'));
+            closeCropModal();
+        }
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').classList.remove('active');
+            _cropResolve = null;
+            _cropReject = null;
+            _cropImg = null;
+        }
+
+        // Init crop drag on load
+        initCropDrag();
+
         // ==================== Avatar 压缩 & Cloudinary 上传 ====================
         function compressImage(file, maxSize = 400) {
             return new Promise((resolve, reject) => {
@@ -10739,12 +11052,13 @@
             if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
             event.target.value = '';
             try {
-                const { blob, previewUrl } = await compressImage(file, 400);
+                const { blob, previewUrl } = await showCropModal(file);
                 document.getElementById('companion-avatar-preview').src = previewUrl;
                 document.querySelectorAll('.companion-avatar-preset-item').forEach(el => el.classList.remove('selected'));
                 pendingCompanionAvatar = { blob, previewUrl };
             } catch (e) {
-                console.error('Compress error:', e);
+                if (e.message === 'Cancelled') return;
+                console.error('Crop error:', e);
                 alert('Failed to process image');
             }
         }
@@ -11026,11 +11340,12 @@
             if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
             input.value = '';
             try {
-                const { blob, previewUrl } = await compressImage(file, 400);
+                const { blob, previewUrl } = await showCropModal(file);
                 _pendingSettingsCompanionAvatar = { blob, previewUrl };
                 document.getElementById('settings-companion-avatar-preview').src = previewUrl;
             } catch (e) {
-                console.error('Compress error:', e);
+                if (e.message === 'Cancelled') return;
+                console.error('Crop error:', e);
                 alert('Failed to process image');
             }
         }
@@ -11834,14 +12149,15 @@
             if (!file) return;
             if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
             if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
-
+            event.target.value = '';
             try {
-                const { blob, previewUrl } = await compressImage(file, 400);
+                const { blob, previewUrl } = await showCropModal(file);
                 document.getElementById('settings-avatar-img').src = previewUrl;
                 document.querySelectorAll('.avatar-preset').forEach(el => el.classList.remove('selected'));
                 pendingAvatarData = { type: 'upload', blob, previewUrl };
             } catch (e) {
-                console.error('Compress error:', e);
+                if (e.message === 'Cancelled') return;
+                console.error('Crop error:', e);
                 alert('Failed to process image');
             }
         }
@@ -12825,8 +13141,9 @@
         function renderBgGrid() {
             const grid = document.getElementById('bg-thumb-grid');
             const currentBg = state.user?.settings?.chat_background || 'default';
+            const customUrl = state.user?.settings?.custom_background_url || null;
 
-            grid.innerHTML = BACKGROUNDS.map(bg => {
+            let html = BACKGROUNDS.map(bg => {
                 const isActive = (currentBg === bg.id) || (currentBg === 'default' && bg.id === 'default');
                 const label = bg.label || '';
                 return `
@@ -12836,6 +13153,34 @@
                     </div>
                 `;
             }).join('');
+
+            // Custom background tile
+            if (customUrl) {
+                const isActive = currentBg === 'custom';
+                html += `
+                    <div class="bg-thumb-item${isActive ? ' active' : ''}" data-bg-id="custom" onclick="selectBackground('custom')">
+                        <img src="${customUrl}" alt="Custom" loading="lazy">
+                        <div class="bg-thumb-label">${t('bg.custom.label')}</div>
+                        <button class="bg-custom-delete" onclick="event.stopPropagation(); deleteCustomBackground()" title="Remove">&#10005;</button>
+                    </div>
+                `;
+            }
+
+            // Upload button tile
+            html += `
+                <div class="bg-thumb-item bg-upload-tile" onclick="document.getElementById('bg-upload-input').click()">
+                    <div class="bg-upload-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="bg-thumb-label">${t('bg.upload')}</div>
+                </div>
+            `;
+
+            grid.innerHTML = html;
         }
 
         function initBgLayer() {
@@ -12848,17 +13193,25 @@
         }
 
         function selectBackground(bgId) {
-            const bg = BACKGROUNDS.find(b => b.id === bgId);
-            if (!bg) return;
+            let newUrl, src;
+            if (bgId === 'custom') {
+                const customUrl = state.user?.settings?.custom_background_url;
+                if (!customUrl) return;
+                newUrl = `url('${customUrl}')`;
+                src = customUrl;
+            } else {
+                const bg = BACKGROUNDS.find(b => b.id === bgId);
+                if (!bg) return;
+                newUrl = bgId === 'default'
+                    ? "url('images/bg.png')"
+                    : `url('images/Background/${bg.file}')`;
+                src = bgId === 'default' ? 'images/bg.png' : `images/Background/${bg.file}`;
+            }
 
             const app = document.getElementById('app');
-            const newUrl = bgId === 'default'
-                ? "url('images/bg.png')"
-                : `url('images/Background/${bg.file}')`;
 
             // Preload image then crossfade
             const img = new Image();
-            const src = bgId === 'default' ? 'images/bg.png' : `images/Background/${bg.file}`;
             img.onload = function() {
                 const oldLayer = app.querySelector('.bg-layer:not(.old)');
                 const newLayer = document.createElement('div');
@@ -12910,6 +13263,15 @@
             const bgId = state.user?.settings?.chat_background;
             if (!bgId || bgId === 'default') return;
 
+            if (bgId === 'custom') {
+                const customUrl = state.user?.settings?.custom_background_url;
+                if (customUrl) {
+                    const layer = app.querySelector('.bg-layer');
+                    if (layer) layer.style.backgroundImage = `url('${customUrl}')`;
+                }
+                return;
+            }
+
             const bg = BACKGROUNDS.find(b => b.id === bgId);
             if (bg) {
                 const layer = app.querySelector('.bg-layer');
@@ -12917,6 +13279,65 @@
                     layer.style.backgroundImage = `url('images/Background/${bg.file}')`;
                 }
             }
+        }
+
+        // ==================== Custom Background Upload ====================
+        async function handleBgUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            input.value = '';
+            if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+            if (file.size > 10 * 1024 * 1024) { alert('Image must be less than 10MB'); return; }
+
+            try {
+                const { blob } = await compressImage(file, 1080);
+
+                const uploadTile = document.querySelector('.bg-upload-tile');
+                if (uploadTile) { uploadTile.style.opacity = '0.5'; uploadTile.style.pointerEvents = 'none'; }
+
+                const form = new FormData();
+                form.append('file', blob, 'background.jpg');
+                const resp = await authFetch(`${CONFIG.API_BASE_URL}/api/upload-background`, {
+                    method: 'POST', body: form,
+                });
+                if (!resp.ok) {
+                    const d = await resp.json().catch(() => ({}));
+                    throw new Error(d.error || 'Upload failed');
+                }
+                const d = await resp.json();
+                const url = d.url;
+
+                if (!state.user.settings) state.user.settings = {};
+                state.user.settings.custom_background_url = url;
+                localStorage.setItem('soullink_user', JSON.stringify(state.user));
+
+                bgPickerRendered = false;
+                renderBgGrid();
+                selectBackground('custom');
+            } catch (e) {
+                console.error('Background upload error:', e);
+                alert('Failed to upload background');
+            } finally {
+                const uploadTile = document.querySelector('.bg-upload-tile');
+                if (uploadTile) { uploadTile.style.opacity = ''; uploadTile.style.pointerEvents = ''; }
+            }
+        }
+
+        function deleteCustomBackground() {
+            if (!state.user?.settings?.custom_background_url) return;
+            if (state.user.settings.chat_background === 'custom') {
+                selectBackground('default');
+            }
+            delete state.user.settings.custom_background_url;
+            localStorage.setItem('soullink_user', JSON.stringify(state.user));
+            if (state.token) {
+                authFetch(`${CONFIG.API_BASE_URL}/api/user/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ custom_background_url: '' })
+                }).catch(err => console.error('Delete custom bg error:', err));
+            }
+            renderBgGrid();
         }
 
         // ==================== Mini Games ====================
