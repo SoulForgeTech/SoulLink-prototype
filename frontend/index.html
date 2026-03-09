@@ -10866,24 +10866,22 @@
             const ctx = overlay.getContext('2d');
             ctx.clearRect(0, 0, size, size);
 
-            // Dark mask
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.fillRect(0, 0, size, size);
-
-            // Clear circle
             const margin = size * 0.08;
             const cropRadius = (size - margin * 2) / 2;
-            ctx.globalCompositeOperation = 'destination-out';
+            const cx = size / 2, cy = size / 2;
+
+            // Draw dark mask with circle hole using path winding
             ctx.beginPath();
-            ctx.arc(size / 2, size / 2, cropRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalCompositeOperation = 'source-over';
+            ctx.rect(0, 0, size, size);
+            ctx.arc(cx, cy, cropRadius, 0, Math.PI * 2, true);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fill('evenodd');
 
             // Circle border
+            ctx.beginPath();
+            ctx.arc(cx, cy, cropRadius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, cropRadius, 0, Math.PI * 2);
             ctx.stroke();
         }
 
@@ -10901,13 +10899,35 @@
             _cropPanY = Math.max(-maxPanY, Math.min(maxPanY, _cropPanY));
         }
 
+        function _setCropZoom(newZoom) {
+            _cropZoom = Math.max(1, Math.min(3, newZoom));
+            const slider = document.getElementById('crop-zoom');
+            slider.value = Math.round(_cropZoom * 100);
+            document.getElementById('crop-zoom-label').textContent = Math.round(_cropZoom * 100) + '%';
+            clampCropPan();
+            drawCrop();
+        }
+
         function initCropDrag() {
             const container = document.getElementById('crop-canvas-container');
+            let _pinchStartDist = 0;
+            let _pinchStartZoom = 1;
+
             function getPos(e) {
                 if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 return { x: e.clientX, y: e.clientY };
             }
             function onStart(e) {
+                if (e.touches && e.touches.length === 2) {
+                    // Pinch start
+                    e.preventDefault();
+                    _cropDragging = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    _pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+                    _pinchStartZoom = _cropZoom;
+                    return;
+                }
                 e.preventDefault();
                 _cropDragging = true;
                 const pos = getPos(e);
@@ -10916,6 +10936,17 @@
                 container.style.cursor = 'grabbing';
             }
             function onMove(e) {
+                if (e.touches && e.touches.length === 2) {
+                    // Pinch zoom
+                    e.preventDefault();
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (_pinchStartDist > 0) {
+                        _setCropZoom(_pinchStartZoom * (dist / _pinchStartDist));
+                    }
+                    return;
+                }
                 if (!_cropDragging) return;
                 e.preventDefault();
                 const pos = getPos(e);
@@ -10928,8 +10959,16 @@
             }
             function onEnd() {
                 _cropDragging = false;
+                _pinchStartDist = 0;
                 container.style.cursor = 'grab';
             }
+            // Mouse wheel zoom
+            container.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.08 : 0.08;
+                _setCropZoom(_cropZoom + delta);
+            }, { passive: false });
+
             container.addEventListener('mousedown', onStart);
             window.addEventListener('mousemove', onMove);
             window.addEventListener('mouseup', onEnd);
