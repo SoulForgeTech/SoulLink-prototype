@@ -1783,12 +1783,16 @@
         /* AI 生成图片 */
         .generated-images {
             margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         .generated-image {
             max-width: 280px;
             border-radius: 12px;
             cursor: pointer;
             transition: transform 0.2s;
+            display: block;
         }
         .generated-image:hover {
             transform: scale(1.02);
