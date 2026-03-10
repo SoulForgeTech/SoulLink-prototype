@@ -55,7 +55,7 @@ const CHANGELOG: VersionEntry[] = [
   {
     version: 'v0.1.8-beta', date: '2026-03-09',
     changes: [
-      { badge: 'ui', text: 'Real-time rendered glassmorphism UI \u2014 sidebar, chat, modals, input bar all upgraded with unified theme', text_zh: '\u5B9E\u65F6\u6E32\u67D3\u6BDB\u7483\u7490UI \u2014 \u4FA7\u8FB9\u680F\u3001\u804A\u5929\u3001\u5F39\u7A97\u3001\u8F93\u5165\u680F\u7EDF\u4E00\u4E3B\u9898\u5347\u7EA7' },
+      { badge: 'ui', text: 'Real-time rendered glassmorphism UI \u2014 sidebar, chat, modals, input bar all upgraded with unified theme', text_zh: '\u5B9E\u65F6\u6E32\u67D3\u6BDB\u73BB\u7483UI \u2014 \u4FA7\u8FB9\u680F\u3001\u804A\u5929\u3001\u5F39\u7A97\u3001\u8F93\u5165\u680F\u7EDF\u4E00\u4E3B\u9898\u5347\u7EA7' },
       { badge: 'ui', text: 'Smoother modal open/close animations, overall layout alignment improvements', text_zh: '\u66F4\u6D41\u7545\u7684\u5F39\u7A97\u5F00\u5173\u52A8\u753B\uFF0C\u6574\u4F53\u5E03\u5C40\u5BF9\u9F50\u4F18\u5316' },
       { badge: 'fix', text: 'Fixed image generation occasionally failing after multiple consecutive generations', text_zh: '\u4FEE\u590D\u8FDE\u7EED\u591A\u6B21\u751F\u6210\u56FE\u7247\u540E\u5076\u5C14\u5931\u8D25' },
       { badge: 'opt', text: 'Removed daily image generation limit \u2014 generate as many as you want', text_zh: '\u53D6\u6D88\u6BCF\u65E5\u56FE\u7247\u751F\u6210\u9650\u5236 \u2014 \u968F\u4FBF\u751F\u6210' },
