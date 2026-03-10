@@ -648,10 +648,6 @@ def handle_forgot_password(email: str) -> Dict[str, Any]:
     if not user:
         return {"success": True, "message": "If this email is registered, a reset code has been sent."}
 
-    # Google-only accounts have no password to reset
-    if not user.get("password_hash"):
-        return {"success": True, "message": "If this email is registered, a reset code has been sent."}
-
     # 60-second rate limit
     last_sent = user.get("reset_code_sent_at")
     if last_sent and (datetime.utcnow() - last_sent).total_seconds() < 60:
@@ -698,16 +694,20 @@ def handle_reset_password(email: str, code: str, new_password: str, user_agent: 
 
     # Update password and clear reset code fields
     new_hash = hash_password(new_password)
+    update_fields = {
+        "password_hash": new_hash,
+        "reset_code": None,
+        "reset_code_expires": None,
+        "reset_code_sent_at": None,
+        "email_verified": True,  # Receiving code proves email ownership
+        "updated_at": datetime.utcnow()
+    }
+    # Google-only user setting password for the first time → enable dual login
+    if user.get("auth_provider") == "google" and not user.get("password_hash"):
+        update_fields["auth_provider"] = "email+google"
     db.db["users"].update_one(
         {"_id": user["_id"]},
-        {"$set": {
-            "password_hash": new_hash,
-            "reset_code": None,
-            "reset_code_expires": None,
-            "reset_code_sent_at": None,
-            "email_verified": True,  # Receiving code proves email ownership
-            "updated_at": datetime.utcnow()
-        }}
+        {"$set": update_fields}
     )
 
     # Security: revoke all existing sessions
