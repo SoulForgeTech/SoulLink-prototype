@@ -96,14 +96,14 @@ class GoogleOAuth:
         return f"{cls.GOOGLE_AUTH_URL}?{query}"
 
     @classmethod
-    def exchange_code(cls, code: str) -> Optional[Dict[str, Any]]:
-        """用授权码换取访问令牌"""
+    def exchange_code(cls, code: str, redirect_uri: str = None) -> Optional[Dict[str, Any]]:
+        """用授权码换取访问令牌。redirect_uri 优先使用传入值，否则 fallback 到环境变量。"""
         data = {
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": GOOGLE_REDIRECT_URI
+            "redirect_uri": redirect_uri or GOOGLE_REDIRECT_URI
         }
 
         try:

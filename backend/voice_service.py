@@ -521,13 +521,84 @@ class STTCallback(RecognitionCallback):
         )
 
 
+def _ensure_wav(audio_data: bytes, audio_format: str) -> tuple:
+    """Convert any audio to wav using ffmpeg auto-detection. Returns (wav_bytes, 'wav') or original on failure."""
+    if audio_format == "wav":
+        return audio_data, "wav"
+    import subprocess
+    tmp_in = tempfile.NamedTemporaryFile(suffix=f".{audio_format}", delete=False)
+    tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    try:
+        tmp_in.write(audio_data)
+        tmp_in.close()
+        tmp_out.close()
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", tmp_in.name, "-ar", "16000", "-ac", "1", "-f", "wav", tmp_out.name],
+            capture_output=True, timeout=15
+        )
+        if result.returncode == 0 and os.path.getsize(tmp_out.name) > 100:
+            with open(tmp_out.name, "rb") as f:
+                wav_data = f.read()
+            logger.info(f"[STT] Converted {audio_format} → wav ({len(wav_data)} bytes)")
+            return wav_data, "wav"
+        logger.warning(f"[STT] ffmpeg convert failed (rc={result.returncode}): {result.stderr.decode()[-300:]}")
+    except Exception as e:
+        logger.warning(f"[STT] ffmpeg convert error: {e}")
+    finally:
+        for f in [tmp_in.name, tmp_out.name]:
+            try: os.unlink(f)
+            except: pass
+    return audio_data, audio_format
+
+
+def recognize_speech_whisper(
+    audio_data: bytes,
+    audio_format: str = "webm",
+) -> str:
+    """
+    Convert speech to text using OpenAI Whisper API.
+    ~216x real-time speed. Always converts to wav first to handle mislabeled formats.
+    """
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    if not openai_key:
+        raise ValueError("OPENAI_API_KEY not set")
+
+    logger.info(f"[STT-Whisper] Recognizing {len(audio_data)} bytes, format={audio_format}")
+
+    # Always convert to wav first — handles mislabeled formats (e.g. iOS QQ Browser)
+    wav_data, wav_fmt = _ensure_wav(audio_data, audio_format)
+
+    mime = "audio/wav" if wav_fmt == "wav" else {"webm": "audio/webm", "mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg"}.get(wav_fmt, "audio/webm")
+    filename = f"audio.{wav_fmt}"
+
+    import time as _time
+    t0 = _time.time()
+
+    resp = requests.post(
+        "https://api.openai.com/v1/audio/transcriptions",
+        headers={"Authorization": f"Bearer {openai_key}"},
+        files={"file": (filename, wav_data, mime)},
+        data={"model": "whisper-1"},
+        timeout=30,
+    )
+
+    elapsed = _time.time() - t0
+    if resp.status_code != 200:
+        logger.error(f"[STT-Whisper] API error {resp.status_code}: {resp.text[:300]}")
+        raise Exception(f"Whisper API error: {resp.status_code}")
+
+    text = resp.json().get("text", "").strip()
+    logger.info(f"[STT-Whisper] Recognized in {elapsed:.2f}s: {text[:200]}")
+    return text
+
+
 def recognize_speech(
     audio_data: bytes,
     audio_format: str = "wav",
     sample_rate: int = 16000,
 ) -> str:
     """
-    Convert speech to text using Paraformer.
+    Convert speech to text. Tries OpenAI Whisper first (fast), falls back to Paraformer.
 
     Args:
         audio_data: Audio bytes
@@ -540,14 +611,22 @@ def recognize_speech(
     if not audio_data:
         raise ValueError("Audio data cannot be empty")
 
+    # ⚡ Try OpenAI Whisper first — much faster (~1s vs 7-15s)
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            return recognize_speech_whisper(audio_data, audio_format)
+        except Exception as e:
+            logger.warning(f"[STT] Whisper failed, falling back to Paraformer: {e}")
+
+    # Convert to wav first for maximum compatibility (handles mislabeled formats)
+    wav_data, wav_fmt = _ensure_wav(audio_data, audio_format)
+    if wav_fmt != audio_format:
+        audio_data = wav_data
+        audio_format = wav_fmt
+
     logger.info(f"[STT] Recognizing {len(audio_data)} bytes, format={audio_format}, rate={sample_rate}")
 
-    suffix_map = {
-        "wav": ".wav", "mp3": ".mp3", "pcm": ".pcm",
-        "aac": ".aac", "amr": ".amr", "opus": ".opus",
-        "m4a": ".m4a", "webm": ".webm",
-    }
-    suffix = suffix_map.get(audio_format, ".wav")
+    suffix = {"wav": ".wav", "mp3": ".mp3", "pcm": ".pcm", "aac": ".aac", "amr": ".amr", "opus": ".opus", "m4a": ".m4a", "webm": ".webm"}.get(audio_format, ".wav")
 
     tmp_file = None
     wav_file = None
@@ -558,29 +637,6 @@ def recognize_speech(
 
         file_size = os.path.getsize(tmp_file.name)
         logger.info(f"[STT] Saved temp file: {tmp_file.name}, size={file_size} bytes")
-
-        # Convert unsupported formats (webm, m4a) to wav using ffmpeg
-        if audio_format in ("webm", "m4a"):
-            import subprocess
-            wav_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            wav_file.close()
-            try:
-                cmd = [
-                    "ffmpeg", "-y", "-i", tmp_file.name,
-                    "-ar", "16000", "-ac", "1", "-f", "wav", wav_file.name
-                ]
-                result = subprocess.run(cmd, capture_output=True, timeout=15)
-                if result.returncode == 0 and os.path.getsize(wav_file.name) > 100:
-                    logger.info(f"[STT] Converted {audio_format} → wav ({os.path.getsize(wav_file.name)} bytes)")
-                    os.unlink(tmp_file.name)
-                    tmp_file.name = wav_file.name
-                    wav_file = None
-                    audio_format = "wav"
-                    suffix = ".wav"
-                else:
-                    logger.warning(f"[STT] ffmpeg conversion failed: {result.stderr.decode()[:200]}")
-            except Exception as conv_err:
-                logger.warning(f"[STT] Audio conversion failed: {conv_err}")
 
         # Auto-detect sample rate from WAV file header
         actual_sample_rate = sample_rate

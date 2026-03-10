@@ -199,9 +199,10 @@ def google_callback():
     # 方式1: 使用授权码
     if "code" in data:
         code = data["code"]
+        redirect_uri = data.get("redirect_uri")  # 前端传来的 redirect_uri
 
         # 用授权码换取 token
-        token_data = GoogleOAuth.exchange_code(code)
+        token_data = GoogleOAuth.exchange_code(code, redirect_uri)
         if not token_data:
             return jsonify({"error": "Failed to exchange authorization code"}), 400
 
