@@ -269,13 +269,11 @@ export default function ChatLayout({
       {/* Original #app container */}
       <div
         id="app"
+        className="active"
         style={{
           display: 'flex',
-          height: '100vh',
           overflow: 'hidden',
           background: '#1a1a2e',
-          gap: 10,
-          padding: 10,
         }}
       >
         {/* .bg-layer — crossfade background layers (CSS: #app .bg-layer) */}

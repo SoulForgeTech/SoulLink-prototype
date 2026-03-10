@@ -217,6 +217,7 @@
         #app {
             display: none;
             height: 100vh;
+            height: 100dvh; /* dynamic viewport height — accounts for mobile browser bar */
             position: relative;
             background: #1a1a2e;
             gap: 10px;
@@ -2438,6 +2439,11 @@
 
         /* ==================== 响应式 - 小屏手机 ==================== */
         @media (max-width: 400px) {
+            #app {
+                padding: 4px;
+                gap: 4px;
+            }
+
             .login-container {
                 padding: 24px 18px;
                 margin: 0 10px;
