@@ -29,6 +29,8 @@ from auth import (
     handle_email_login,
     handle_verify_email,
     handle_resend_code,
+    handle_forgot_password,
+    handle_reset_password,
     validate_refresh_token,
     revoke_refresh_token,
     create_refresh_token,
@@ -423,6 +425,50 @@ def resend_code():
         return jsonify(result)
     else:
         return jsonify(result), 429
+
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """Send password reset code"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"success": False, "error": "Email is required"}), 400
+
+    result = handle_forgot_password(email)
+
+    if result.get("success"):
+        return jsonify(result)
+    else:
+        return jsonify(result), 429  # Rate limited
+
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    """Verify reset code and set new password"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    email = data.get("email", "").strip().lower()
+    code = data.get("code", "").strip()
+    new_password = data.get("password", "")
+
+    if not email or not code or not new_password:
+        return jsonify({"success": False, "error": "Email, code, and new password are required"}), 400
+
+    if len(code) != 6 or not code.isdigit():
+        return jsonify({"success": False, "error": "Invalid code format"}), 400
+
+    result = handle_reset_password(email, code, new_password, request.headers.get("User-Agent", ""))
+
+    if result.get("success"):
+        return jsonify(result)
+    else:
+        return jsonify(result), 400
 
 
 # ==================== 用户接口 ====================
