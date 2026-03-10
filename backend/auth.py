@@ -304,10 +304,18 @@ def handle_google_login(google_user_info: Dict[str, Any], user_agent: str = "") 
         # 检查邮箱是否已被使用（可能是邮箱注册的用户）
         existing_user = db.get_user_by_email(email)
         if existing_user:
-            # 邮箱已存在，关联 Google 账号
+            # 邮箱已存在，关联 Google 账号（自动合并）
+            merge_fields = {
+                "google_id": google_id,
+                "avatar_url": avatar_url or existing_user.get("avatar_url"),
+                "email_verified": True,  # Google 已验证邮箱
+            }
+            # 如果原来是 email 注册，更新 auth_provider 表示支持两种登录方式
+            if existing_user.get("auth_provider") == "email":
+                merge_fields["auth_provider"] = "email+google"
             db.db["users"].update_one(
                 {"_id": existing_user["_id"]},
-                {"$set": {"google_id": google_id, "avatar_url": avatar_url or existing_user.get("avatar_url")}}
+                {"$set": merge_fields}
             )
             db.update_user_login(existing_user["_id"])
             user = db.get_user_by_id(existing_user["_id"])
