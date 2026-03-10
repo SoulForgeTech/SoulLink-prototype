@@ -25,7 +25,7 @@ import CompanionNaming from '@/components/onboarding/CompanionNaming';
 
 // ==================== Progress Map ====================
 
-const STEPS = [
+const FULL_STEPS = [
   'questions',
   'tarot',
   'results',
@@ -35,8 +35,14 @@ const STEPS = [
   'naming',
 ] as const;
 
-function getStepIndex(step: string): number {
-  const idx = STEPS.indexOf(step as (typeof STEPS)[number]);
+const RETAKE_STEPS = [
+  'questions',
+  'tarot',
+  'results',
+] as const;
+
+function getStepIndex(step: string, steps: readonly string[]): number {
+  const idx = steps.indexOf(step);
   return idx >= 0 ? idx : 0;
 }
 
@@ -46,6 +52,9 @@ export default function OnboardingPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const step = useAppSelector((s) => s.personality.onboardingStep);
+  const isRetake = useAppSelector((s) => s.personality.isRetake);
+
+  const steps = isRetake ? RETAKE_STEPS : FULL_STEPS;
 
   // Start the flow on mount if step is idle
   useEffect(() => {
@@ -62,8 +71,8 @@ export default function OnboardingPage() {
   }, [step, router]);
 
   // Progress percentage
-  const currentIndex = getStepIndex(step);
-  const progressPercent = ((currentIndex + 1) / STEPS.length) * 100;
+  const currentIndex = getStepIndex(step, steps);
+  const progressPercent = ((currentIndex + 1) / steps.length) * 100;
 
   return (
     <div

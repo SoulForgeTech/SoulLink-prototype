@@ -49,6 +49,9 @@ interface PersonalityState {
   /** Current step in the onboarding wizard */
   onboardingStep: OnboardingStep;
 
+  /** Whether this is a retake from sidebar (skip gender/relationship/subtype/naming) */
+  isRetake: boolean;
+
   /** Selected companion gender during onboarding */
   selectedGender: string | null;
   /** Selected relationship type during onboarding */
@@ -67,6 +70,7 @@ const initialState: PersonalityState = {
   tarotCards: [],
   results: null,
   onboardingStep: 'idle',
+  isRetake: false,
   selectedGender: null,
   selectedRelationship: null,
   selectedSubtype: null,
@@ -140,6 +144,11 @@ const personalitySlice = createSlice({
       state.selectedSubtype = action.payload;
     },
 
+    /** Mark this session as a retake (skip post-results onboarding steps) */
+    setRetake(state, action: PayloadAction<boolean>) {
+      state.isRetake = action.payload;
+    },
+
     /** Reset the entire personality test state (e.g. to retake) */
     resetTest(state) {
       Object.assign(state, initialState);
@@ -156,6 +165,7 @@ export const {
   setTarotCards,
   setResults,
   setOnboardingStep,
+  setRetake,
   selectGender,
   selectRelationship,
   selectSubtype,

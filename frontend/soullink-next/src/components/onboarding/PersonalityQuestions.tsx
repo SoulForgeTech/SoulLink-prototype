@@ -30,6 +30,7 @@ export default function PersonalityQuestions() {
   const currentIndex = useAppSelector((s) => s.personality.currentQuestionIndex);
   const answers = useAppSelector((s) => s.personality.answers);
   const testStatus = useAppSelector((s) => s.personality.testStatus);
+  const isRetake = useAppSelector((s) => s.personality.isRetake);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,9 +107,9 @@ export default function PersonalityQuestions() {
     dispatch(answerQuestion({ question_id: question.id, score }));
   }
 
-  // Skip test — go straight to gender selection
+  // Skip test — retake goes back to chat, first-time goes to gender selection
   function handleSkip() {
-    dispatch(setOnboardingStep('gender'));
+    dispatch(setOnboardingStep(isRetake ? 'done' : 'gender'));
   }
 
   // Loading state
@@ -266,7 +267,7 @@ export default function PersonalityQuestions() {
         );
       })()}
 
-      {/* Skip button */}
+      {/* Skip / Close button */}
       <div style={{ paddingTop: '16px', textAlign: 'center' }}>
         <button
           onClick={handleSkip}
@@ -281,7 +282,7 @@ export default function PersonalityQuestions() {
           onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
         >
-          Skip personality test
+          {isRetake ? 'Close' : 'Skip personality test'}
         </button>
       </div>
     </div>

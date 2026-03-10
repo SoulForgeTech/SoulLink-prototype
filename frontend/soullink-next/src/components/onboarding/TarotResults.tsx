@@ -142,10 +142,13 @@ export default function TarotResults() {
   const tarotCards = useAppSelector((s) => s.personality.tarotCards);
   const dimensions = useAppSelector((s) => s.personality.dimensions);
   const mbtiType = useAppSelector((s) => s.personality.mbtiType);
+  const isRetake = useAppSelector((s) => s.personality.isRetake);
   const language = useAppSelector((s) => s.settings.language);
 
   function handleContinue() {
-    dispatch(setOnboardingStep('gender'));
+    // Retake from sidebar: stop here and go back to chat
+    // First-time onboarding: continue to gender selection
+    dispatch(setOnboardingStep(isRetake ? 'done' : 'gender'));
   }
 
   // Ordered dimension keys

@@ -22,7 +22,7 @@ import { setCurrentId } from '@/store/conversationsSlice';
 import { clearMessages } from '@/store/chatSlice';
 import { setLanguage } from '@/store/settingsSlice';
 import { logout } from '@/store/authSlice';
-import { resetTest } from '@/store/personalitySlice';
+import { resetTest, setRetake } from '@/store/personalitySlice';
 import ConversationItem from './ConversationItem';
 import { useT } from '@/hooks/useT';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
@@ -92,9 +92,10 @@ export default function Sidebar({
 
   const handleOpenPersonalityTest = useCallback(() => {
     dispatch(setSidebarOpen(false));
-    // Reset personality state so onboarding starts from the beginning
-    // (questions → tarot → results → gender → relationship → subtype → naming)
+    // Reset personality state and mark as retake so onboarding stops after results
+    // (questions → tarot → results → back to chat)
     dispatch(resetTest());
+    dispatch(setRetake(true));
     router.push('/onboarding');
   }, [dispatch, router]);
 

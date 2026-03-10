@@ -155,6 +155,7 @@ function TarotCardItem({ card, index, isFlipped, isLocked, onFlip, language }: C
 export default function TarotCards() {
   const dispatch = useAppDispatch();
   const tarotCards = useAppSelector((s) => s.personality.tarotCards);
+  const isRetake = useAppSelector((s) => s.personality.isRetake);
   const language = useAppSelector((s) => s.settings.language);
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
 
@@ -177,7 +178,7 @@ export default function TarotCards() {
 
   // Fallback if no cards (e.g., skipped test)
   if (tarotCards.length === 0) {
-    dispatch(setOnboardingStep('gender'));
+    dispatch(setOnboardingStep(isRetake ? 'done' : 'gender'));
     return null;
   }
 
