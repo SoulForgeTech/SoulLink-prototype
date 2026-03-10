@@ -15,6 +15,8 @@ export const AUTH = {
   REGISTER: `${BASE}/api/auth/register`,
   VERIFY_EMAIL: `${BASE}/api/auth/verify-email`,
   RESEND_CODE: `${BASE}/api/auth/resend-code`,
+  FORGOT_PASSWORD: `${BASE}/api/auth/forgot-password`,
+  RESET_PASSWORD: `${BASE}/api/auth/reset-password`,
   REFRESH: `${BASE}/api/auth/refresh`,
   VERIFY: `${BASE}/api/auth/verify`,
   LOGOUT: `${BASE}/api/auth/logout`,

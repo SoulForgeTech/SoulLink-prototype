@@ -72,6 +72,38 @@ export async function resendCode(
 }
 
 /**
+ * Request a password reset code for the given email.
+ * Backend always returns success to prevent email enumeration.
+ */
+export async function forgotPassword(
+  email: string,
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await fetch(AUTH.FORGOT_PASSWORD, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  return response.json();
+}
+
+/**
+ * Verify the 6-digit reset code and set a new password.
+ * On success returns token pair + user object (same shape as login).
+ */
+export async function resetPassword(
+  email: string,
+  code: string,
+  password: string,
+): Promise<AuthResponse> {
+  const response = await fetch(AUTH.RESET_PASSWORD, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code, password }),
+  });
+  return response.json();
+}
+
+/**
  * Google OAuth callback — send the credential (ID token) or authorization code
  * to the backend for verification.
  */

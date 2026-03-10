@@ -7,9 +7,10 @@ import type { AuthResponse } from '@/types';
 interface LoginFormProps {
   onSuccess: (data: AuthResponse) => void;
   onNeedVerification: (email: string) => void;
+  onForgotPassword: () => void;
 }
 
-export default function LoginForm({ onSuccess, onNeedVerification }: LoginFormProps) {
+export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -142,6 +143,23 @@ export default function LoginForm({ onSuccess, onNeedVerification }: LoginFormPr
           className="auth-input"
           style={inputStyle}
         />
+      </div>
+
+      {/* Forgot password link */}
+      <div style={{ textAlign: 'right', marginBottom: '8px', marginTop: '-8px' }}>
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          style={{
+            background: 'none', border: 'none',
+            color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer',
+            fontSize: '0.82rem', padding: 0, transition: 'color 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#e8b4b8'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'; }}
+        >
+          Forgot password?
+        </button>
       </div>
 
       {/* .auth-submit-btn */}

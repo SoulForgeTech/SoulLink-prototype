@@ -8,10 +8,12 @@ import { googleCallback } from '@/lib/api/auth';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import VerifyForm from '@/components/auth/VerifyForm';
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 import type { AuthResponse } from '@/types';
 
 type AuthTab = 'signin' | 'signup';
-type View = 'auth' | 'verify';
+type View = 'auth' | 'verify' | 'forgot' | 'reset';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const [tab, setTab] = useState<AuthTab>('signin');
   const [view, setView] = useState<View>('auth');
   const [verifyEmail, setVerifyEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [lang, setLang] = useState<'en' | 'zh'>('en');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
@@ -50,6 +53,15 @@ export default function LoginPage() {
   const handleNeedVerification = useCallback((email: string) => {
     setVerifyEmail(email);
     setView('verify');
+  }, []);
+
+  const handleForgotPassword = useCallback(() => {
+    setView('forgot');
+  }, []);
+
+  const handleResetCodeSent = useCallback((email: string) => {
+    setResetEmail(email);
+    setView('reset');
   }, []);
 
   function handleGoogleLogin() {
@@ -250,6 +262,17 @@ export default function LoginPage() {
             onSuccess={handleAuthSuccess}
             onBack={() => setView('auth')}
           />
+        ) : view === 'forgot' ? (
+          <ForgotPasswordForm
+            onCodeSent={handleResetCodeSent}
+            onBack={() => setView('auth')}
+          />
+        ) : view === 'reset' ? (
+          <ResetPasswordForm
+            email={resetEmail}
+            onSuccess={handleAuthSuccess}
+            onBack={() => setView('auth')}
+          />
         ) : (
           <>
             {/* .auth-form wrapper */}
@@ -301,6 +324,7 @@ export default function LoginPage() {
                 <LoginForm
                   onSuccess={handleAuthSuccess}
                   onNeedVerification={handleNeedVerification}
+                  onForgotPassword={handleForgotPassword}
                 />
               ) : (
                 <RegisterForm
@@ -327,8 +351,8 @@ export default function LoginPage() {
           </>
         )}
 
-        {/* .google-login-btn — only show when not in verify view */}
-        {view !== 'verify' && (
+        {/* .google-login-btn — only show on auth view */}
+        {view === 'auth' && (
           <>
             <button
               onClick={handleGoogleLogin}

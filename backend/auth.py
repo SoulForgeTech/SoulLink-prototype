@@ -626,3 +626,100 @@ def handle_resend_code(email: str) -> Dict[str, Any]:
     send_verification_email(email, code, user.get("name", ""))
 
     return {"success": True, "message": "New verification code sent"}
+
+
+# ==================== Password Reset ====================
+
+def handle_forgot_password(email: str) -> Dict[str, Any]:
+    """Send a password reset code. Always returns success to prevent email enumeration."""
+    from email_service import send_password_reset_email
+
+    user = db.get_user_by_email(email)
+
+    # Always return success even if user not found (anti-enumeration)
+    if not user:
+        return {"success": True, "message": "If this email is registered, a reset code has been sent."}
+
+    # Google-only accounts have no password to reset
+    if not user.get("password_hash"):
+        return {"success": True, "message": "If this email is registered, a reset code has been sent."}
+
+    # 60-second rate limit
+    last_sent = user.get("reset_code_sent_at")
+    if last_sent and (datetime.utcnow() - last_sent).total_seconds() < 60:
+        remaining = 60 - int((datetime.utcnow() - last_sent).total_seconds())
+        return {"success": False, "error": f"Please wait {remaining} seconds before requesting a new code"}
+
+    code = generate_verification_code()
+    db.db["users"].update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "reset_code": code,
+            "reset_code_expires": datetime.utcnow() + timedelta(minutes=10),
+            "reset_code_sent_at": datetime.utcnow()
+        }}
+    )
+
+    send_password_reset_email(email, code, user.get("name", ""))
+
+    return {"success": True, "message": "If this email is registered, a reset code has been sent."}
+
+
+def handle_reset_password(email: str, code: str, new_password: str, user_agent: str = "") -> Dict[str, Any]:
+    """Verify the reset code and update the user's password."""
+    user = db.get_user_by_email(email)
+    if not user:
+        return {"success": False, "error": "Invalid reset code"}
+
+    stored_code = user.get("reset_code")
+    expires = user.get("reset_code_expires")
+
+    if not stored_code or not expires:
+        return {"success": False, "error": "No reset code found. Please request a new one."}
+
+    if datetime.utcnow() > expires:
+        return {"success": False, "error": "Reset code expired. Please request a new one."}
+
+    if code != stored_code:
+        return {"success": False, "error": "Incorrect reset code"}
+
+    # Validate new password
+    valid, error_msg = validate_password(new_password)
+    if not valid:
+        return {"success": False, "error": error_msg}
+
+    # Update password and clear reset code fields
+    new_hash = hash_password(new_password)
+    db.db["users"].update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "password_hash": new_hash,
+            "reset_code": None,
+            "reset_code_expires": None,
+            "reset_code_sent_at": None,
+            "email_verified": True,  # Receiving code proves email ownership
+            "updated_at": datetime.utcnow()
+        }}
+    )
+
+    # Security: revoke all existing sessions
+    revoke_all_user_tokens(user["_id"])
+
+    # Issue fresh tokens for auto-login
+    token = JWTAuth.create_token(str(user["_id"]), email)
+    refresh_token = create_refresh_token(user["_id"], user_agent)
+
+    return {
+        "success": True,
+        "token": token,
+        "refresh_token": refresh_token,
+        "user": {
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "name": user.get("name", ""),
+            "avatar_url": user.get("avatar_url"),
+            "workspace_slug": user.get("workspace_slug"),
+            "auth_provider": user.get("auth_provider", "email"),
+            "settings": user.get("settings", {})
+        }
+    }
