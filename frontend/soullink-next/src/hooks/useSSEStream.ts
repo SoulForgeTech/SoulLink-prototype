@@ -292,6 +292,7 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
       message: string;
       conversationId?: string | null;
       attachments?: MessageAttachment[];
+      isVoiceMessage?: boolean;
     }) => {
       // Abort any existing stream.
       abort();
@@ -442,8 +443,8 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                       dispatch(setCompanionName(doneData.companionNameChanged));
                     }
 
-                    // TTS auto-play: read reply aloud if enabled
-                    if (ttsEnabled && doneData.reply) {
+                    // TTS auto-play: only when user sent a voice message AND tts is enabled
+                    if (ttsEnabled && params.isVoiceMessage && doneData.reply) {
                       // Stop any currently playing TTS
                       if (ttsAudioRef.current) {
                         ttsAudioRef.current.pause();

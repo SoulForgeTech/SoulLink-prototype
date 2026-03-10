@@ -124,18 +124,18 @@ export function useAmbientSound(): UseAmbientSoundReturn {
         const audio = getOrCreateAudio(soundId, src, vol);
 
         if (!wasActive) {
-          // Turning on
+          // Turning on — auto-play immediately and set master to playing
           audio.volume = vol;
-          if (prev.masterPlaying) {
-            audio.play().catch(() => {});
-          }
+          audio.play().catch(() => {});
+          return { ...prev, active: newActive, srcs: newSrcs, masterPlaying: true };
         } else {
           // Turning off
           audio.pause();
           audio.currentTime = 0;
+          // If no sounds left active, pause master
+          const stillActive = Object.entries(newActive).some(([, v]) => v);
+          return { ...prev, active: newActive, srcs: newSrcs, masterPlaying: stillActive ? prev.masterPlaying : false };
         }
-
-        return { ...prev, active: newActive, srcs: newSrcs };
       });
     },
     [getOrCreateAudio],

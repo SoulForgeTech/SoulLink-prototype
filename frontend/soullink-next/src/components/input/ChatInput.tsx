@@ -76,21 +76,21 @@ interface ChatInputProps {
 
 // ==================== Styles (matching original CSS) ====================
 
-/** Outer wrapper — matches original .input-container padding */
+/** Outer wrapper — padding controlled by CSS .input-container for responsive overrides */
 const outerWrapperStyle: React.CSSProperties = {
   position: 'relative',
-  padding: '8px 10px 4px',
 };
 
-/** .input-wrapper layout + glassmorphism (inline to avoid Turbopack stripping) */
+/** .input-wrapper layout + glassmorphism (inline to avoid Turbopack stripping)
+ *  NOTE: padding/borderRadius are NOT set here — controlled by CSS class
+ *  so mobile media queries can override without !important.
+ */
 const inputWrapperStyle: React.CSSProperties = {
   position: 'relative',
-  padding: '10px 10px 10px 24px',
   display: 'flex',
   alignItems: 'center',
   gap: 10,
   /* Glassmorphism — duplicated inline to bypass Turbopack CSS transform issues */
-  borderRadius: 36,
   border: '1.5px solid transparent',
   background: `linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) padding-box, linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 15%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.06) 60%, rgba(255,255,255,0.10) 80%, rgba(255,255,255,0.20) 100%) border-box`,
   backdropFilter: 'blur(40px) saturate(180%)',
@@ -104,14 +104,14 @@ const textareaStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
   color: '#e2e8f0',
-  fontSize: '1rem',
+  fontSize: '0.95rem',
   outline: 'none',
   resize: 'none',
   maxHeight: 150,
-  minHeight: 36,
-  height: 36,
+  minHeight: 32,
+  height: 32,
   lineHeight: 1.5,
-  padding: '6px 0',
+  padding: '4px 0',
   margin: 0,
   overflowY: 'hidden',
   fontFamily: "'Poppins', sans-serif",
@@ -119,9 +119,9 @@ const textareaStyle: React.CSSProperties = {
 
 /** .attach-btn */
 const attachBtnBase: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  minWidth: 36,
+  width: 32,
+  height: 32,
+  minWidth: 32,
   background: 'none',
   border: 'none',
   borderRadius: '50%',
@@ -137,10 +137,10 @@ const attachBtnBase: React.CSSProperties = {
 
 /** .send-btn */
 const sendBtnBase: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  minWidth: 36,
-  minHeight: 36,
+  width: 32,
+  height: 32,
+  minWidth: 32,
+  minHeight: 32,
   background: 'none',
   border: 'none',
   borderRadius: '50%',
@@ -156,9 +156,9 @@ const sendBtnBase: React.CSSProperties = {
 
 /** .voice-btn */
 const voiceBtnBase: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  minWidth: 36,
+  width: 32,
+  height: 32,
+  minWidth: 32,
   background: 'none',
   border: 'none',
   borderRadius: '50%',
@@ -550,8 +550,8 @@ export default function ChatInput({
           onMouseLeave={() => setHoveredBtn(null)}
           aria-label="Attach file"
         >
-          {/* Paperclip SVG — 22x22 matching original .attach-btn svg */}
-          <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          {/* Paperclip SVG */}
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" stroke="none">
             <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6h-1.5v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6H16.5z"/>
           </svg>
         </button>
@@ -588,8 +588,8 @@ export default function ChatInput({
           onMouseLeave={() => setHoveredBtn(null)}
           aria-label={isRecording ? 'Stop recording' : 'Record voice'}
         >
-          {/* Mic SVG — 22x22 matching original .voice-btn svg */}
-          <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          {/* Mic SVG */}
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" stroke="none">
             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
           </svg>
           {isRecording && (
@@ -617,8 +617,8 @@ export default function ChatInput({
             onMouseLeave={() => setHoveredBtn(null)}
             aria-label="Voice call"
           >
-            {/* Phone SVG — 22x22 matching original .call-btn svg */}
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            {/* Phone SVG */}
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
             </svg>
           </button>

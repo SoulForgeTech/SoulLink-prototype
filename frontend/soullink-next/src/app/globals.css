@@ -543,7 +543,7 @@
 
         /* 聊天头部 */
         .chat-header {
-            padding: 16px 24px;
+            padding: 10px 20px;
             position: absolute;
             top: 0;
             left: 0;
@@ -861,7 +861,7 @@
         }
 
         .message.user .message-content {
-            background: rgba(var(--user-bubble-color), 0.92);
+            background: rgba(var(--user-bubble-color), 1);
             color: white;
             border-bottom-right-radius: 8px;
             border-color: rgba(var(--user-bubble-color), 0.35);
@@ -1198,7 +1198,7 @@
             background: transparent;
             border: none;
             color: #ffffff !important;
-            text-shadow: 0 0 8px rgba(0,0,0,1), 0 1px 4px rgba(0,0,0,0.9) !important;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.45) !important;
             font-size: 1rem;
             outline: none;
             resize: none;
@@ -1971,7 +1971,9 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: transparent;
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
             z-index: 9;
         }
 
@@ -1993,6 +1995,8 @@
             #app {
                 height: 100vh;
                 height: 100dvh;
+                padding: 6px;
+                gap: 6px;
             }
 
             /* 汉堡菜单按钮 */
@@ -2079,57 +2083,64 @@
                 letter-spacing: 6px !important;
             }
 
-            /* 聊天头部 */
+            /* 聊天头部 — 手机端紧凑 */
             .chat-header {
-                padding: 12px 16px;
-                gap: 10px;
+                padding: 8px 10px;
+                gap: 8px;
+                border-radius: 18px;
             }
 
             .companion-avatar {
-                width: 38px;
-                height: 38px;
-                border-width: 2px;
+                width: 34px !important;
+                height: 34px !important;
+                border-width: 2px !important;
             }
 
             .companion-info h2 {
-                font-size: 1.05rem;
+                font-size: 1rem !important;
             }
 
             .call-btn, .bg-picker-btn {
-                padding: 6px;
+                padding: 5px !important;
+                border-radius: 8px !important;
             }
 
             .call-btn svg, .bg-picker-btn svg {
-                width: 18px;
-                height: 18px;
-            }
-
-            .bg-picker-panel {
-                width: 260px;
-                right: 4px;
-                top: 64px;
+                width: 18px !important;
+                height: 18px !important;
             }
 
             .companion-status {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
+            }
+
+            .status-dot {
+                width: 7px;
+                height: 7px;
+            }
+
+            .bg-picker-panel {
+                width: calc(100vw - 16px);
+                right: 8px;
+                top: 60px;
             }
 
             .model-indicator {
-                font-size: 0.6rem;
+                font-size: 0.65rem;
                 padding: 1px 6px;
             }
 
             /* 消息区域 */
             .messages-container {
-                padding: 16px 12px;
+                padding: 16px 10px;
             }
 
             .message {
-                max-width: 88%;
+                max-width: 85%;
                 gap: 8px;
                 margin-bottom: 14px;
             }
-            .message-group { max-width: 88%; }
+            .message-group { max-width: 85%; }
             .message-group .avatar-spacer { width: 32px; }
             .image-generating-placeholder { margin-left: 40px; width: 200px; height: 200px; }
 
@@ -2139,9 +2150,10 @@
             }
 
             .message-content {
-                padding: 12px 16px;
-                font-size: 0.92rem;
+                padding: 10px 14px;
+                font-size: 1rem;
                 border-radius: 20px;
+                line-height: 1.65;
             }
 
             .message.assistant .message-content {
@@ -2158,9 +2170,18 @@
             }
 
             .typing-bubble {
-                padding: 12px 16px;
+                padding: 10px 14px;
                 border-radius: 20px;
                 border-bottom-left-radius: 6px;
+            }
+
+            /* 输入区域 — 手机端紧凑 */
+            .input-container {
+                padding: 6px 8px 4px;
+            }
+            .input-wrapper {
+                padding: 6px 8px 6px 16px;
+                border-radius: 28px;
             }
 
             /* 欢迎消息 */
@@ -2182,29 +2203,29 @@
 
             /* 输入框 */
             .input-container {
-                padding: 8px 10px 4px;
+                padding: 4px 8px 2px;
             }
 
             .input-wrapper {
-                padding: 8px 8px 8px 18px;
-                gap: 8px;
-                border-radius: 36px;
+                padding: 6px 6px 6px 16px;
+                gap: 6px;
+                border-radius: 28px;
             }
 
             #message-input {
-                font-size: 0.92rem;
+                font-size: 0.9rem;
             }
 
             .send-btn {
-                width: 36px;
-                height: 36px;
-                min-width: 36px;
-                min-height: 36px;
+                width: 32px;
+                height: 32px;
+                min-width: 32px;
+                min-height: 32px;
             }
 
             .send-btn svg {
-                width: 17px;
-                height: 17px;
+                width: 15px;
+                height: 15px;
             }
 
             /* 模态框 */
@@ -2436,17 +2457,28 @@
             }
 
             .chat-header {
-                padding: 10px 12px;
-                gap: 8px;
+                padding: 6px 8px;
+                gap: 6px;
+                border-radius: 16px;
             }
 
             .companion-avatar {
-                width: 34px;
-                height: 34px;
+                width: 30px !important;
+                height: 30px !important;
             }
 
             .companion-info h2 {
-                font-size: 0.95rem;
+                font-size: 0.9rem !important;
+            }
+
+            .call-btn, .bg-picker-btn {
+                padding: 4px !important;
+                border-radius: 6px !important;
+            }
+
+            .call-btn svg, .bg-picker-btn svg {
+                width: 16px !important;
+                height: 16px !important;
             }
 
             .messages-container {
@@ -2454,21 +2486,22 @@
             }
 
             .message {
-                max-width: 92%;
+                max-width: 90%;
             }
-            .message-group { max-width: 92%; }
+            .message-group { max-width: 90%; }
 
             .message-content {
-                padding: 10px 14px;
-                font-size: 0.88rem;
+                padding: 9px 12px;
+                font-size: 1rem;
             }
 
             .input-container {
-                padding: 8px 8px 4px;
+                padding: 4px 6px 2px;
             }
 
             .input-wrapper {
-                padding: 6px 6px 6px 14px;
+                padding: 5px 6px 5px 12px;
+                border-radius: 24px;
             }
 
             /* 塔罗牌 - 小屏 */
@@ -4284,7 +4317,7 @@
             position: fixed;
             right: 8px;
             top: 80px;
-            width: 280px;
+            width: 300px;
             max-height: 70vh;
             border: 1px solid transparent;
             border-radius: 16px;
@@ -4991,9 +5024,9 @@
         /* Dropdown panel — matches bg-picker-panel style */
         .ambient-panel-dropdown {
             position: fixed;
-            right: 48px;
+            right: 8px;
             top: 80px;
-            width: 320px;
+            width: 300px;
             max-height: 70vh;
             border: 1px solid transparent;
             border-radius: 16px;
@@ -5017,7 +5050,7 @@
             color: rgba(255, 255, 255, 0.9);
             z-index: 100;
             overflow: hidden;
-            transform: translateX(calc(100% + 60px));
+            transform: translateX(calc(100% + 20px));
             transition: transform 0.3s ease-out, visibility 0.3s;
             visibility: hidden;
         }
@@ -5126,7 +5159,7 @@
         /* Game Selection Dropdown */
         .games-panel-dropdown {
             position: fixed;
-            right: 48px;
+            right: 8px;
             top: 80px;
             width: 300px;
             border: 1px solid transparent;
@@ -5151,7 +5184,7 @@
             color: rgba(255, 255, 255, 0.9);
             z-index: 100;
             overflow: hidden;
-            transform: translateX(calc(100% + 60px));
+            transform: translateX(calc(100% + 20px));
             transition: transform 0.3s ease-out, visibility 0.3s;
             visibility: hidden;
         }

@@ -20,9 +20,11 @@ import { useT } from '@/hooks/useT';
 
 // ==================== Styles (matching original CSS) ====================
 
-/** .chat-header positioning + layout + glassmorphism (inline to avoid Turbopack stripping) */
+/** .chat-header positioning + layout + glassmorphism (inline to avoid Turbopack stripping)
+ *  NOTE: padding/gap/borderRadius are NOT set here — they come from globals.css
+ *  media queries so mobile can override them without !important battles.
+ */
 const headerStyle: React.CSSProperties = {
-  padding: '16px 24px',
   position: 'absolute',
   top: 0,
   left: 0,
@@ -31,10 +33,8 @@ const headerStyle: React.CSSProperties = {
   overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',
-  gap: 16,
   /* Glassmorphism — duplicated inline to bypass Turbopack CSS transform issues */
   border: '1px solid transparent',
-  borderRadius: 28,
   background: `linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.04) 65%, rgba(255,255,255,0.10) 85%, rgba(255,255,255,0.18) 100%) border-box`,
   backdropFilter: 'blur(40px) saturate(180%)',
   WebkitBackdropFilter: 'blur(40px) saturate(180%)',
@@ -47,10 +47,8 @@ const aboveOverlay: React.CSSProperties = {
   zIndex: 1,
 };
 
-/** .companion-avatar */
+/** .companion-avatar — size controlled by CSS class for responsive overrides */
 const avatarStyle: React.CSSProperties = {
-  width: 50,
-  height: 50,
   borderRadius: '50%',
   objectFit: 'cover',
   border: '3px solid rgba(255,255,255,0.9)',
@@ -68,13 +66,15 @@ const avatarPlaceholderStyle: React.CSSProperties = {
   justifyContent: 'center',
   background: 'var(--primary-color, #6BA3D6)',
   color: 'white',
-  fontSize: '1.2rem',
+  fontSize: '1rem',
   fontWeight: 600,
 };
 
-/** Companion name — matches original .companion-info h2 */
+/** Companion name — matches original .companion-info h2
+ *  fontSize not set here — controlled by CSS .companion-info h2 for responsive.
+ */
 const nameStyle: React.CSSProperties = {
-  fontSize: '1.3rem',
+  fontSize: '1.15rem',
   fontWeight: 600,
   color: '#2d3748',
   textShadow: '0 1px 3px rgba(255, 255, 255, 0.8)',
@@ -115,8 +115,8 @@ const statusTextStyle: React.CSSProperties = {
 const modelBadgeStyle: React.CSSProperties = {
   fontSize: '0.7rem',
   padding: '2px 8px',
-  background: 'rgba(255,255,255,0.08)',
-  color: 'rgba(255,255,255,0.7)',
+  background: 'rgba(255,255,255,0.2)',
+  color: 'rgba(255,255,255,0.9)',
   borderRadius: 10,
   marginLeft: 6,
   fontWeight: 500,
@@ -132,12 +132,10 @@ const actionsContainerStyle: React.CSSProperties = {
   ...aboveOverlay,
 };
 
-/** Each action button: bg-picker-btn style matching original */
+/** Each action button: bg-picker-btn style — padding/borderRadius via CSS for responsive */
 const actionBtnStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.2)',
   border: 'none',
-  borderRadius: '10px',
-  padding: 8,
   cursor: 'pointer',
   color: 'white',
   display: 'flex',
@@ -147,10 +145,21 @@ const actionBtnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-/** Mobile menu button */
+/** Mobile menu button — no background box, just a clean icon.
+ *  display is NOT set here: CSS .mobile-menu-btn controls visibility
+ *  (none on desktop, flex on mobile via media query).
+ */
 const menuBtnStyle: React.CSSProperties = {
-  ...actionBtnStyle,
   ...aboveOverlay,
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'white',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s',
+  flexShrink: 0,
+  padding: 0,
 };
 
 // ==================== Component ====================
@@ -247,10 +256,11 @@ export default function ChatHeader() {
           <img
             src={companionAvatar}
             alt={companionName || 'Companion'}
+            className="companion-avatar"
             style={currentAvatarStyle}
           />
         ) : (
-          <div style={currentAvatarPlaceholderStyle}>
+          <div className="companion-avatar" style={currentAvatarPlaceholderStyle}>
             {(companionName || 'AI')[0]}
           </div>
         )}
@@ -295,7 +305,7 @@ export default function ChatHeader() {
           onClick={handleAmbientClick}
           isFirst
         >
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18V5l12-2v13" />
             <circle cx="6" cy="18" r="3" />
             <circle cx="18" cy="16" r="3" />
@@ -310,7 +320,7 @@ export default function ChatHeader() {
           setHoveredBtn={setHoveredBtn}
           onClick={handleGamesClick}
         >
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="6" width="20" height="12" rx="2" />
             <line x1="6" y1="12" x2="10" y2="12" />
             <line x1="8" y1="10" x2="8" y2="14" />
@@ -327,7 +337,7 @@ export default function ChatHeader() {
           setHoveredBtn={setHoveredBtn}
           onClick={handleBackgroundClick}
         >
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />

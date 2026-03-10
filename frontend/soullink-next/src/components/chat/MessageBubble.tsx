@@ -122,9 +122,6 @@ export default function MessageBubble({
   const companionName = useAppSelector((s) => s.settings.companionName);
   const userBubbleColor = useAppSelector((s) => s.settings.userBubbleColor);
   const user = useAppSelector((s) => s.auth.user);
-  const [hoverTTS, setHoverTTS] = useState(false);
-  // On touch devices there is no hover — always show the TTS button.
-  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
 
   // User avatar: avatar_url (Cloudinary) or avatar (legacy) or color initial
   const userAvatar = user?.avatar_url || user?.avatar;
@@ -143,7 +140,7 @@ export default function MessageBubble({
     const g = parseInt(hex.slice(2, 4), 16);
     const b = parseInt(hex.slice(4, 6), 16);
     return {
-      background: `rgba(${r}, ${g}, ${b}, 0.72)`,
+      background: `rgba(${r}, ${g}, ${b}, 1)`,
       borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
     };
   }, [isUser, userBubbleColor]);
@@ -164,8 +161,6 @@ export default function MessageBubble({
     <div
       className={`message ${role} ${className}`}
       style={noAnimate ? { opacity: 1, transform: 'none', animation: 'none' } : undefined}
-      onMouseEnter={() => setHoverTTS(true)}
-      onMouseLeave={() => setHoverTTS(false)}
     >
       {/* AI Avatar */}
       {!isUser && showAvatar && (
@@ -250,8 +245,8 @@ export default function MessageBubble({
           />
         )}
 
-        {/* TTS button — shows on hover (desktop) or always (touch devices) */}
-        {onTTS && (hoverTTS || isTouchDevice) && !isUser && !isVoice && (
+        {/* TTS button — always visible when voice preset is set */}
+        {onTTS && !isUser && !isVoice && (
           <button
             onClick={() => onTTS(content)}
             style={{

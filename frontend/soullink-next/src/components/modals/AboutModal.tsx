@@ -229,7 +229,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
               background: 'rgba(107,163,214,0.1)',
               color: '#6BA3D6',
             }}>
-              v0.1.8-beta
+              v0.1.9-beta
             </span>
           </div>
         </div>
@@ -312,15 +312,18 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
                   }
                   style={{
                     flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
+                    padding: '10px 8px',
+                    borderRadius: '10px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
                     color: 'white',
                     background: method.color,
                     border: 'none',
+                    outline: 'none',
                     cursor: 'pointer',
-                    opacity: activeDonate && activeDonate !== method.id ? 0.5 : 1,
+                    opacity: activeDonate && activeDonate !== method.id ? 0.45 : 1,
+                    transition: 'opacity 0.2s, transform 0.15s',
+                    transform: activeDonate === method.id ? 'scale(1.03)' : 'scale(1)',
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -341,9 +344,9 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
                 border: '1px solid rgba(0,0,0,0.1)',
               }}>
                 <div style={{
-                  width: 160,
-                  height: 160,
-                  borderRadius: '8px',
+                  width: 220,
+                  height: 220,
+                  borderRadius: '12px',
                   background: 'white',
                   display: 'flex',
                   alignItems: 'center',

@@ -185,7 +185,7 @@ export const DIMENSION_LABELS: Record<string, { en: string; zh: string; low_en: 
 // ==================== Mini-Games ====================
 
 export const MINI_GAMES: MiniGame[] = [
-  { id: 'breathing', emoji: '\u{1FAC1}', nameKey: 'games.breathing' },
+  { id: 'breathing', emoji: '\u{1F9D8}', nameKey: 'games.breathing' },
   { id: 'bubbles',   emoji: '\u{1FAE7}', nameKey: 'games.bubbles' },
   { id: 'zen',       emoji: '\u26E9\uFE0F', nameKey: 'games.zen' },
   { id: 'colormix',  emoji: '\u{1F3A8}', nameKey: 'games.colormix' },

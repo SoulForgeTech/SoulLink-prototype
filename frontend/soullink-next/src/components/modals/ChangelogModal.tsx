@@ -44,6 +44,15 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.1.9-beta', date: '2026-03-10',
+    changes: [
+      { badge: 'opt', text: 'Full frontend rewrite \u2014 pages load faster, animations smoother, ~30% less GPU usage on your device', text_zh: '\u524D\u7AEF\u5168\u9762\u91CD\u5199 \u2014 \u9875\u9762\u52A0\u8F7D\u66F4\u5FEB\u3001\u52A8\u753B\u66F4\u6D41\u7545\u3001\u8BBE\u5907GPU\u538B\u529B\u964D\u4F4E\u7EA630%' },
+      { badge: 'ui', text: 'Chat text always readable \u2014 white with shadow, works on any wallpaper', text_zh: '\u804A\u5929\u6587\u5B57\u6C38\u8FDC\u6E05\u6670 \u2014 \u767D\u5B57\u52A0\u9634\u5F71\uFF0C\u6362\u4EFB\u4F55\u58C1\u7EB8\u90FD\u80FD\u770B\u6E05' },
+      { badge: 'ui', text: 'Cleaner chat bubbles \u2014 less see-through, content easier to read', text_zh: '\u6C14\u6CE1\u66F4\u6E05\u6670 \u2014 \u4E0D\u518D\u900F\u660E\uFF0C\u5185\u5BB9\u4E00\u773C\u5373\u53EF\u770B\u6E05' },
+      { badge: 'ui', text: 'Mobile layout optimized \u2014 slimmer header & input bar, larger message text', text_zh: '\u79FB\u52A8\u7AEF\u5E03\u5C40\u4F18\u5316 \u2014 \u5934\u90E8\u548C\u8F93\u5165\u680F\u66F4\u7D27\u51D1\uFF0C\u6D88\u606F\u6587\u5B57\u66F4\u5927' },
+    ],
+  },
+  {
     version: 'v0.1.8-beta', date: '2026-03-09',
     changes: [
       { badge: 'ui', text: 'Real-time rendered glassmorphism UI \u2014 sidebar, chat, modals, input bar all upgraded with unified theme', text_zh: '\u5B9E\u65F6\u6E32\u67D3\u6BDB\u7483\u7490UI \u2014 \u4FA7\u8FB9\u680F\u3001\u804A\u5929\u3001\u5F39\u7A97\u3001\u8F93\u5165\u680F\u7EDF\u4E00\u4E3B\u9898\u5347\u7EA7' },

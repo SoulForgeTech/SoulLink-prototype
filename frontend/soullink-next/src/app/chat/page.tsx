@@ -36,6 +36,7 @@ export default function ChatPage() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentConversationId = useAppSelector((s) => s.conversations.currentId);
+  const voicePresetId = useAppSelector((s) => s.settings.voicePresetId);
 
   // Voice call — shared context so start() runs in user gesture context
   const { start: startVoiceCall } = useVoiceCallContext();
@@ -109,8 +110,8 @@ export default function ChatPage() {
       <AmbientSoundPanel />
       <GamesPanel />
 
-      {/* Messages — with TTS callback */}
-      <MessageList onTTS={handleTTS} />
+      {/* Messages — TTS speaker button only when voice preset is set */}
+      <MessageList onTTS={voicePresetId ? handleTTS : undefined} />
 
       {/* Voice recording bar (shown when recording/uploading) */}
       <VoiceRecordingBar
