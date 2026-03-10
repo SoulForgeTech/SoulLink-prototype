@@ -13,19 +13,44 @@ import { forgotPassword } from '@/lib/api/auth';
 interface ForgotPasswordFormProps {
   onCodeSent: (email: string) => void;
   onBack: () => void;
+  lang?: 'en' | 'zh';
 }
 
-export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswordFormProps) {
+const i18n = {
+  en: {
+    title: 'Reset your password',
+    subtitle: "Enter your email and we'll send you a reset code",
+    email: 'Email', emailPh: 'your@email.com',
+    submit: 'Send Reset Code', submitting: 'Sending...',
+    enterEmail: 'Please enter your email address.',
+    sendFailed: 'Failed to send reset code.',
+    networkError: 'Network error. Please check your connection.',
+    back: '\u2190 Back to sign in',
+  },
+  zh: {
+    title: '重置密码',
+    subtitle: '输入你的邮箱，我们会发送重置验证码',
+    email: '邮箱', emailPh: '请输入邮箱',
+    submit: '发送重置验证码', submitting: '发送中...',
+    enterEmail: '请输入邮箱地址',
+    sendFailed: '发送验证码失败',
+    networkError: '网络错误，请检查网络连接',
+    back: '\u2190 返回登录',
+  },
+};
+
+export default function ForgotPasswordForm({ onCodeSent, onBack, lang = 'en' }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = i18n[lang];
 
   async function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
     setError('');
 
     if (!email.trim()) {
-      setError('Please enter your email address.');
+      setError(t.enterEmail);
       return;
     }
 
@@ -34,13 +59,13 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
       const data = await forgotPassword(email.trim());
 
       if (!data.success) {
-        setError(data.error || 'Failed to send reset code.');
+        setError(data.error || t.sendFailed);
         return;
       }
 
       onCodeSent(email.trim());
     } catch {
-      setError('Network error. Please check your connection.');
+      setError(t.networkError);
     } finally {
       setLoading(false);
     }
@@ -80,10 +105,10 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <div style={{ fontSize: '48px', marginBottom: '8px' }}>🔑</div>
         <h3 style={{ color: 'white', fontSize: '1.3rem', margin: '0 0 8px 0' }}>
-          Reset your password
+          {t.title}
         </h3>
         <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.88rem', margin: 0 }}>
-          {"Enter your email and we'll send you a reset code"}
+          {t.subtitle}
         </p>
       </div>
 
@@ -101,7 +126,7 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
 
       <form onSubmit={handleSubmit}>
         <div style={formGroupStyle}>
-          <label style={labelStyle}>Email</label>
+          <label style={labelStyle}>{t.email}</label>
           <input
             type="email"
             value={email}
@@ -109,7 +134,7 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
-            placeholder="your@email.com"
+            placeholder={t.emailPh}
             autoComplete="email"
             disabled={loading}
             className="auth-input"
@@ -152,10 +177,10 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
                 borderColor: 'rgba(90,74,74,0.3)', borderTopColor: '#5a4a4a',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
-              Sending...
+              {t.submitting}
             </>
           ) : (
-            'Send Reset Code'
+            t.submit
           )}
         </button>
       </form>
@@ -172,7 +197,7 @@ export default function ForgotPasswordForm({ onCodeSent, onBack }: ForgotPasswor
           onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'; }}
         >
-          &larr; Back to sign in
+          {t.back}
         </button>
       </div>
     </div>

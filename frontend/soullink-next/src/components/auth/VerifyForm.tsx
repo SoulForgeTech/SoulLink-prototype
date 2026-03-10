@@ -8,15 +8,44 @@ interface VerifyFormProps {
   email: string;
   onSuccess: (data: AuthResponse) => void;
   onBack: () => void;
+  lang?: 'en' | 'zh';
 }
 
-export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps) {
+const i18n = {
+  en: {
+    title: 'Check your email',
+    subtitle: 'We sent a 6-digit code to',
+    codeLabel: 'Verification Code',
+    submit: 'Verify', submitting: 'Verifying...',
+    invalidCode: 'Invalid verification code.',
+    networkError: 'Network error. Please try again.',
+    noCode: "Didn't receive the code? ",
+    resend: 'Resend', codeSent: 'Code sent! Check your email.',
+    resendFailed: 'Failed to resend code.',
+    back: '\u2190 Back to registration',
+  },
+  zh: {
+    title: '查看你的邮箱',
+    subtitle: '我们已发送6位验证码到',
+    codeLabel: '验证码',
+    submit: '验证', submitting: '验证中...',
+    invalidCode: '验证码无效',
+    networkError: '网络错误，请重试',
+    noCode: '没有收到验证码？',
+    resend: '重新发送', codeSent: '验证码已发送，请查看邮箱',
+    resendFailed: '重新发送失败',
+    back: '\u2190 返回注册',
+  },
+};
+
+export default function VerifyForm({ email, onSuccess, onBack, lang = 'en' }: VerifyFormProps) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [resendMsg, setResendMsg] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = i18n[lang];
 
   // Focus input on mount
   useEffect(() => {
@@ -41,7 +70,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
         const data = await verifyEmail(email, submitCode);
 
         if (!data.success) {
-          setError(data.error || 'Invalid verification code.');
+          setError(data.error || t.invalidCode);
           setCode('');
           inputRef.current?.focus();
           return;
@@ -49,7 +78,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
 
         onSuccess(data);
       } catch {
-        setError('Network error. Please try again.');
+        setError(t.networkError);
       } finally {
         setLoading(false);
       }
@@ -80,13 +109,13 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
     try {
       const data = await resendCode(email);
       if (data.success) {
-        setResendMsg('Code sent! Check your email.');
+        setResendMsg(t.codeSent);
         setCooldown(60);
       } else {
-        setError(data.error || 'Failed to resend code.');
+        setError(data.error || t.resendFailed);
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t.networkError);
     }
   }
 
@@ -117,11 +146,11 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
         <div style={{ fontSize: '48px', marginBottom: '8px' }}>✉</div>
         {/* h3 */}
         <h3 style={{ color: 'white', fontSize: '1.3rem', margin: '0 0 8px 0' }}>
-          Check your email
+          {t.title}
         </h3>
         {/* .verification-subtitle */}
         <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.88rem', margin: 0 }}>
-          We sent a 6-digit code to
+          {t.subtitle}
         </p>
         {/* .verification-email */}
         <p style={{ color: '#e8b4b8', fontWeight: 600, fontSize: '0.95rem', margin: '4px 0 0 0' }}>
@@ -149,7 +178,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
       {/* Code input — single input with letter-spacing, matching original */}
       <div style={{ marginBottom: '16px', textAlign: 'left' }}>
         <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-          Verification Code
+          {t.codeLabel}
         </label>
         <input
           ref={inputRef}
@@ -228,10 +257,10 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
                 animation: 'spin 0.8s linear infinite',
               }}
             />
-            Verifying...
+            {t.submitting}
           </>
         ) : (
-          'Verify'
+          t.submit
         )}
       </button>
 
@@ -239,7 +268,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
       <div style={{ marginTop: '20px', textAlign: 'center' }}>
         {/* Resend text */}
         <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-          {"Didn't receive the code? "}
+          {t.noCode}
           <button
             onClick={handleResend}
             disabled={cooldown > 0}
@@ -253,7 +282,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
               padding: 0,
             }}
           >
-            {cooldown > 0 ? `Resend (${cooldown}s)` : 'Resend'}
+            {cooldown > 0 ? `${t.resend} (${cooldown}s)` : t.resend}
           </button>
         </p>
 
@@ -279,7 +308,7 @@ export default function VerifyForm({ email, onSuccess, onBack }: VerifyFormProps
           onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'; }}
         >
-          &larr; Back to registration
+          {t.back}
         </button>
       </div>
     </div>

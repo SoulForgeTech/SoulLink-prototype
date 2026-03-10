@@ -8,20 +8,41 @@ interface LoginFormProps {
   onSuccess: (data: AuthResponse) => void;
   onNeedVerification: (email: string) => void;
   onForgotPassword: () => void;
+  lang?: 'en' | 'zh';
 }
 
-export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassword }: LoginFormProps) {
+const i18n = {
+  en: {
+    email: 'Email', emailPh: 'your@email.com',
+    password: 'Password', passwordPh: 'Enter your password',
+    forgot: 'Forgot password?', submit: 'Sign In', submitting: 'Signing in...',
+    fillAll: 'Please fill in all fields.',
+    loginFailed: 'Login failed. Please try again.',
+    networkError: 'Network error. Please check your connection.',
+  },
+  zh: {
+    email: '邮箱', emailPh: '请输入邮箱',
+    password: '密码', passwordPh: '请输入密码',
+    forgot: '忘记密码？', submit: '登录', submitting: '登录中...',
+    fillAll: '请填写所有字段',
+    loginFailed: '登录失败，请重试',
+    networkError: '网络错误，请检查网络连接',
+  },
+};
+
+export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassword, lang = 'en' }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = i18n[lang];
 
   async function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
     setError('');
 
     if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields.');
+      setError(t.fillAll);
       return;
     }
 
@@ -35,13 +56,13 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
       }
 
       if (!data.success) {
-        setError(data.error || 'Login failed. Please try again.');
+        setError(data.error || t.loginFailed);
         return;
       }
 
       onSuccess(data);
     } catch {
-      setError('Network error. Please check your connection.');
+      setError(t.networkError);
     } finally {
       setLoading(false);
     }
@@ -111,7 +132,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
 
       {/* Email .form-group */}
       <div style={formGroupStyle}>
-        <label style={labelStyle}>Email</label>
+        <label style={labelStyle}>{t.email}</label>
         <input
           type="email"
           value={email}
@@ -119,7 +140,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="your@email.com"
+          placeholder={t.emailPh}
           autoComplete="email"
           disabled={loading}
           className="auth-input"
@@ -129,7 +150,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
 
       {/* Password .form-group */}
       <div style={formGroupStyle}>
-        <label style={labelStyle}>Password</label>
+        <label style={labelStyle}>{t.password}</label>
         <input
           type="password"
           value={password}
@@ -137,7 +158,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="Enter your password"
+          placeholder={t.passwordPh}
           autoComplete="current-password"
           disabled={loading}
           className="auth-input"
@@ -158,7 +179,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
           onMouseEnter={(e) => { e.currentTarget.style.color = '#e8b4b8'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'; }}
         >
-          Forgot password?
+          {t.forgot}
         </button>
       </div>
 
@@ -213,10 +234,10 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
                 animation: 'spin 0.8s linear infinite',
               }}
             />
-            Signing in...
+            {t.submitting}
           </>
         ) : (
-          'Sign In'
+          t.submit
         )}
       </button>
     </form>

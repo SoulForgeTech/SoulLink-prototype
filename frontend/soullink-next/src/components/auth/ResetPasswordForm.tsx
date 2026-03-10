@@ -15,9 +15,49 @@ interface ResetPasswordFormProps {
   email: string;
   onSuccess: (data: AuthResponse) => void;
   onBack: () => void;
+  lang?: 'en' | 'zh';
 }
 
-export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPasswordFormProps) {
+const i18n = {
+  en: {
+    title: 'Enter reset code',
+    subtitle: 'We sent a 6-digit code to',
+    codeLabel: 'Reset Code',
+    newPassword: 'New Password', newPasswordPh: 'At least 6 characters',
+    confirmPassword: 'Confirm Password', confirmPh: 'Re-enter your password',
+    submit: 'Reset Password', submitting: 'Resetting...',
+    enterCode: 'Please enter the 6-digit code.',
+    enterPassword: 'Please enter a new password.',
+    passMin: 'Password must be at least 6 characters.',
+    passMatch: 'Passwords do not match.',
+    resetFailed: 'Password reset failed.',
+    networkError: 'Network error. Please try again.',
+    noCode: "Didn't receive the code? ",
+    resend: 'Resend', codeSent: 'New code sent! Check your email.',
+    resendFailed: 'Failed to resend code.',
+    back: '\u2190 Back to sign in',
+  },
+  zh: {
+    title: '输入重置验证码',
+    subtitle: '我们已发送6位验证码到',
+    codeLabel: '重置验证码',
+    newPassword: '新密码', newPasswordPh: '至少6位字符',
+    confirmPassword: '确认密码', confirmPh: '再次输入密码',
+    submit: '重置密码', submitting: '重置中...',
+    enterCode: '请输入6位验证码',
+    enterPassword: '请输入新密码',
+    passMin: '密码至少需要6个字符',
+    passMatch: '两次输入的密码不一致',
+    resetFailed: '密码重置失败',
+    networkError: '网络错误，请重试',
+    noCode: '没有收到验证码？',
+    resend: '重新发送', codeSent: '新验证码已发送，请查看邮箱',
+    resendFailed: '重新发送失败',
+    back: '\u2190 返回登录',
+  },
+};
+
+export default function ResetPasswordForm({ email, onSuccess, onBack, lang = 'en' }: ResetPasswordFormProps) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,6 +66,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
   const [cooldown, setCooldown] = useState(60);
   const [resendMsg, setResendMsg] = useState('');
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const t = i18n[lang];
 
   // Focus code input on mount
   useEffect(() => {
@@ -44,17 +85,17 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
       e?.preventDefault();
       setError('');
 
-      if (code.length !== 6) { setError('Please enter the 6-digit code.'); return; }
-      if (!password) { setError('Please enter a new password.'); return; }
-      if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
-      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+      if (code.length !== 6) { setError(t.enterCode); return; }
+      if (!password) { setError(t.enterPassword); return; }
+      if (password.length < 6) { setError(t.passMin); return; }
+      if (password !== confirmPassword) { setError(t.passMatch); return; }
 
       setLoading(true);
       try {
         const data = await resetPassword(email, code, password);
 
         if (!data.success) {
-          setError(data.error || 'Password reset failed.');
+          setError(data.error || t.resetFailed);
           if (data.error?.toLowerCase().includes('code')) {
             setCode('');
             codeInputRef.current?.focus();
@@ -64,12 +105,13 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
 
         onSuccess(data);
       } catch {
-        setError('Network error. Please try again.');
+        setError(t.networkError);
       } finally {
         setLoading(false);
       }
     },
-    [email, code, password, confirmPassword, onSuccess],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [email, code, password, confirmPassword, onSuccess, t],
   );
 
   function handleCodeChange(value: string) {
@@ -84,13 +126,13 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
     try {
       const data = await forgotPassword(email);
       if (data.success) {
-        setResendMsg('New code sent! Check your email.');
+        setResendMsg(t.codeSent);
         setCooldown(60);
       } else {
-        setError(data.error || 'Failed to resend code.');
+        setError(data.error || t.resendFailed);
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t.networkError);
     }
   }
 
@@ -135,10 +177,10 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <div style={{ fontSize: '48px', marginBottom: '8px' }}>✉️</div>
         <h3 style={{ color: 'white', fontSize: '1.3rem', margin: '0 0 8px 0' }}>
-          Enter reset code
+          {t.title}
         </h3>
         <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.88rem', margin: 0 }}>
-          We sent a 6-digit code to
+          {t.subtitle}
         </p>
         <p style={{ color: '#e8b4b8', fontWeight: 600, fontSize: '0.95rem', margin: '4px 0 0 0' }}>
           {email}
@@ -160,7 +202,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
       <form onSubmit={handleSubmit}>
         {/* Code input */}
         <div style={formGroupStyle}>
-          <label style={labelStyle}>Reset Code</label>
+          <label style={labelStyle}>{t.codeLabel}</label>
           <input
             ref={codeInputRef}
             type="text"
@@ -180,7 +222,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
 
         {/* New password */}
         <div style={formGroupStyle}>
-          <label style={labelStyle}>New Password</label>
+          <label style={labelStyle}>{t.newPassword}</label>
           <input
             type="password"
             value={password}
@@ -188,7 +230,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
-            placeholder="At least 6 characters"
+            placeholder={t.newPasswordPh}
             autoComplete="new-password"
             disabled={loading}
             className="auth-input"
@@ -198,7 +240,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
 
         {/* Confirm password */}
         <div style={formGroupStyle}>
-          <label style={labelStyle}>Confirm Password</label>
+          <label style={labelStyle}>{t.confirmPassword}</label>
           <input
             type="password"
             value={confirmPassword}
@@ -206,7 +248,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
-            placeholder="Re-enter your password"
+            placeholder={t.confirmPh}
             autoComplete="new-password"
             disabled={loading}
             className="auth-input"
@@ -249,10 +291,10 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
                 borderColor: 'rgba(90,74,74,0.3)', borderTopColor: '#5a4a4a',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
-              Resetting...
+              {t.submitting}
             </>
           ) : (
-            'Reset Password'
+            t.submit
           )}
         </button>
       </form>
@@ -260,7 +302,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
       {/* Resend + Back */}
       <div style={{ marginTop: '20px', textAlign: 'center' }}>
         <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-          {"Didn't receive the code? "}
+          {t.noCode}
           <button
             type="button"
             onClick={handleResend}
@@ -274,7 +316,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
               padding: 0,
             }}
           >
-            {cooldown > 0 ? `Resend (${cooldown}s)` : 'Resend'}
+            {cooldown > 0 ? `${t.resend} (${cooldown}s)` : t.resend}
           </button>
         </p>
 
@@ -295,7 +337,7 @@ export default function ResetPasswordForm({ email, onSuccess, onBack }: ResetPas
           onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'; }}
         >
-          &larr; Back to sign in
+          {t.back}
         </button>
       </div>
     </div>

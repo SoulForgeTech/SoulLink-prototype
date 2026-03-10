@@ -24,7 +24,12 @@ export default function LoginPage() {
   const [view, setView] = useState<View>('auth');
   const [verifyEmail, setVerifyEmail] = useState('');
   const [resetEmail, setResetEmail] = useState('');
-  const [lang, setLang] = useState<'en' | 'zh'>('en');
+  const [lang, setLang] = useState<'en' | 'zh'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('soullink-lang') as 'en' | 'zh') || 'en';
+    }
+    return 'en';
+  });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState('');
 
@@ -196,7 +201,11 @@ export default function LoginPage() {
       >
         {/* .login-lang-toggle — inside container, absolute top-right */}
         <button
-          onClick={() => setLang((prev) => (prev === 'en' ? 'zh' : 'en'))}
+          onClick={() => setLang((prev) => {
+            const next = prev === 'en' ? 'zh' : 'en';
+            localStorage.setItem('soullink-lang', next);
+            return next;
+          })}
           style={{
             position: 'absolute',
             top: '16px',
@@ -261,17 +270,20 @@ export default function LoginPage() {
             email={verifyEmail}
             onSuccess={handleAuthSuccess}
             onBack={() => setView('auth')}
+            lang={lang}
           />
         ) : view === 'forgot' ? (
           <ForgotPasswordForm
             onCodeSent={handleResetCodeSent}
             onBack={() => setView('auth')}
+            lang={lang}
           />
         ) : view === 'reset' ? (
           <ResetPasswordForm
             email={resetEmail}
             onSuccess={handleAuthSuccess}
             onBack={() => setView('auth')}
+            lang={lang}
           />
         ) : (
           <>
@@ -325,11 +337,13 @@ export default function LoginPage() {
                   onSuccess={handleAuthSuccess}
                   onNeedVerification={handleNeedVerification}
                   onForgotPassword={handleForgotPassword}
+                  lang={lang}
                 />
               ) : (
                 <RegisterForm
                   onSuccess={handleAuthSuccess}
                   onNeedVerification={handleNeedVerification}
+                  lang={lang}
                 />
               )}
             </div>

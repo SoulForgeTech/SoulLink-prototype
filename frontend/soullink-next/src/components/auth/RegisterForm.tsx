@@ -7,28 +7,63 @@ import type { AuthResponse } from '@/types';
 interface RegisterFormProps {
   onSuccess: (data: AuthResponse) => void;
   onNeedVerification: (email: string) => void;
+  lang?: 'en' | 'zh';
 }
 
-export default function RegisterForm({ onSuccess, onNeedVerification }: RegisterFormProps) {
+const i18n = {
+  en: {
+    nicknameLabel: 'What should your companion call you?',
+    nicknamePh: 'Your nickname',
+    nicknameHint: 'This is how your AI companion will address you',
+    email: 'Email', emailPh: 'your@email.com',
+    password: 'Password', passwordPh: 'At least 6 characters',
+    confirmPassword: 'Confirm Password', confirmPh: 'Re-enter your password',
+    submit: 'Create Account', submitting: 'Creating account...',
+    fillAll: 'Please fill in all fields.',
+    nickMin: 'Nickname must be at least 2 characters.',
+    passMin: 'Password must be at least 6 characters.',
+    passMatch: 'Passwords do not match.',
+    regFailed: 'Registration failed. Please try again.',
+    networkError: 'Network error. Please check your connection.',
+  },
+  zh: {
+    nicknameLabel: '你希望 AI 伴侣怎么称呼你？',
+    nicknamePh: '你的昵称',
+    nicknameHint: 'AI 伴侣会用这个名字称呼你',
+    email: '邮箱', emailPh: '请输入邮箱',
+    password: '密码', passwordPh: '至少6位字符',
+    confirmPassword: '确认密码', confirmPh: '再次输入密码',
+    submit: '创建账号', submitting: '创建中...',
+    fillAll: '请填写所有字段',
+    nickMin: '昵称至少需要2个字符',
+    passMin: '密码至少需要6个字符',
+    passMatch: '两次输入的密码不一致',
+    regFailed: '注册失败，请重试',
+    networkError: '网络错误，请检查网络连接',
+  },
+};
+
+export default function RegisterForm({ onSuccess, onNeedVerification, lang = 'en' }: RegisterFormProps) {
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = i18n[lang];
 
   function validate(): string | null {
     if (!nickname.trim() || !email.trim() || !password || !confirmPassword) {
-      return 'Please fill in all fields.';
+      return t.fillAll;
     }
     if (nickname.trim().length < 2) {
-      return 'Nickname must be at least 2 characters.';
+      return t.nickMin;
     }
     if (password.length < 6) {
-      return 'Password must be at least 6 characters.';
+      return t.passMin;
     }
     if (password !== confirmPassword) {
-      return 'Passwords do not match.';
+      return t.passMatch;
     }
     return null;
   }
@@ -53,13 +88,13 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
       }
 
       if (!data.success) {
-        setError(data.error || 'Registration failed. Please try again.');
+        setError(data.error || t.regFailed);
         return;
       }
 
       onSuccess(data);
     } catch {
-      setError('Network error. Please check your connection.');
+      setError(t.networkError);
     } finally {
       setLoading(false);
     }
@@ -130,7 +165,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
       {/* Nickname .form-group */}
       <div style={formGroupStyle}>
         <label style={labelStyle}>
-          What should your companion call you? <span style={{ color: '#f87171' }}>*</span>
+          {t.nicknameLabel} <span style={{ color: '#f87171' }}>*</span>
         </label>
         <input
           type="text"
@@ -139,21 +174,21 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="Your nickname"
+          placeholder={t.nicknamePh}
           autoComplete="name"
           disabled={loading}
           className="auth-input"
           style={inputStyle}
         />
         <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '4px' }}>
-          This is how your AI companion will address you
+          {t.nicknameHint}
         </div>
       </div>
 
       {/* Email .form-group */}
       <div style={formGroupStyle}>
         <label style={labelStyle}>
-          Email <span style={{ color: '#f87171' }}>*</span>
+          {t.email} <span style={{ color: '#f87171' }}>*</span>
         </label>
         <input
           type="email"
@@ -162,7 +197,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="your@email.com"
+          placeholder={t.emailPh}
           autoComplete="email"
           disabled={loading}
           className="auth-input"
@@ -173,7 +208,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
       {/* Password .form-group */}
       <div style={formGroupStyle}>
         <label style={labelStyle}>
-          Password <span style={{ color: '#f87171' }}>*</span>
+          {t.password} <span style={{ color: '#f87171' }}>*</span>
         </label>
         <input
           type="password"
@@ -182,7 +217,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="At least 6 characters"
+          placeholder={t.passwordPh}
           autoComplete="new-password"
           disabled={loading}
           className="auth-input"
@@ -193,7 +228,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
       {/* Confirm Password .form-group */}
       <div style={formGroupStyle}>
         <label style={labelStyle}>
-          Confirm Password <span style={{ color: '#f87171' }}>*</span>
+          {t.confirmPassword} <span style={{ color: '#f87171' }}>*</span>
         </label>
         <input
           type="password"
@@ -202,7 +237,7 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
           onKeyDown={handleKeyDown}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="Re-enter your password"
+          placeholder={t.confirmPh}
           autoComplete="new-password"
           disabled={loading}
           className="auth-input"
@@ -261,10 +296,10 @@ export default function RegisterForm({ onSuccess, onNeedVerification }: Register
                 animation: 'spin 0.8s linear infinite',
               }}
             />
-            Creating account...
+            {t.submitting}
           </>
         ) : (
-          'Create Account'
+          t.submit
         )}
       </button>
     </form>
