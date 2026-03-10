@@ -119,11 +119,17 @@ Reply with ONLY the type key (e.g., female_gentle or male_warm). No explanation.
 
 # ==================== TTS (Text-to-Speech) via Fish Audio ====================
 
-# Regex patterns to strip action/emotion descriptions from AI text before TTS
+# Regex patterns to strip action/emotion descriptions from AI text before TTS.
+# Handles both complete pairs and split cases where clause boundaries break a paren.
 _ACTION_PATTERNS = [
-    re.compile(r'\uff08[^\uff09]*\uff09'),       # Chinese fullwidth parens （...）
-    re.compile(r'\([^)]*\)'),                     # ASCII parens (...)
-    re.compile(r'\*[^*]+\*'),                     # Asterisk actions *...*
+    re.compile(r'\[IMAGE:[^\]]*\]', re.DOTALL),   # IMAGE generation tags — never speak aloud
+    re.compile(r'\uff08[^\uff09]*\uff09'),         # Chinese fullwidth parens （...）complete
+    re.compile(r'\uff08[^\uff09]*$'),              # Unclosed Chinese （... at end of clause
+    re.compile(r'^[^\uff08]*\uff09\s*'),           # Orphan ...） at start (tail of split paren)
+    re.compile(r'\([^)]*\)'),                      # ASCII parens (...)complete
+    re.compile(r'\([^)]*$'),                       # Unclosed ASCII (... at end of clause
+    re.compile(r'^[^(]*\)\s*'),                    # Orphan ...) at start (tail of split paren)
+    re.compile(r'\*[^*]+\*'),                      # Asterisk actions *...*
 ]
 _EMOJI_PATTERN = re.compile(
     r'[\U0001F600-\U0001F64F'

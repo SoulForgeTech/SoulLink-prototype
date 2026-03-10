@@ -1,0 +1,133 @@
+'use client';
+
+/**
+ * Main chat page.
+ *
+ * Assembles the chat header, message list, panels, and input area
+ * into the full conversation view. Background image is controlled
+ * by the settings slice.
+ *
+ * Chat send is wired to useSSEStream for real-time streaming.
+ */
+
+import { useCallback, useRef } from 'react';
+import { useAppSelector, useAppDispatch } from '@/store';
+import { addMessage } from '@/store/chatSlice';
+import { useAuthFetch } from '@/hooks/useAuthFetch';
+import { useSSEStream } from '@/hooks/useSSEStream';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useVoiceCallContext } from '@/contexts/VoiceCallContext';
+import { textToSpeech } from '@/lib/api/voice';
+
+import ChatHeader from '@/components/chat/ChatHeader';
+import MessageList from '@/components/chat/MessageList';
+import ChatInput from '@/components/input/ChatInput';
+import VoiceRecordingBar from '@/components/input/VoiceRecordingBar';
+import BackgroundPicker from '@/components/panels/BackgroundPicker';
+import AmbientSoundPanel from '@/components/panels/AmbientSoundPanel';
+import GamesPanel from '@/components/panels/GamesPanel';
+
+import type { MessageAttachment } from '@/types';
+
+export default function ChatPage() {
+  const dispatch = useAppDispatch();
+  const authFetch = useAuthFetch();
+  const { sendStream } = useSSEStream(authFetch);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const currentConversationId = useAppSelector((s) => s.conversations.currentId);
+
+  // Voice call — shared context so start() runs in user gesture context
+  const { start: startVoiceCall } = useVoiceCallContext();
+
+  // Voice recording hook (owned here, passed to ChatInput + VoiceRecordingBar)
+  const voiceRecording = useVoiceRecording();
+
+  // Handle chat input send — wired to SSE streaming
+  const handleSend = useCallback(
+    (message: string, attachments: MessageAttachment[]) => {
+      // 1. Add user message to chat immediately
+      dispatch(
+        addMessage({
+          role: 'user',
+          content: message,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      // 2. Start SSE stream for AI response
+      sendStream({
+        message,
+        conversationId: currentConversationId,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+    },
+    [dispatch, sendStream, currentConversationId],
+  );
+
+  // Handle TTS playback on message bubble
+  const handleTTS = useCallback(
+    async (text: string) => {
+      // Stop any currently playing audio
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      try {
+        const data = await textToSpeech(authFetch, text);
+        if (data.success && data.audio_b64) {
+          const audio = new Audio(`data:audio/mp3;base64,${data.audio_b64}`);
+          currentAudioRef.current = audio;
+          audio.play().catch((e) => console.error('TTS playback failed:', e));
+          audio.onended = () => {
+            currentAudioRef.current = null;
+          };
+        }
+      } catch (err) {
+        console.error('TTS error:', err);
+      }
+    },
+    [authFetch],
+  );
+
+  // Handle voice call — MUST call start() here (user gesture context)
+  // so AudioContext starts in 'running' state, not 'suspended'.
+  // If start() were called from useEffect (non-gesture), AudioContext
+  // stays suspended and AnalyserNode gets no data → VAD never detects speech.
+  const handleVoiceCall = useCallback(() => {
+    startVoiceCall();
+  }, [startVoiceCall]);
+
+  return (
+    <div className="main-content">
+      {/* Chat header */}
+      <ChatHeader />
+
+      {/* Panels (always rendered, CSS controls slide animation via .open class) */}
+      <BackgroundPicker />
+      <AmbientSoundPanel />
+      <GamesPanel />
+
+      {/* Messages — with TTS callback */}
+      <MessageList onTTS={handleTTS} />
+
+      {/* Voice recording bar (shown when recording/uploading) */}
+      <VoiceRecordingBar
+        isRecording={voiceRecording.isRecording}
+        isUploading={voiceRecording.isUploading}
+        duration={voiceRecording.duration}
+        cancelRecording={voiceRecording.cancelRecording}
+        stopRecording={voiceRecording.stopRecording}
+      />
+
+      {/* Input area */}
+      <ChatInput
+        onSend={handleSend}
+        onVoiceCall={handleVoiceCall}
+        onStartRecording={voiceRecording.startRecording}
+        onStopRecording={voiceRecording.stopRecording}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,522 @@
+{
+  "login": {
+    "subtitle": "Your AI Companion, Always Here",
+    "tab": {
+      "signin": "Sign In",
+      "signup": "Sign Up"
+    },
+    "email": {
+      "placeholder": "your@email.com"
+    },
+    "password": {
+      "placeholder": "Enter your password"
+    },
+    "submit": "Sign In",
+    "divider": "or",
+    "google": "Continue with Google",
+    "community": "💬 Join our WeChat community"
+  },
+  "register": {
+    "nickname": {
+      "label": "What should your companion call you?",
+      "placeholder": "Your nickname",
+      "hint": "You can name your AI companion after registration"
+    },
+    "email": {
+      "label": "Email"
+    },
+    "password": {
+      "label": "Password",
+      "placeholder": "At least 6 characters"
+    },
+    "confirm": {
+      "label": "Confirm Password",
+      "placeholder": "Re-enter your password"
+    },
+    "submit": "Create Account"
+  },
+  "verify": {
+    "title": "Check your email",
+    "subtitle": "We sent a 6-digit code to",
+    "code": {
+      "label": "Verification Code"
+    },
+    "submit": "Verify",
+    "resend": "Resend",
+    "back": "Back to registration"
+  },
+  "settings": {
+    "title": "Settings",
+    "tab": {
+      "profile": "Profile",
+      "companion": "Companion",
+      "advanced": "Advanced"
+    },
+    "upload": "Upload",
+    "color": "Or choose a color:",
+    "nickname": {
+      "placeholder": "Your nickname"
+    },
+    "email": {
+      "hint": "Email cannot be changed"
+    },
+    "model": {
+      "hint": "Choose the AI model that powers {companion}"
+    },
+    "kb": {
+      "hint": "Enable psychology knowledge for deeper emotional support"
+    },
+    "voice": {
+      "title": "🔊 AI Voice Reply",
+      "desc": "AI auto-replies with voice when you send voice messages",
+      "hint": "Powered by Fish Audio — 2M+ community voices",
+      "preset": {
+        "tag": "preset"
+      },
+      "search": {
+        "placeholder": "Search voices... e.g. anime, deep, sweet",
+        "btn": "Search",
+        "fail": "Search failed. Please try again."
+      },
+      "try": "Try",
+      "use": "Use",
+      "auto": "Auto (default)",
+      "community": {
+        "tag": "community"
+      },
+      "searching": "Searching...",
+      "no_results": "No voices found. Try different keywords."
+    },
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "companion": {
+      "profile": "Companion Profile",
+      "name_label": "Nickname",
+      "reset_avatar": "Reset avatar",
+      "style": "Companion Style",
+      "hint": "Changes will update your companion's personality"
+    },
+    "custom": {
+      "title": "🔮 Custom Settings",
+      "optional": "Optional",
+      "hint": "Customize personality and import knowledge independently",
+      "persona": {
+        "title": "Character Personality",
+        "placeholder": "Enter a character name (e.g., Rem, Ganyu) or describe personality. To rename, tap the name next to the avatar.",
+        "extract": "Extract Personality",
+        "preview": "AI Extracted Preview:",
+        "confirm": "Use",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "extracting": "Extracting...",
+        "saving": "Saving...",
+        "active": "Active: {name} ({date})",
+        "cleared": "Custom personality cleared"
+      },
+      "lore": {
+        "title": "Knowledge Base",
+        "placeholder": "Paste background materials, world settings, specialized knowledge, etc.",
+        "upload": "Upload File",
+        "submit": "Submit to KB",
+        "submitting": "Vectorizing (~15s)...",
+        "ready": "Ready: {name} ({date})",
+        "processing": "Processing...",
+        "failed": "Failed — please retry",
+        "cleared": "Knowledge base cleared",
+        "hint": "💡 The more background info you import, the more accurately the AI embodies the character.",
+        "doc_count": "{count}/{max} documents",
+        "limit_reached": "Maximum documents reached",
+        "delete_confirm": "Remove this document from knowledge base?"
+      }
+    },
+    "importChat": "📥 Import Chat History",
+    "importChatHint": "Import conversations from ChatGPT.",
+    "importChatLink": "Go to ChatGPT Export →",
+    "importChatBtn": "Select File",
+    "importChatSubmit": "Import",
+    "importChatPreview": "Found",
+    "importChatConvs": "conversations",
+    "importChatMsgs": "messages",
+    "importChatLoading": "Importing...",
+    "importChatSuccess": "Imported",
+    "importSelectAll": "Select All",
+    "importDeselectAll": "Deselect",
+    "importSelected": "selected",
+    "importZipHint": "ZIP files import all conversations. For selective import, use the .json file inside."
+  },
+  "sidebar": {
+    "newchat": "New Chat",
+    "logout": "Logout",
+    "test": "Personality Test",
+    "guide": "User Guide",
+    "about": "About & Feedback",
+    "changelog": "Changelog"
+  },
+  "chat": {
+    "online": "Online",
+    "welcome": {
+      "title": "Welcome back!",
+      "subtitle": "Start a conversation with your AI companion. I'm here to chat, help, and keep you company."
+    },
+    "input": {
+      "placeholder": "Type a message..."
+    },
+    "drop": {
+      "hint": "Drop files here"
+    },
+    "file": {
+      "too_large": "File too large (max 10MB)",
+      "unsupported": "Unsupported file type. Supported: images, PDF, TXT, MD, CSV, JSON"
+    }
+  },
+  "loading": {
+    "workspace": {
+      "init": "Initializing workspace...",
+      "config": "Configuring AI companion...",
+      "almost": "Almost ready...",
+      "done": "All set! Welcome!"
+    }
+  },
+  "error": {
+    "send": "Error: Failed to send message",
+    "network": "Connection error. Please check your network.",
+    "login": "Login failed. Please try again.",
+    "register": {
+      "password": {
+        "length": "Password must be at least 6 characters",
+        "match": "Passwords do not match"
+      },
+      "name": {
+        "length": "Nickname must be 2-20 characters"
+      }
+    }
+  },
+  "reminder": {
+    "title": "Discover Your Soul Match",
+    "message": "Take a quick personality test so your companion can truly understand you.",
+    "later": "Maybe Later",
+    "start": "Take the Test"
+  },
+  "test": {
+    "skip": "Skip for now →"
+  },
+  "tarot": {
+    "draw": {
+      "title": "Your Soul Reading",
+      "subtitle": "Click each card to reveal your destiny"
+    },
+    "position": {
+      "past": "Past",
+      "present": "Present",
+      "future": "Future Companion"
+    },
+    "view": {
+      "results": "View Your Reading"
+    },
+    "results": {
+      "title": "Your Soul Cards"
+    },
+    "start": {
+      "chat": "Start Chatting →"
+    },
+    "profile": {
+      "title": "Your Companion's Personality"
+    }
+  },
+  "rename": {
+    "title": {
+      "female": "Give her a name",
+      "male": "Give him a name"
+    },
+    "subtitle": "Pick a nickname you like",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "companion": {
+    "gender": {
+      "her": "Her",
+      "him": "Him"
+    },
+    "rel": {
+      "lover": "Lover",
+      "friend": "Friend"
+    },
+    "avatar": {
+      "title": "Change Companion Avatar",
+      "upload": "Upload Image",
+      "reset": "Reset to Default"
+    }
+  },
+  "naming": {
+    "title": "Give your companion a name",
+    "subtitle": "You can always change it later in settings",
+    "confirm": "Start Chatting ✨",
+    "model": {
+      "title": "Choose an AI model",
+      "recommended": "Recommended"
+    }
+  },
+  "voice": {
+    "send": "Send"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "v218": {
+      "1": "Real-time rendered glassmorphism UI — sidebar, chat, modals, input bar all upgraded with unified theme",
+      "2": "Smoother modal open/close animations, overall layout alignment improvements",
+      "3": "Fixed image generation occasionally failing after multiple consecutive generations",
+      "4": "Removed daily image generation limit — generate as many as you want"
+    },
+    "v217": {
+      "1": "Avatar cropping — drag, zoom, and precisely crop your avatar after uploading",
+      "2": "Custom chat background — upload your own images as chat wallpaper",
+      "3": "User-uploaded images are now permanently saved, no longer lost on page refresh",
+      "4": "Image viewer zoom — double-click, pinch, or scroll wheel to zoom in on images"
+    },
+    "v216": {
+      "1": "Image engine upgrade — better quality! But server costs went up too... please support us 💸",
+      "2": "Smart anime detection — Genshin, Re:Zero and other anime characters auto-match anime art style",
+      "3": "Unlimited images per message (previously limited to 2)",
+      "4": "Fixed AI internal reasoning occasionally leaking into chat bubbles",
+      "5": "Fixed connection timeout during image generation"
+    },
+    "v215": {
+      "1": "Memory engine upgrade — switched from full memory dump to semantic search, AI now recalls only the most relevant memories for each message",
+      "2": "Every message now automatically extracts and saves key facts — your name, hobbies, preferences, family, work, life events",
+      "3": "Core memories (name, family, job) are always remembered; temporary events (next week's interview) auto-expire after 14 days"
+    },
+    "v214": {
+      "1": "Image generation upgrade — smarter character matching, imported characters are now accurately depicted",
+      "2": "WeChat-style multi-bubble — AI replies auto-split into chat bubbles + image generating placeholder",
+      "3": "Fixed image tags leaking as raw text during streaming replies"
+    },
+    "v213": {
+      "1": "Psychology knowledge base — AI references professional resources for deeper emotional support (toggle in Settings)",
+      "2": "Stress-relief mini games — Breathing guide, Bubble Pop, Zen Sand, Color Mix, Shape Catcher",
+      "3": "Ambient sound mixer — 13 preset nature & lo-fi sounds with individual volume control",
+      "4": "Server upgrade — doubled memory for faster and more stable responses",
+      "5": "Improved connection stability for overseas users — async streaming with auto-retry",
+      "6": "Fixed Gemini thinking content not showing in thinking bubble"
+    },
+    "v212": {
+      "1": "Improved voice recognition speed",
+      "2": "Instant voice bubble — WeChat-style, appears immediately after recording",
+      "3": "Voice call no longer causes short text replies in subsequent chats"
+    },
+    "v211": {
+      "1": "Voice call — Gemini Live-style full-screen call with auto voice detection, interruption & auto-play",
+      "2": "Streaming text chat — AI replies appear word by word in real-time, typewriter effect",
+      "3": "Input bar button redesign — unified icon style, call button moved to input area",
+      "4": "Reply speed boost — streaming transmission + parallel voice synthesis, reduced wait time"
+    },
+    "v200": {
+      "1": "Fish Audio TTS — all-new voice engine, 2M+ community voices available",
+      "2": "Voice picker — 8 preset voices per language + community search, preview & use",
+      "3": "Settings tabs — Profile / Companion / Advanced three-panel layout",
+      "4": "ChatGPT history import — bring your old conversations into SoulLink",
+      "5": "Click model badge in chat header to jump to model settings",
+      "6": "Voice presets refresh in real-time when switching language"
+    },
+    "v1100": {
+      "1": "Dual image engine — added Flux as backup, image generation more reliable",
+      "2": "Fixed occasional image generation failures"
+    },
+    "v190": {
+      "1": "Gemini 3 Flash — upgraded AI engine, smarter & more expressive replies",
+      "2": "GPT-4o smart switch hint — auto-suggests Grok when GPT replies are short or refused",
+      "3": "Richer AI replies — no more one-liners, conversations feel more real",
+      "4": "Fixed Gemini thinking content occasionally leaking into chat"
+    },
+    "v180": {
+      "1": "AI image generation — your companion can now send selfies & scene photos",
+      "2": "Character appearance matching — images auto-match your character's look",
+      "3": "Images saved to cloud — persist after refresh, click to fullscreen",
+      "4": "Voice messaging — record and send voice, AI understands your speech",
+      "5": "AI voice reply — enable in settings, AI replies with voice too",
+      "7": "Voice toggle in settings — enable/disable AI voice reply anytime"
+    },
+    "v170": {
+      "1": "Custom character persona — enter a character name, AI auto-searches & extracts personality",
+      "2": "Multi-file knowledge base — upload up to 10 docs, each independently manageable",
+      "3": "Relationship toggle — choose Lover or Friend mode for your companion",
+      "4": "Knowledge base file list with per-item delete",
+      "5": "Show estimated wait time during persona extraction",
+      "6": "Lock settings modal during extraction to prevent accidental close",
+      "7": "Switching gender now requires re-selecting companion style",
+      "9": "Fixed Grok immersion rules lost on style change",
+      "10": "Fixed blank persona for users who skipped personality test"
+    },
+    "v160": {
+      "1": "Name your companion during registration — make them truly yours",
+      "2": "Choose your AI model at signup — Gemini, GPT-4o, or Grok",
+      "3": "Skip personality test — jump straight into chatting, take it later anytime",
+      "4": "Auto-resize chat input — expands as you type, like WeChat",
+      "5": "Increased chat memory to 30 messages for deeper conversations",
+      "6": "Redesigned model selector with official brand icons"
+    },
+    "v140": {
+      "1": "File upload in chat — send images & documents to AI",
+      "2": "AI Thinking Process — see Gemini's reasoning before it replies (Gemini only)",
+      "3": "Markdown rendering — AI replies now show bold, headings, lists & more",
+      "4": "WeChat-style timestamps — time separators auto-appear between messages",
+      "5": "Grok 4.1 — a more intimate & unfiltered companion experience",
+      "6": "Fixed Gemini thinking content leaking into chat replies",
+      "7": "Optimized thinking bubble design"
+    },
+    "v150": {
+      "1": "Fixed model switch losing memory & relationship data",
+      "2": "Fixed new workspaces defaulting to wrong AI provider",
+      "3": "Enhanced Gemini thinking content filter for edge cases"
+    },
+    "v130": {
+      "1": "AI Memory (Basic) — your companion can now remember key facts about you",
+      "2": "Trust Device — stay logged in for 90 days, no more repeated logins",
+      "3": "Chat background picker — 15 curated wallpapers to choose from",
+      "4": "Companion gender & personality — boyfriend or girlfriend with 4 unique styles",
+      "5": "AI auto-generates conversation titles based on chat content",
+      "6": "Smarter session handling & major stability improvements",
+      "7": "Web Search — AI can now search the internet for real-time weather, news & more"
+    },
+    "v120": {
+      "1": "About & Feedback page with donation support (Zelle / WeChat / Alipay)",
+      "2": "Custom companion avatar — click to upload your own image",
+      "3": "Smart companion rename — rename via chat conversation",
+      "4": "Personality test now has close button",
+      "5": "Sidebar layout & spacing improvements"
+    },
+    "v110": {
+      "1": "AI model selection — switch between GPT-4o & Gemini",
+      "2": "Email verification with 6-digit code",
+      "3": "Comprehensive mobile responsive layout",
+      "4": "Language toggle on login page",
+      "5": "Model switch stability improvements"
+    },
+    "v100": {
+      "1": "Personality test & tarot card feature",
+      "2": "Google OAuth login",
+      "3": "Real-time AI chat with personalized companion",
+      "4": "Bilingual support (English / 中文)"
+    }
+  },
+  "ambient": {
+    "no_sounds": "Ambient sounds",
+    "n_sounds": "{n} sounds playing",
+    "cat": {
+      "rain": "Rain",
+      "nature": "Nature",
+      "urban": "Urban",
+      "noise": "Noise"
+    },
+    "sound": {
+      "light_rain": "Light Rain",
+      "heavy_rain": "Heavy Rain",
+      "thunder": "Thunder",
+      "birds": "Birds",
+      "campfire": "Campfire",
+      "ocean": "Ocean Waves",
+      "wind": "Wind",
+      "river": "River",
+      "cafe": "Cafe",
+      "keyboard_typing": "Keyboard",
+      "train": "Train",
+      "white_noise": "White Noise",
+      "brown_noise": "Brown Noise"
+    }
+  },
+  "games": {
+    "title": "Stress Relief",
+    "breathing": {
+      "inhale": "Inhale...",
+      "hold": "Hold...",
+      "exhale": "Exhale...",
+      "start": "Start",
+      "stop": "Stop",
+      "done": "Well done!"
+    },
+    "bubbles": "Bubble Pop",
+    "zen": {
+      "clear": "Clear"
+    },
+    "colormix": "Color Mix",
+    "shapes": "Shape Catcher",
+    "exit": "Exit"
+  },
+  "about": {
+    "tagline": "Your AI Soul Companion",
+    "description": "SoulLink is an AI companion platform that creates meaningful connections through personalized conversations. Built with love by the SoulForge team.",
+    "team": "Our Team",
+    "role": {
+      "founder": "Founder & Developer"
+    },
+    "support": {
+      "desc": "If you enjoy SoulLink, consider buying us a coffee!"
+    },
+    "wechat": "WeChat",
+    "alipay": "Alipay",
+    "feedback": {
+      "suggestion": "Suggestion",
+      "bug": "Bug Report",
+      "other": "Other",
+      "placeholder": "Tell us what you think...",
+      "submit": "Submit Feedback",
+      "thanks": "Thank you for your feedback!"
+    },
+    "community": {
+      "desc": "Join our WeChat group for updates, feedback & discussion!"
+    },
+    "survey": {
+      "desc": "Help us improve — take our quick 4-5 min survey!"
+    }
+  },
+  "community": {
+    "popup": {
+      "title": "Join Our Community",
+      "desc": "Scan to join our WeChat group for updates & feedback!",
+      "close": "Got it"
+    }
+  },
+  "announcement": {
+    "community": "💬 Join our WeChat community for updates & feedback!",
+    "view": "View"
+  },
+  "browser": {
+    "hint": "🌐 For the best experience, we recommend using Safari or Chrome"
+  },
+  "bg": {
+    "picker": {
+      "title": "Background"
+    },
+    "upload": "Upload",
+    "custom": {
+      "label": "Custom"
+    }
+  },
+  "crop": {
+    "title": "Crop Image",
+    "confirm": "Confirm"
+  },
+  "thinking": {
+    "header": "Thought Process"
+  },
+  "hint": {
+    "switch": {
+      "grok": {
+        "btn": "Switch to Grok →"
+      }
+    }
+  },
+  "voicecall": {
+    "status": {
+      "connecting": "Connecting...",
+      "listening": "Listening...",
+      "thinking": "Thinking...",
+      "speaking": "Speaking...",
+      "still_listening": "Still listening..."
+    },
+    "error": {
+      "connection": "Connection error",
+      "mic_denied": "Cannot access microphone. Please check permissions."
+    },
+    "feature_gate": "Please enable \"Voice Reply\" and select a voice in Settings first to use voice call"
+  }
+}
