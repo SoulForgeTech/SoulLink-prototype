@@ -77,7 +77,7 @@ export async function resendCode(
  */
 export async function forgotPassword(
   email: string,
-): Promise<{ success: boolean; message?: string; error?: string }> {
+): Promise<{ success: boolean; message?: string; error?: string; no_password?: boolean }> {
   const response = await fetch(AUTH.FORGOT_PASSWORD, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

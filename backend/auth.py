@@ -666,7 +666,11 @@ def handle_forgot_password(email: str) -> Dict[str, Any]:
 
     send_password_reset_email(email, code, user.get("name", ""))
 
-    return {"success": True, "message": "If this email is registered, a reset code has been sent."}
+    result = {"success": True, "message": "If this email is registered, a reset code has been sent."}
+    # 告诉前端：这是 Google 账号首次设置密码（用于显示不同提示文案）
+    if not user.get("password_hash"):
+        result["no_password"] = True
+    return result
 
 
 def handle_reset_password(email: str, code: str, new_password: str, user_agent: str = "") -> Dict[str, Any]:

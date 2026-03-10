@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [view, setView] = useState<View>('auth');
   const [verifyEmail, setVerifyEmail] = useState('');
   const [resetEmail, setResetEmail] = useState('');
+  const [resetNoPassword, setResetNoPassword] = useState(false);
   const [lang, setLang] = useState<'en' | 'zh'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('soullink-lang') as 'en' | 'zh') || 'en';
@@ -64,8 +65,9 @@ export default function LoginPage() {
     setView('forgot');
   }, []);
 
-  const handleResetCodeSent = useCallback((email: string) => {
+  const handleResetCodeSent = useCallback((email: string, noPassword?: boolean) => {
     setResetEmail(email);
+    setResetNoPassword(!!noPassword);
     setView('reset');
   }, []);
 
@@ -284,6 +286,7 @@ export default function LoginPage() {
             onSuccess={handleAuthSuccess}
             onBack={() => setView('auth')}
             lang={lang}
+            noPassword={resetNoPassword}
           />
         ) : (
           <>

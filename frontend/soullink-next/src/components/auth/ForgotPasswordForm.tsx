@@ -11,7 +11,7 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { forgotPassword } from '@/lib/api/auth';
 
 interface ForgotPasswordFormProps {
-  onCodeSent: (email: string) => void;
+  onCodeSent: (email: string, noPassword?: boolean) => void;
   onBack: () => void;
   lang?: 'en' | 'zh';
 }
@@ -63,7 +63,7 @@ export default function ForgotPasswordForm({ onCodeSent, onBack, lang = 'en' }: 
         return;
       }
 
-      onCodeSent(email.trim());
+      onCodeSent(email.trim(), data.no_password);
     } catch {
       setError(t.networkError);
     } finally {

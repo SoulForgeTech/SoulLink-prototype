@@ -16,16 +16,20 @@ interface ResetPasswordFormProps {
   onSuccess: (data: AuthResponse) => void;
   onBack: () => void;
   lang?: 'en' | 'zh';
+  noPassword?: boolean;
 }
 
 const i18n = {
   en: {
     title: 'Enter reset code',
     subtitle: 'We sent a 6-digit code to',
-    codeLabel: 'Reset Code',
+    noPassTitle: 'Set your password',
+    noPassSubtitle: 'Your Google account has no password yet. Verify your email to set one.',
+    codeLabel: 'Verification Code',
     newPassword: 'New Password', newPasswordPh: 'At least 6 characters',
     confirmPassword: 'Confirm Password', confirmPh: 'Re-enter your password',
     submit: 'Reset Password', submitting: 'Resetting...',
+    submitSetNew: 'Set Password', submittingSetNew: 'Setting...',
     enterCode: 'Please enter the 6-digit code.',
     enterPassword: 'Please enter a new password.',
     passMin: 'Password must be at least 6 characters.',
@@ -40,10 +44,13 @@ const i18n = {
   zh: {
     title: '输入重置验证码',
     subtitle: '我们已发送6位验证码到',
-    codeLabel: '重置验证码',
+    noPassTitle: '设置密码',
+    noPassSubtitle: '您的 Google 账号尚未设置密码，验证邮箱后即可设置',
+    codeLabel: '验证码',
     newPassword: '新密码', newPasswordPh: '至少6位字符',
     confirmPassword: '确认密码', confirmPh: '再次输入密码',
     submit: '重置密码', submitting: '重置中...',
+    submitSetNew: '设置密码', submittingSetNew: '设置中...',
     enterCode: '请输入6位验证码',
     enterPassword: '请输入新密码',
     passMin: '密码至少需要6个字符',
@@ -57,7 +64,7 @@ const i18n = {
   },
 };
 
-export default function ResetPasswordForm({ email, onSuccess, onBack, lang = 'en' }: ResetPasswordFormProps) {
+export default function ResetPasswordForm({ email, onSuccess, onBack, lang = 'en', noPassword = false }: ResetPasswordFormProps) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -175,12 +182,12 @@ export default function ResetPasswordForm({ email, onSuccess, onBack, lang = 'en
     <div>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>✉️</div>
+        <div style={{ fontSize: '48px', marginBottom: '8px' }}>{noPassword ? '🔐' : '✉️'}</div>
         <h3 style={{ color: 'white', fontSize: '1.3rem', margin: '0 0 8px 0' }}>
-          {t.title}
+          {noPassword ? t.noPassTitle : t.title}
         </h3>
         <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.88rem', margin: 0 }}>
-          {t.subtitle}
+          {noPassword ? t.noPassSubtitle : t.subtitle}
         </p>
         <p style={{ color: '#e8b4b8', fontWeight: 600, fontSize: '0.95rem', margin: '4px 0 0 0' }}>
           {email}
@@ -291,10 +298,10 @@ export default function ResetPasswordForm({ email, onSuccess, onBack, lang = 'en
                 borderColor: 'rgba(90,74,74,0.3)', borderTopColor: '#5a4a4a',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
-              {t.submitting}
+              {noPassword ? t.submittingSetNew : t.submitting}
             </>
           ) : (
-            t.submit
+            noPassword ? t.submitSetNew : t.submit
           )}
         </button>
       </form>
