@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import ReduxProvider from "@/components/providers/ReduxProvider";
 import GlassRipple from "@/components/effects/GlassRipple";
 import "./globals.css";
@@ -26,6 +27,7 @@ export default function RootLayout({
         <ReduxProvider>
           <GlassRipple />
           {children}
+          <SpeedInsights />
         </ReduxProvider>
       </body>
     </html>
