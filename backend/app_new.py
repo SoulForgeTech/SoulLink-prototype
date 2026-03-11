@@ -41,6 +41,53 @@ from image_gen import process_image_markers
 import requests as _requests
 
 
+# ==================== Previous Conversation Context ====================
+
+def get_previous_conversation_context(user_id, current_conv_id, db_instance, max_messages=10):
+    """
+    获取用户上一个对话的最近 N 条消息，用于新对话的上下文注入。
+    只在新对话的第一条消息时调用。
+    """
+    try:
+        # 找到用户最近的、不是当前对话的活跃对话
+        prev_conv = db_instance.db["conversations"].find_one(
+            {
+                "user_id": user_id,
+                "is_active": True,
+                "_id": {"$ne": current_conv_id}
+            },
+            sort=[("updated_at", -1)]
+        )
+        if not prev_conv:
+            return ""
+
+        messages = prev_conv.get("messages", [])
+        if not messages:
+            return ""
+
+        # 取最后 N 条消息
+        recent = messages[-max_messages:]
+        context_lines = []
+        for m in recent:
+            role_label = "User" if m["role"] == "user" else "Assistant"
+            content = m.get("content", "")[:300]
+            context_lines.append(f"{role_label}: {content}")
+
+        if not context_lines:
+            return ""
+
+        context_block = "\n".join(context_lines)
+        return (
+            f"[以下是我们上一次对话的最近内容摘要，请参考这些上下文保持连贯性，"
+            f"但不需要主动提及这些内容，只在相关时自然引用]\n"
+            f"{context_block}\n"
+            f"[上次对话摘要结束]\n\n"
+        )
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"[CONTEXT] Failed to get previous conversation: {e}")
+        return ""
+
+
 # ==================== Shared Knowledge Base (Psychology) ====================
 KB_WORKSPACE_SLUG = os.getenv("KB_WORKSPACE_SLUG", "soullink_test")
 
@@ -1154,6 +1201,13 @@ def chat():
                 {"$set": {"metadata.import_session_activated": True}}
             )
 
+        # Previous conversation context injection (only on first message of a new conversation)
+        if is_first_message:
+            prev_context = get_previous_conversation_context(user_id, conversation["_id"], db)
+            if prev_context:
+                message_to_send = prev_context + message_to_send
+                logger.info("[CONTEXT] Injected previous conversation context into new chat")
+
         # 发送消息
         logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
@@ -1716,6 +1770,13 @@ def chat_stream():
                 {"_id": conversation["_id"]},
                 {"$set": {"metadata.import_session_activated": True}}
             )
+
+        # Previous conversation context injection (only on first message of a new conversation)
+        if is_first_message:
+            prev_context = get_previous_conversation_context(user_id, conversation["_id"], db)
+            if prev_context:
+                message_to_send = prev_context + message_to_send
+                logger.info("[CONTEXT] Injected previous conversation context into new chat")
 
         # Pre-load all variables needed inside generator
         conv_id = conversation["_id"]
