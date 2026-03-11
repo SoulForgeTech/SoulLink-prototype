@@ -1630,7 +1630,10 @@ def chat_stream():
             except Exception:
                 pass
         if not conversation:
-            conversation = db.get_active_conversation(user_id)
+            # No valid conversation_id provided — create a brand new conversation
+            # instead of reusing the most recent one (which causes messages to
+            # leak into old threads).
+            conversation = db.create_conversation(user_id)
 
         is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
 

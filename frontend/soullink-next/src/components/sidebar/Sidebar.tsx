@@ -18,7 +18,7 @@ import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setSidebarOpen, openModal } from '@/store/uiSlice';
-import { setCurrentId } from '@/store/conversationsSlice';
+import { setCurrentId, addConversation } from '@/store/conversationsSlice';
 import { clearMessages } from '@/store/chatSlice';
 import { setLanguage } from '@/store/settingsSlice';
 import { logout } from '@/store/authSlice';
@@ -27,6 +27,7 @@ import ConversationItem from './ConversationItem';
 import { useT } from '@/hooks/useT';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { updateSettings } from '@/lib/api/user';
+import { createConversation } from '@/lib/api/conversations';
 import type { Language } from '@/types';
 
 // ==================== Props ====================
@@ -60,11 +61,18 @@ export default function Sidebar({
     dispatch(setSidebarOpen(false));
   }, [dispatch]);
 
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback(async () => {
     dispatch(clearMessages());
-    dispatch(setCurrentId(null));
     dispatch(setSidebarOpen(false));
-  }, [dispatch]);
+    try {
+      const { conversation } = await createConversation(authFetch);
+      dispatch(addConversation(conversation));
+      dispatch(setCurrentId(conversation.id));
+    } catch {
+      // API failed — fall back to null ID (backend will create on first message)
+      dispatch(setCurrentId(null));
+    }
+  }, [dispatch, authFetch]);
 
   const handleToggleLanguage = useCallback(() => {
     const next: Language = language === 'en' ? 'zh-CN' : 'en';
