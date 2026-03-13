@@ -1711,9 +1711,14 @@
             display: flex;
         }
 
-        /* Image edit button hover */
+        /* Image edit button — hover on desktop, always visible on mobile */
         .img-edit-wrap:hover .img-edit-btn {
             opacity: 1 !important;
+        }
+        @media (hover: none), (pointer: coarse) {
+            .img-edit-btn {
+                opacity: 0.75 !important;
+            }
         }
 
         /* 消息气泡中的附件 */
