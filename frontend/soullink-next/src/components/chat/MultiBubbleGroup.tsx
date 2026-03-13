@@ -40,10 +40,12 @@ export default function MultiBubbleGroup({
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
 
   const bubbles = useMemo(() => splitIntoBubbles(content), [content]);
+  // Skip empty text bubbles when there are only images (e.g. image edit result)
+  const hasText = bubbles.some((b) => b.trim());
 
   return (
     <div className={`message-group ${noAnimate ? 'no-animate' : ''}`}>
-      {bubbles.map((text, i) => (
+      {hasText && bubbles.map((text, i) => (
         <MessageBubble
           key={i}
           role="assistant"

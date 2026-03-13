@@ -776,6 +776,7 @@ def edit_image():
 
     prompt = data.get("prompt", "").strip()
     image_data = data.get("image", "").strip()
+    conversation_id = data.get("conversation_id", "").strip()
 
     if not prompt:
         return jsonify({"error": "prompt is required"}), 400
@@ -801,6 +802,26 @@ def edit_image():
                 "b64": result["b64"],
                 "prompt": prompt,
             })
+
+        # 保存编辑结果到对话历史
+        if conversation_id:
+            try:
+                from bson import ObjectId as BsonObjectId
+                conv_oid = BsonObjectId(conversation_id)
+                # 保存 assistant 消息（编辑后的图片）
+                db.add_message_to_conversation(
+                    conv_oid, user_id, "assistant", "",
+                    attachments=[{
+                        "name": "edited_image.png",
+                        "mime": "image/png",
+                        "isImage": True,
+                        "isGenerated": True,
+                        "prompt": prompt,
+                        "url": url,
+                    }],
+                )
+            except Exception as save_err:
+                logger.warning(f"[IMAGE_EDIT] Failed to save to conversation: {save_err}")
 
         return jsonify({
             "url": url,

@@ -20,7 +20,7 @@ export interface ImageEditResult {
  */
 export async function editImage(
   authFetch: AuthFetchFn,
-  params: { image: string; prompt: string },
+  params: { image: string; prompt: string; conversation_id?: string },
 ): Promise<ImageEditResult> {
   const response = await authFetch(IMAGE.EDIT, {
     method: 'POST',
@@ -28,6 +28,7 @@ export async function editImage(
     body: JSON.stringify({
       image: params.image,
       prompt: params.prompt,
+      conversation_id: params.conversation_id,
     }),
   });
 

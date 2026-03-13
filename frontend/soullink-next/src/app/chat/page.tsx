@@ -110,7 +110,7 @@ export default function ChatPage() {
       );
 
       try {
-        const result = await editImage(authFetch, { image: imageDataUrl, prompt });
+        const result = await editImage(authFetch, { image: imageDataUrl, prompt, conversation_id: currentConversationId || undefined });
         const editedUrl = result.url || (result.b64 ? `data:image/jpeg;base64,${result.b64}` : '');
 
         if (editedUrl) {
@@ -173,6 +173,7 @@ export default function ChatPage() {
       <ChatInput
         onSend={handleSend}
         onVoiceCall={handleVoiceCall}
+        onImageEdit={handleImageEdit}
         onStartRecording={voiceRecording.startRecording}
         onStopRecording={voiceRecording.stopRecording}
       />

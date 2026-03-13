@@ -70,6 +70,8 @@ interface ChatInputProps {
   onStopRecording?: () => void;
   /** Called when the user initiates a voice call. */
   onVoiceCall?: () => void;
+  /** Called when the user sends an image for editing (image dataUrl + edit prompt). */
+  onImageEdit?: (imageDataUrl: string, prompt: string) => void;
   /** Whether input is disabled (e.g. while streaming). */
   disabled?: boolean;
 }
@@ -295,6 +297,7 @@ export default function ChatInput({
   onStartRecording,
   onStopRecording,
   onVoiceCall,
+  onImageEdit,
   disabled = false,
 }: ChatInputProps) {
   const language = useAppSelector((s) => s.settings.language);
@@ -343,6 +346,25 @@ export default function ChatInput({
       textareaRef.current.style.height = 'auto';
     }
   }, [text, attachments, disabled, onSend]);
+
+  // ---- Send as image edit ----
+  const handleEditSend = useCallback(() => {
+    const trimmed = text.trim();
+    const imageAtt = attachments.find((a) => a.isImage && a.dataUrl);
+    if (!trimmed || !imageAtt?.dataUrl || !onImageEdit) return;
+    if (disabled) return;
+
+    onImageEdit(imageAtt.dataUrl, trimmed);
+    setText('');
+    setAttachments([]);
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  }, [text, attachments, disabled, onImageEdit]);
+
+  // Check if we can offer image edit (exactly 1 image attachment + text)
+  const canEditImage = !!(onImageEdit && text.trim() && attachments.some((a) => a.isImage && a.dataUrl));
 
   // ---- Keyboard handling ----
   const handleKeyDown = useCallback(
@@ -620,6 +642,26 @@ export default function ChatInput({
             {/* Phone SVG */}
             <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
+          </button>
+        )}
+
+        {/* Image Edit button — shown when image attached + text typed */}
+        {canEditImage && (
+          <button
+            onClick={handleEditSend}
+            style={{
+              ...sendBtnBase,
+              color: hoveredBtn === 'edit' ? '#a78bfa' : 'rgba(255,255,255,0.65)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={() => setHoveredBtn('edit')}
+            onMouseLeave={() => setHoveredBtn(null)}
+            aria-label="Edit image"
+            title="Edit image"
+          >
+            <svg width={18} height={18} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
         )}
