@@ -527,19 +527,21 @@ def edit_image_kontext(prompt: str, input_image: str, safety_tolerance: int = 6)
             timeout=30,
         )
         resp.raise_for_status()
-        task_id = resp.json().get("id")
+        resp_data = resp.json()
+        task_id = resp_data.get("id")
+        # Kontext returns a specific polling_url (may be on a different subdomain like api.eu2.bfl.ai)
+        polling_url = resp_data.get("polling_url") or f"{BFL_RESULT_URL}?id={task_id}"
         if not task_id:
             logger.error("[IMAGE_GEN] BFL Kontext returned no task ID")
             return None
 
-        logger.info(f"[IMAGE_GEN] BFL Kontext edit task submitted: {task_id}")
+        logger.info(f"[IMAGE_GEN] BFL Kontext edit task submitted: {task_id}, polling: {polling_url}")
 
         # Step 2: 轮询结果（最多 120 秒）
         for i in range(40):  # 40 x 3s = 120s
             time.sleep(3)
             result_resp = _http_session.get(
-                BFL_RESULT_URL,
-                params={"id": task_id},
+                polling_url,
                 headers={"x-key": BFL_API_KEY},
                 timeout=15,
             )

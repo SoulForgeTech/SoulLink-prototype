@@ -791,7 +791,7 @@ def edit_image():
 
         result = edit_image_kontext(prompt, image_data)
         if not result:
-            return jsonify({"error": "Image editing failed. The provider may have rejected the request."}), 502
+            return jsonify({"error": "Image editing failed. The provider may have rejected the request."}), 500
 
         # 上传到 Cloudinary 持久化
         url = upload_to_cloudinary(result["b64"], str(user_id))
