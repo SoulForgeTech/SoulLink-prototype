@@ -106,6 +106,19 @@ export function ImageEditOverlay({
           >
             Go
           </button>
+          <button
+            onClick={() => { setShowInput(false); setPrompt(''); }}
+            style={{
+              background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px',
+              padding: '6px 8px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center',
+            }}
+            title="Cancel"
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
     </>
