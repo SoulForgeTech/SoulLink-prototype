@@ -83,6 +83,19 @@ export function ImageEditOverlay({
           }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            onClick={() => { setShowInput(false); setPrompt(''); }}
+            style={{
+              background: 'none', border: 'none', padding: '4px',
+              color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', flexShrink: 0,
+            }}
+            title="Cancel"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           <input
             ref={inputRef}
             value={prompt}
@@ -90,7 +103,7 @@ export function ImageEditOverlay({
             onKeyDown={handleKeyDown}
             placeholder="Describe the edit..."
             style={{
-              flex: 1, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)',
+              flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '6px 10px', color: '#fff', fontSize: '0.8rem',
               outline: 'none',
             }}
@@ -102,22 +115,10 @@ export function ImageEditOverlay({
               background: prompt.trim() ? '#6BA3D6' : 'rgba(255,255,255,0.1)',
               border: 'none', borderRadius: '8px', padding: '6px 12px',
               color: '#fff', fontSize: '0.8rem', cursor: prompt.trim() ? 'pointer' : 'default',
+              flexShrink: 0,
             }}
           >
             Go
-          </button>
-          <button
-            onClick={() => { setShowInput(false); setPrompt(''); }}
-            style={{
-              background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px',
-              padding: '6px 8px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer',
-              display: 'flex', alignItems: 'center',
-            }}
-            title="Cancel"
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
           </button>
         </div>
       )}
