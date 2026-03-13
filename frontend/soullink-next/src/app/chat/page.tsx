@@ -117,7 +117,8 @@ export default function ChatPage() {
   );
 
   // Handle chat input send — wired to SSE streaming
-  // When user uploads an image + types text: send to AI chat AND trigger image edit in parallel
+  // When user uploads image + text that looks like an edit instruction,
+  // both AI chat and image edit run in parallel.
   const handleSend = useCallback(
     (message: string, attachments: MessageAttachment[]) => {
       // 1. Add user message to chat immediately
@@ -137,10 +138,15 @@ export default function ChatPage() {
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
-      // 3. If user uploaded exactly 1 image + typed text, also trigger image edit in parallel
+      // 3. If user uploaded 1 image + text looks like an edit intent, also trigger image edit
       const imageAtts = attachments.filter((a) => a.isImage && a.dataUrl);
       if (imageAtts.length === 1 && message.trim() && attachments.length === 1) {
-        handleImageEdit(imageAtts[0].dataUrl!, message);
+        const lowerMsg = message.toLowerCase();
+        // Edit intent keywords (CN + EN)
+        const editPatterns = /改|换|变|修|调|去掉|加上|删除|替换|移除|添加|放|把.*成|把.*换|把.*改|把.*变|背景|头发|颜色|衣服|表情|风格|滤镜|change|replace|edit|modify|remove|add|make.*look|turn.*into|swap|transform|convert|background|hair|color|outfit|style|filter/i;
+        if (editPatterns.test(lowerMsg)) {
+          handleImageEdit(imageAtts[0].dataUrl!, message);
+        }
       }
     },
     [dispatch, sendStream, currentConversationId, handleImageEdit],
