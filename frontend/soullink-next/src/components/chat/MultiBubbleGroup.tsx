@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { open as openImageViewer } from '@/store/imageViewerSlice';
 import { splitIntoBubbles } from '@/lib/bubbleSplitter';
-import MessageBubble from './MessageBubble';
+import MessageBubble, { ImageEditOverlay } from './MessageBubble';
 
 interface MultiBubbleGroupProps {
   content: string;
@@ -22,6 +22,8 @@ interface MultiBubbleGroupProps {
   onTTS?: (text: string) => void;
   /** If true, skip entrance animation (for history messages) */
   noAnimate?: boolean;
+  /** Callback for image editing */
+  onImageEdit?: (imageDataUrl: string, prompt: string) => void;
 }
 
 export default function MultiBubbleGroup({
@@ -31,6 +33,7 @@ export default function MultiBubbleGroup({
   baseAnimationIndex = 0,
   onTTS,
   noAnimate = false,
+  onImageEdit,
 }: MultiBubbleGroupProps) {
   const dispatch = useAppDispatch();
   const ttsEnabled = useAppSelector((s) => s.settings.ttsEnabled);
@@ -92,12 +95,14 @@ export default function MultiBubbleGroup({
             return (
               <div
                 key={i}
+                className="img-edit-wrap"
                 style={{
                   borderRadius: '12px',
                   overflow: 'hidden',
                   boxShadow: '0 4px 15px rgba(0,0,0,0.12)',
                   cursor: 'pointer',
                   transition: 'transform 0.2s',
+                  position: 'relative',
                 }}
                 onClick={() => dispatch(openImageViewer(url))}
               >
@@ -109,6 +114,11 @@ export default function MultiBubbleGroup({
                   loading="lazy"
                   onError={() => setFailedImages((prev) => new Set(prev).add(i))}
                 />
+                {onImageEdit && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <ImageEditOverlay imageSrc={url} onEdit={onImageEdit} />
+                  </div>
+                )}
               </div>
             );
           })}

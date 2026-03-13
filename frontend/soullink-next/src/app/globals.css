@@ -1711,6 +1711,11 @@
             display: flex;
         }
 
+        /* Image edit button hover */
+        .img-edit-wrap:hover .img-edit-btn {
+            opacity: 1 !important;
+        }
+
         /* 消息气泡中的附件 */
         .message-attachments {
             display: flex;

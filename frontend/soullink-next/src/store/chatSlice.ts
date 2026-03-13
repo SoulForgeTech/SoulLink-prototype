@@ -71,6 +71,13 @@ const chatSlice = createSlice({
       state.messages.push(action.payload);
     },
 
+    /** Replace the last message (used for image edit placeholder → result) */
+    replaceLastMessage(state, action: PayloadAction<Message>) {
+      if (state.messages.length > 0) {
+        state.messages[state.messages.length - 1] = action.payload;
+      }
+    },
+
     /** Mark the start of an SSE stream */
     startStreaming(state) {
       state.isStreaming = true;
@@ -134,6 +141,7 @@ const chatSlice = createSlice({
 export const {
   setMessages,
   addMessage,
+  replaceLastMessage,
   startStreaming,
   appendStreamText,
   appendThinkingContent,

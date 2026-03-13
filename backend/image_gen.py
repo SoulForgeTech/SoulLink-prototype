@@ -499,6 +499,88 @@ def _generate_image_bfl(prompt: str, safety_tolerance: int = 6) -> dict:
     return None
 
 
+def edit_image_kontext(prompt: str, input_image: str, safety_tolerance: int = 6) -> dict:
+    """
+    调用 BFL Flux Kontext Pro API 编辑图片。
+    用户上传图片 + 自然语言编辑指令 → 返回编辑后的图片。
+    input_image: base64 编码的图片（不含 data:image/... 前缀）或图片 URL。
+    返回 {"b64": base64_string, "prompt": prompt} 或 None。
+    """
+    if not BFL_API_KEY:
+        logger.warning("[IMAGE_GEN] BFL_API_KEY not configured")
+        return None
+
+    try:
+        # Step 1: 提交编辑任务
+        submit_url = f"{BFL_SUBMIT_URL}/flux-kontext-pro"
+        payload = {
+            "prompt": prompt,
+            "input_image": input_image,
+            "safety_tolerance": safety_tolerance,
+            "output_format": "jpeg",
+        }
+
+        resp = _http_session.post(
+            submit_url,
+            headers={"x-key": BFL_API_KEY, "Content-Type": "application/json"},
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        task_id = resp.json().get("id")
+        if not task_id:
+            logger.error("[IMAGE_GEN] BFL Kontext returned no task ID")
+            return None
+
+        logger.info(f"[IMAGE_GEN] BFL Kontext edit task submitted: {task_id}")
+
+        # Step 2: 轮询结果（最多 120 秒）
+        for i in range(40):  # 40 x 3s = 120s
+            time.sleep(3)
+            result_resp = _http_session.get(
+                BFL_RESULT_URL,
+                params={"id": task_id},
+                headers={"x-key": BFL_API_KEY},
+                timeout=15,
+            )
+            result_resp.raise_for_status()
+            result_data = result_resp.json()
+            status = result_data.get("status")
+
+            if status == "Ready":
+                image_url = result_data.get("result", {}).get("sample")
+                if not image_url:
+                    logger.error(f"[IMAGE_GEN] BFL Kontext Ready but no image URL: {result_data}")
+                    return None
+
+                logger.info(f"[IMAGE_GEN] BFL Kontext edited image: {image_url[:80]}")
+
+                # 下载图片转 base64
+                img_resp = _http_session.get(image_url, timeout=30)
+                img_resp.raise_for_status()
+                b64 = base64.b64encode(img_resp.content).decode("utf-8")
+
+                if _is_black_image(b64):
+                    logger.warning(f"[IMAGE_GEN] BFL Kontext returned black image for: {prompt[:80]}...")
+                    return None
+
+                logger.info(f"[IMAGE_GEN] BFL Kontext edit ready ({len(b64)} chars b64, polled {i+1} times)")
+                return {"b64": b64, "prompt": prompt}
+
+            elif status in ("Error", "Content Moderated", "Request Moderated"):
+                logger.warning(f"[IMAGE_GEN] BFL Kontext task {status}: {result_data}")
+                return None
+
+            # Pending / Processing → 继续轮询
+
+        logger.warning(f"[IMAGE_GEN] BFL Kontext polling timeout for task {task_id}")
+        return None
+
+    except requests.exceptions.Timeout:
+        logger.warning(f"[IMAGE_GEN] BFL Kontext timeout for: {prompt[:60]}")
+    except Exception as e:
+        logger.error(f"[IMAGE_GEN] BFL Kontext failed: {e}")
+    return None
 
 
 _NSFW_KEYWORDS = re.compile(

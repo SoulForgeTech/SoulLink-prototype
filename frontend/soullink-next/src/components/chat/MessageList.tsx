@@ -93,9 +93,11 @@ function WelcomeMessage({ language }: { language: string }) {
 interface MessageListProps {
   /** Optional TTS callback. */
   onTTS?: (text: string) => void;
+  /** Optional image edit callback — receives image source + edit prompt. */
+  onImageEdit?: (imageDataUrl: string, prompt: string) => void;
 }
 
-export default function MessageList({ onTTS }: MessageListProps) {
+export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
   const messages = useAppSelector((s) => s.chat.messages);
   const isLoading = useAppSelector((s) => s.chat.isLoading);
   const isStreaming = useAppSelector((s) => s.chat.isStreaming);
@@ -180,6 +182,7 @@ export default function MessageList({ onTTS }: MessageListProps) {
                     audioUrl={msg.audio_url}
                     audioDuration={msg.audio_duration}
                     animationIndex={isHistory ? -1 : 0}
+                    onImageEdit={onImageEdit}
                   />
                 )}
 
@@ -209,6 +212,7 @@ export default function MessageList({ onTTS }: MessageListProps) {
                         showAvatar
                         onTTS={onTTS}
                         noAnimate={isHistory}
+                        onImageEdit={onImageEdit}
                       />
                     )}
                   </div>

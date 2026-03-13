@@ -7,9 +7,110 @@
  * .message-content, .message-avatar, .avatar-spacer
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, type KeyboardEvent } from 'react';
 import { useAppSelector } from '@/store';
 import { renderMarkdown } from '@/lib/markdown';
+
+// ==================== Image Edit Overlay ====================
+
+export function ImageEditOverlay({
+  imageSrc,
+  onEdit,
+}: {
+  imageSrc: string;
+  onEdit: (imageDataUrl: string, prompt: string) => void;
+}) {
+  const [showInput, setShowInput] = useState(false);
+  const [prompt, setPrompt] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpen = useCallback(() => {
+    setShowInput(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+    onEdit(imageSrc, trimmed);
+    setPrompt('');
+    setShowInput(false);
+  }, [prompt, imageSrc, onEdit]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      } else if (e.key === 'Escape') {
+        setShowInput(false);
+        setPrompt('');
+      }
+    },
+    [handleSubmit],
+  );
+
+  return (
+    <>
+      {/* Edit button */}
+      <button
+        onClick={handleOpen}
+        title="Edit image"
+        style={{
+          position: 'absolute', right: '6px', bottom: '6px',
+          background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '8px',
+          padding: '4px 8px', cursor: 'pointer', color: '#fff',
+          fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px',
+          opacity: 0, transition: 'opacity 0.2s',
+          backdropFilter: 'blur(4px)',
+        }}
+        className="img-edit-btn"
+      >
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+        Edit
+      </button>
+
+      {/* Inline prompt input */}
+      {showInput && (
+        <div
+          style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+            padding: '8px', borderRadius: '0 0 12px 12px',
+            display: 'flex', gap: '6px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            ref={inputRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Describe the edit..."
+            style={{
+              flex: 1, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px', padding: '6px 10px', color: '#fff', fontSize: '0.8rem',
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!prompt.trim()}
+            style={{
+              background: prompt.trim() ? '#6BA3D6' : 'rgba(255,255,255,0.1)',
+              border: 'none', borderRadius: '8px', padding: '6px 12px',
+              color: '#fff', fontSize: '0.8rem', cursor: prompt.trim() ? 'pointer' : 'default',
+            }}
+          >
+            Go
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 
 // ==================== Types ====================
 
@@ -26,6 +127,8 @@ interface MessageBubbleProps {
   className?: string;
   /** Callback for TTS playback */
   onTTS?: (text: string) => void;
+  /** Callback for image editing — receives image data URL/URL + edit prompt */
+  onImageEdit?: (imageDataUrl: string, prompt: string) => void;
 }
 
 // ==================== Voice Waveform ====================
@@ -117,6 +220,7 @@ export default function MessageBubble({
   dangerousHtml,
   className = '',
   onTTS,
+  onImageEdit,
 }: MessageBubbleProps) {
   const companionAvatar = useAppSelector((s) => s.settings.companionAvatar);
   const companionName = useAppSelector((s) => s.settings.companionName);
@@ -220,14 +324,21 @@ export default function MessageBubble({
         {/* Image attachments (user) */}
         {imageAttachments.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: content ? '8px' : 0 }}>
-            {imageAttachments.map((att, i) => (
-              <img
-                key={i}
-                src={att.dataUrl || att.url}
-                alt={att.name}
-                style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover', cursor: 'pointer' }}
-              />
-            ))}
+            {imageAttachments.map((att, i) => {
+              const src = att.dataUrl || att.url || '';
+              return (
+                <div key={i} className="img-edit-wrap" style={{ position: 'relative', display: 'inline-block' }}>
+                  <img
+                    src={src}
+                    alt={att.name}
+                    style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover', cursor: 'pointer' }}
+                  />
+                  {onImageEdit && src && (
+                    <ImageEditOverlay imageSrc={src} onEdit={onImageEdit} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

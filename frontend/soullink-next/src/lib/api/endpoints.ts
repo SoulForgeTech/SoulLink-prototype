@@ -73,6 +73,11 @@ export const UPLOAD = {
   DELETE_BACKGROUND: `${BASE}/api/delete-background`,
 } as const;
 
+// ==================== Image Edit ====================
+export const IMAGE = {
+  EDIT: `${BASE}/api/image/edit`,
+} as const;
+
 // ==================== Personality Test ====================
 export const PERSONALITY = {
   STATUS: `${BASE}/api/personality-test/status`,
@@ -105,6 +110,7 @@ export const ENDPOINTS = {
   CONVERSATIONS,
   VOICE,
   UPLOAD,
+  IMAGE,
   PERSONALITY,
   IMPORT,
   WORKSPACE,

@@ -10,14 +10,15 @@
  * Chat send is wired to useSSEStream for real-time streaming.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
-import { addMessage } from '@/store/chatSlice';
+import { addMessage, replaceLastMessage } from '@/store/chatSlice';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { useSSEStream } from '@/hooks/useSSEStream';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useVoiceCallContext } from '@/contexts/VoiceCallContext';
 import { textToSpeech } from '@/lib/api/voice';
+import { editImage } from '@/lib/api/image';
 
 import ChatHeader from '@/components/chat/ChatHeader';
 import MessageList from '@/components/chat/MessageList';
@@ -92,6 +93,52 @@ export default function ChatPage() {
     [authFetch],
   );
 
+  // Handle image edit — call BFL Kontext API
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const handleImageEdit = useCallback(
+    async (imageDataUrl: string, prompt: string) => {
+      if (isEditingImage) return;
+      setIsEditingImage(true);
+
+      // Show a placeholder assistant message while editing
+      dispatch(
+        addMessage({
+          role: 'assistant',
+          content: '🖌️ Editing image...',
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      try {
+        const result = await editImage(authFetch, { image: imageDataUrl, prompt });
+        const editedUrl = result.url || (result.b64 ? `data:image/jpeg;base64,${result.b64}` : '');
+
+        if (editedUrl) {
+          // Replace the placeholder with the result
+          dispatch(
+            replaceLastMessage({
+              role: 'assistant',
+              content: '',
+              image_urls: [editedUrl],
+              timestamp: new Date().toISOString(),
+            }),
+          );
+        }
+      } catch (err) {
+        dispatch(
+          replaceLastMessage({
+            role: 'assistant',
+            content: `Image edit failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      } finally {
+        setIsEditingImage(false);
+      }
+    },
+    [authFetch, dispatch, isEditingImage],
+  );
+
   // Handle voice call — MUST call start() here (user gesture context)
   // so AudioContext starts in 'running' state, not 'suspended'.
   // If start() were called from useEffect (non-gesture), AudioContext
@@ -111,7 +158,7 @@ export default function ChatPage() {
       <GamesPanel />
 
       {/* Messages — TTS speaker button only when voice preset is set */}
-      <MessageList onTTS={voicePresetId ? handleTTS : undefined} />
+      <MessageList onTTS={voicePresetId ? handleTTS : undefined} onImageEdit={handleImageEdit} />
 
       {/* Voice recording bar (shown when recording/uploading) */}
       <VoiceRecordingBar

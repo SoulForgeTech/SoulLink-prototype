@@ -756,6 +756,62 @@ def delete_background():
         return jsonify({"success": True})  # Don't fail even if Cloudinary delete fails
 
 
+@app.route("/api/image/edit", methods=["POST"])
+@login_required
+def edit_image():
+    """
+    图片编辑接口 — 用户上传图片 + 自然语言编辑指令。
+    使用 BFL Flux Kontext Pro API。
+    请求体: {
+        "prompt": "把背景换成沙滩",
+        "image": "base64 或 data:image/...;base64,... 或图片URL"
+    }
+    返回: {"url": "cloudinary CDN URL", "prompt": "..."}
+    """
+    user_id = get_current_user_id()
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    prompt = data.get("prompt", "").strip()
+    image_data = data.get("image", "").strip()
+
+    if not prompt:
+        return jsonify({"error": "prompt is required"}), 400
+    if not image_data:
+        return jsonify({"error": "image is required"}), 400
+
+    # 去掉 data URL 前缀
+    if image_data.startswith("data:"):
+        image_data = image_data.split(",", 1)[-1]
+
+    try:
+        from image_gen import edit_image_kontext, upload_to_cloudinary
+
+        result = edit_image_kontext(prompt, image_data)
+        if not result:
+            return jsonify({"error": "Image editing failed. The provider may have rejected the request."}), 502
+
+        # 上传到 Cloudinary 持久化
+        url = upload_to_cloudinary(result["b64"], str(user_id))
+        if not url:
+            # Cloudinary 失败时返回 base64 作为 fallback
+            return jsonify({
+                "b64": result["b64"],
+                "prompt": prompt,
+            })
+
+        return jsonify({
+            "url": url,
+            "prompt": prompt,
+        })
+
+    except Exception as e:
+        logger.error(f"[IMAGE_EDIT] Error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @app.route("/api/user/settings", methods=["PUT"])
 @login_required
 def update_settings():
