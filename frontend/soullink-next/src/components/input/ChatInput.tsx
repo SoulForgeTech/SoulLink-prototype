@@ -413,13 +413,40 @@ export default function ChatInput({
   }, []);
 
   const handleDrop = useCallback(
-    (e: DragEvent) => {
+    async (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
 
+      // 1. Handle file drops (normal file upload)
       if (e.dataTransfer?.files?.length) {
         processFiles(e.dataTransfer.files);
+        return;
+      }
+
+      // 2. Handle image URL drops (dragging <img> from chat)
+      const url = e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain') || '';
+      if (url && /^https?:\/\/.+/i.test(url)) {
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          if (blob.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              setAttachments((prev) => [...prev, {
+                name: 'image.png',
+                isImage: true,
+                mime: blob.type,
+                dataUrl,
+                contentString: dataUrl,
+              }]);
+            };
+            reader.readAsDataURL(blob);
+          }
+        } catch (err) {
+          console.error('Failed to fetch dropped image:', err);
+        }
       }
     },
     [processFiles],
