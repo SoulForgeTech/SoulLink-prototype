@@ -47,7 +47,7 @@ const chatSlice = createSlice({
           const cleaned = msg.content
             .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
             .replace(/##\s*思考[\s\S]*?(?=\n##\s|$)/g, '')
-            .replace(/\[IMAGE:[^\]]*\]/g, '')
+            .replace(/\[IMAGE(?:_EDIT)?:[^\]]*\]/g, '')
             .trim();
           if (cleaned !== msg.content) {
             updated = { ...updated, content: cleaned };

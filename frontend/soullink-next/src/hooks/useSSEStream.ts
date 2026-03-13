@@ -130,16 +130,17 @@ class ThinkingTextFilter {
 // ==================== IMAGE Tag Filter ====================
 
 /**
- * Filters out [IMAGE:...] tags from streaming text so they don't
- * appear as raw text in the chat bubble. Buffers partial matches.
+ * Filters out [IMAGE:...] and [IMAGE_EDIT:...] tags from streaming text
+ * so they don't appear as raw text in the chat bubble. Buffers partial matches.
  *
  * Also counts complete tags found (tagCount) so the caller can
  * dispatch imageGenerating state to Redux.
  */
 class ImageTagFilter {
   private buffer = '';
-  private static readonly TAG_START = '[IMAGE:';
+  private static readonly TAG_STARTS = ['[IMAGE_EDIT:', '[IMAGE:'];
   private static readonly TAG_END = ']';
+  private static readonly MAX_TAG_START_LEN = 12; // length of '[IMAGE_EDIT:'
 
   /** Number of complete IMAGE tags consumed since last reset. */
   tagCount = 0;
@@ -147,6 +148,18 @@ class ImageTagFilter {
   /** Reset the tag counter (call after dispatching to Redux). */
   resetTagCount() {
     this.tagCount = 0;
+  }
+
+  /** Find earliest occurrence of any tag start from position i. */
+  private findTagStart(from: number): { idx: number; len: number } | null {
+    let earliest: { idx: number; len: number } | null = null;
+    for (const tag of ImageTagFilter.TAG_STARTS) {
+      const idx = this.buffer.indexOf(tag, from);
+      if (idx !== -1 && (earliest === null || idx < earliest.idx)) {
+        earliest = { idx, len: tag.length };
+      }
+    }
+    return earliest;
   }
 
   /** Process a chunk and return the safe-to-display portion. */
@@ -157,12 +170,12 @@ class ImageTagFilter {
     let i = 0;
 
     while (i < this.buffer.length) {
-      const startIdx = this.buffer.indexOf(ImageTagFilter.TAG_START, i);
+      const match = this.findTagStart(i);
 
-      if (startIdx === -1) {
+      if (!match) {
         // No IMAGE tag in remaining buffer.
-        // Keep last few chars in case a partial `[IMAGE:` is forming.
-        const keepLen = ImageTagFilter.TAG_START.length - 1;
+        // Keep last few chars in case a partial tag start is forming.
+        const keepLen = ImageTagFilter.MAX_TAG_START_LEN - 1;
         if (this.buffer.length - i > keepLen) {
           safe += this.buffer.slice(i, this.buffer.length - keepLen);
           this.buffer = this.buffer.slice(this.buffer.length - keepLen);
@@ -171,12 +184,12 @@ class ImageTagFilter {
       }
 
       // Emit everything before the tag start (trimming trailing newlines that surround the tag).
-      safe += this.buffer.slice(i, startIdx).replace(/\n+$/, '');
+      safe += this.buffer.slice(i, match.idx).replace(/\n+$/, '');
 
-      const endIdx = this.buffer.indexOf(ImageTagFilter.TAG_END, startIdx + ImageTagFilter.TAG_START.length);
+      const endIdx = this.buffer.indexOf(ImageTagFilter.TAG_END, match.idx + match.len);
       if (endIdx === -1) {
         // Tag not yet closed — keep buffered.
-        this.buffer = this.buffer.slice(startIdx);
+        this.buffer = this.buffer.slice(match.idx);
         return safe;
       }
 
@@ -217,8 +230,8 @@ function cleanReplyText(text: string): string {
     .replace(/<\s*think\s*>[\s\S]*?<\s*\/\s*think\s*>/gi, '')
     // Strip ## 思考 sections (from heading to next ## heading)
     .replace(/##\s*思考[\s\S]*?(?=\n##\s|$)/g, '')
-    // Strip [IMAGE:...] tags
-    .replace(/\[IMAGE:[^\]]*\]/g, '')
+    // Strip [IMAGE:...] and [IMAGE_EDIT:...] tags
+    .replace(/\[IMAGE(?:_EDIT)?:[^\]]*\]/g, '')
     .trim();
 }
 

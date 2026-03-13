@@ -1828,6 +1828,22 @@ def chat_stream():
                     message_to_send = message_to_send + "\n\n[System: 如果你接受了改名，记得在回复最末尾加上 [RENAME:新名字] 标记]"
                     break
 
+        # Image edit hint — only injected when user uploaded an image
+        _has_user_image = attachments and any(
+            a.get("mime", "").startswith("image/") or a.get("isImage")
+            for a in attachments
+        )
+        if _has_user_image:
+            message_to_send = message_to_send + (
+                "\n\n[System: The user attached an image. If they want you to MODIFY/EDIT the image "
+                "(change background, hair, outfit, style, add/remove elements, etc.), "
+                "add [IMAGE_EDIT: English editing instruction] at the end of your reply. "
+                "The editing instruction should describe ONLY what to change, not the whole image. "
+                "Example: [IMAGE_EDIT: change the background to a beach at sunset] "
+                "If the user is just asking you to describe/analyze/comment on the image, do NOT use this tag. "
+                "The tag will be auto-removed — users won't see it.]"
+            )
+
         # Import context injection
         conv_meta = conversation.get("metadata", {})
         if conv_meta.get("imported_from") and not conv_meta.get("import_session_activated"):
@@ -1854,6 +1870,15 @@ def chat_stream():
             if prev_context:
                 message_to_send = prev_context + message_to_send
                 logger.info("[CONTEXT] Injected previous conversation context into new chat")
+
+        # Save user image base64 for potential IMAGE_EDIT processing
+        _user_image_b64 = None
+        if _has_user_image and attachments:
+            for a in attachments:
+                cs = a.get("contentString", "")
+                if cs and (a.get("mime", "").startswith("image/") or a.get("isImage")):
+                    _user_image_b64 = cs.split(",", 1)[-1] if "," in cs else cs
+                    break
 
         # Pre-load all variables needed inside generator
         conv_id = conversation["_id"]
@@ -2105,9 +2130,9 @@ def chat_stream():
                 reply = candidate_reply
                 logger.info(f"[CHAT-STREAM] Stripped Grok reasoning ({len(candidate_think)} chars)")
 
-        # Strip IMAGE tags from thinking content (prevent [IMAGE:] leak in thinking display)
+        # Strip IMAGE/IMAGE_EDIT tags from thinking content (prevent leak in thinking display)
         if thinking_content:
-            thinking_content = _re.sub(r'\[IMAGE:\s*.+?\]', '', thinking_content, flags=_re.DOTALL).strip()
+            thinking_content = _re.sub(r'\[IMAGE(?:_EDIT)?:\s*.+?\]', '', thinking_content, flags=_re.DOTALL).strip()
 
         # Fallback: if reply empty but thinking has content
         if not reply and thinking_content:
@@ -2153,6 +2178,42 @@ def chat_stream():
                     yield ": keepalive\n\n"
             generated_images = _img_result[0] or []
 
+        # Process [IMAGE_EDIT:] markers — edit user's uploaded image via BFL Kontext
+        edited_images = []
+        _edit_match = _re.search(r'\[IMAGE_EDIT:\s*(.+?)\]', reply, _re.DOTALL)
+        if _edit_match and _user_image_b64:
+            _edit_prompt = _edit_match.group(1).strip()
+            reply = _re.sub(r'\s*\[IMAGE_EDIT:\s*.+?\]', '', reply, flags=_re.DOTALL).strip()
+            logger.info(f"[IMAGE_EDIT] Detected edit tag, prompt: {_edit_prompt[:80]}")
+            yield _sse_event("image_editing", {"prompt": _edit_prompt[:80]})
+
+            _edit_result = [None]
+            def _edit_worker():
+                try:
+                    from image_gen import edit_image_kontext, upload_to_cloudinary
+                    result = edit_image_kontext(_edit_prompt, _user_image_b64)
+                    if result and result.get("b64"):
+                        url = upload_to_cloudinary(result["b64"], str(user_id))
+                        _edit_result[0] = {"url": url, "prompt": _edit_prompt} if url else {"b64": result["b64"], "prompt": _edit_prompt}
+                except Exception as e:
+                    logger.warning(f"[IMAGE_EDIT] Edit error: {e}")
+
+            _edit_thread = threading.Thread(target=_edit_worker, daemon=True)
+            _edit_thread.start()
+            _edit_deadline = time.time() + 150
+            while _edit_thread.is_alive():
+                _edit_thread.join(timeout=3)
+                if _edit_thread.is_alive():
+                    if time.time() > _edit_deadline:
+                        logger.warning("[IMAGE_EDIT] Thread exceeded 150s timeout")
+                        break
+                    yield ": keepalive\n\n"
+            if _edit_result[0]:
+                edited_images.append(_edit_result[0])
+        elif _edit_match:
+            # AI output IMAGE_EDIT tag but no user image — just strip it
+            reply = _re.sub(r'\s*\[IMAGE_EDIT:\s*.+?\]', '', reply, flags=_re.DOTALL).strip()
+
         # Rename detection
         companion_name_changed = None
         rename_match = _re.search(r'\[RENAME:(.{1,20}?)\]', reply)
@@ -2188,18 +2249,25 @@ def chat_stream():
             except Exception:
                 pass
 
-        # Save AI reply to DB
-        image_attachments = [
-            {"name": f"generated_{i}.png", "mime": "image/png",
-             "isImage": True, "isGenerated": True, "prompt": img["prompt"],
-             **({"url": img["url"]} if img.get("url") else {})}
-            for i, img in enumerate(generated_images)
-        ] if generated_images else None
+        # Save AI reply to DB (generated images + edited images)
+        all_image_attachments = []
+        for i, img in enumerate(generated_images):
+            all_image_attachments.append({
+                "name": f"generated_{i}.png", "mime": "image/png",
+                "isImage": True, "isGenerated": True, "prompt": img["prompt"],
+                **({"url": img["url"]} if img.get("url") else {})
+            })
+        for i, img in enumerate(edited_images):
+            all_image_attachments.append({
+                "name": f"edited_{i}.png", "mime": "image/png",
+                "isImage": True, "isGenerated": True, "prompt": img.get("prompt", ""),
+                **({"url": img["url"]} if img.get("url") else {})
+            })
         try:
             db.add_message_to_conversation(
                 conv_id, user_id, "assistant", reply,
                 thinking=thinking_content if thinking_content else None,
-                attachments=image_attachments,
+                attachments=all_image_attachments if all_image_attachments else None,
             )
             db.update_workspace_stats(user_id, message_count_delta=2)
         except Exception as e:
@@ -2214,12 +2282,19 @@ def chat_stream():
             done_data["thinking"] = thinking_content
         if companion_name_changed:
             done_data["companionNameChanged"] = companion_name_changed
-        if generated_images:
-            done_data["images"] = [
-                {"b64": img.get("b64", ""), "prompt": img["prompt"],
-                 **({"url": img["url"]} if img.get("url") else {})}
-                for img in generated_images
-            ]
+        all_done_images = []
+        for img in generated_images:
+            all_done_images.append({
+                "b64": img.get("b64", ""), "prompt": img["prompt"],
+                **({"url": img["url"]} if img.get("url") else {})
+            })
+        for img in edited_images:
+            all_done_images.append({
+                "b64": img.get("b64", ""), "prompt": img.get("prompt", ""),
+                **({"url": img["url"]} if img.get("url") else {})
+            })
+        if all_done_images:
+            done_data["images"] = all_done_images
         yield _sse_event("done", done_data)
 
         # Async tasks: memory + title
