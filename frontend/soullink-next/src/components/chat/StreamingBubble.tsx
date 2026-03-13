@@ -50,6 +50,7 @@ export default function StreamingBubble({
   const isStreaming = useAppSelector((s) => s.chat.isStreaming);
   const streamingText = useAppSelector((s) => s.chat.streamingText);
   const imageGeneratingCount = useAppSelector((s) => s.chat.imageGeneratingCount);
+  const imageEditingCount = useAppSelector((s) => s.chat.imageEditingCount);
   const companionAvatar = useAppSelector((s) => s.settings.companionAvatar);
   const companionName = useAppSelector((s) => s.settings.companionName);
   const t = useT();
@@ -59,6 +60,7 @@ export default function StreamingBubble({
   const { enqueue, stop } = useTypewriter(containerRef);
 
   const [isImageGenerating, setIsImageGenerating] = useState(false);
+  const [isImageEditing, setIsImageEditing] = useState(false);
   const [streamComplete, setStreamComplete] = useState(false);
   const [finalText, setFinalText] = useState('');
 
@@ -86,6 +88,12 @@ export default function StreamingBubble({
     }
   }, [imageGeneratingCount]);
 
+  useEffect(() => {
+    if (imageEditingCount > 0) {
+      setIsImageEditing(true);
+    }
+  }, [imageEditingCount]);
+
   // When streaming stops, transition to MultiBubbleGroup.
   useEffect(() => {
     if (!isStreaming && prevTextLenRef.current > 0) {
@@ -102,6 +110,7 @@ export default function StreamingBubble({
       setStreamComplete(false);
       setFinalText('');
       setIsImageGenerating(false);
+      setIsImageEditing(false);
     }
   }, [isStreaming]);
 
@@ -178,6 +187,11 @@ export default function StreamingBubble({
               : t('chat.image.generating')
           }
         />
+      )}
+
+      {/* Image editing placeholder — shown when IMAGE_EDIT tag or image_editing SSE event */}
+      {isImageEditing && isStreaming && (
+        <ImageGeneratingPlaceholder label={t('chat.image.editing')} />
       )}
     </div>
   );

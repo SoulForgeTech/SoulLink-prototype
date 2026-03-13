@@ -16,6 +16,8 @@ interface ChatState {
   thinkingContent: string;
   /** Number of images currently being generated (0 = none) */
   imageGeneratingCount: number;
+  /** Number of images currently being edited via Kontext (0 = none) */
+  imageEditingCount: number;
   /** Last error message, if any */
   error: string | null;
 }
@@ -27,6 +29,7 @@ const initialState: ChatState = {
   streamingText: '',
   thinkingContent: '',
   imageGeneratingCount: 0,
+  imageEditingCount: 0,
   error: null,
 };
 
@@ -85,12 +88,18 @@ const chatSlice = createSlice({
       state.streamingText = '';
       state.thinkingContent = '';
       state.imageGeneratingCount = 0;
+      state.imageEditingCount = 0;
       state.error = null;
     },
 
     /** Set the number of images being generated (0 clears the placeholder) */
     setImageGenerating(state, action: PayloadAction<number>) {
       state.imageGeneratingCount = action.payload;
+    },
+
+    /** Set the number of images being edited (0 clears the placeholder) */
+    setImageEditing(state, action: PayloadAction<number>) {
+      state.imageEditingCount = action.payload;
     },
 
     /** Append a chunk of text from the SSE stream */
@@ -116,6 +125,7 @@ const chatSlice = createSlice({
       state.streamingText = '';
       state.thinkingContent = '';
       state.imageGeneratingCount = 0;
+      state.imageEditingCount = 0;
     },
 
     /** Set an error (also stops loading/streaming) */
@@ -131,6 +141,7 @@ const chatSlice = createSlice({
       state.streamingText = '';
       state.thinkingContent = '';
       state.imageGeneratingCount = 0;
+      state.imageEditingCount = 0;
       state.error = null;
       state.isLoading = false;
       state.isStreaming = false;
@@ -146,6 +157,7 @@ export const {
   appendStreamText,
   appendThinkingContent,
   setImageGenerating,
+  setImageEditing,
   streamCompleted,
   setError,
   clearMessages,

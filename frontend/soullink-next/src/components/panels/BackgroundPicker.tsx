@@ -26,6 +26,7 @@ export default function BackgroundPicker() {
 
   const isOpen = useAppSelector((s) => s.ui.panels.backgroundPicker);
   const currentBg = useAppSelector((s) => s.settings.chatBackground);
+  const customBgUrl = useAppSelector((s) => s.settings.customBackgroundUrl);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
@@ -58,16 +59,27 @@ export default function BackgroundPicker() {
       // Validate file type
       if (!file.type.startsWith('image/')) return;
 
+      // Apply immediately using local blob URL for instant feedback
+      const localUrl = URL.createObjectURL(file);
+      dispatch(setChatBackground('custom'));
+      dispatch(setCustomBackgroundUrl(localUrl));
+
+      // Upload in background, then swap to CDN URL
       try {
-        const url = await uploadBackground(authFetch, file);
-        dispatch(setChatBackground('custom'));
-        dispatch(setCustomBackgroundUrl(url));
+        const cdnUrl = await uploadBackground(authFetch, file);
+        dispatch(setCustomBackgroundUrl(cdnUrl));
         await updateSettings(authFetch, {
           chat_background: 'custom',
-          custom_background_url: url,
+          custom_background_url: cdnUrl,
         });
+        // Revoke the temporary blob URL
+        URL.revokeObjectURL(localUrl);
       } catch (err) {
         console.error('Background upload failed:', err);
+        // Revert on failure
+        dispatch(setChatBackground('default'));
+        dispatch(setCustomBackgroundUrl(''));
+        URL.revokeObjectURL(localUrl);
       }
 
       // Reset the file input
@@ -135,6 +147,31 @@ export default function BackgroundPicker() {
             </div>
           );
         })}
+
+        {/* Custom background thumbnail (shown when a custom bg exists) */}
+        {customBgUrl && (
+          <div
+            className={`bg-thumb-item${currentBg === 'custom' ? ' active' : ''}`}
+            onClick={() => handleSelectBackground('custom')}
+          >
+            <img src={customBgUrl} alt="Custom" loading="lazy" />
+            {currentBg === 'custom' && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(107,163,214,0.2)',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            )}
+            <div className="bg-thumb-label">{t('bg.custom.label')}</div>
+          </div>
+        )}
 
         {/* Upload custom background tile */}
         <div

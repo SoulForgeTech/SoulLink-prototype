@@ -38,6 +38,7 @@ export default function ChatPage() {
 
   const currentConversationId = useAppSelector((s) => s.conversations.currentId);
   const voicePresetId = useAppSelector((s) => s.settings.voicePresetId);
+  const isStreaming = useAppSelector((s) => s.chat.isStreaming);
 
   // Voice call — shared context so start() runs in user gesture context
   const { start: startVoiceCall } = useVoiceCallContext();
@@ -167,12 +168,13 @@ export default function ChatPage() {
         stopRecording={voiceRecording.stopRecording}
       />
 
-      {/* Input area */}
+      {/* Input area — disabled while AI is streaming or editing images */}
       <ChatInput
         onSend={handleSend}
         onVoiceCall={handleVoiceCall}
         onStartRecording={voiceRecording.startRecording}
         onStopRecording={voiceRecording.stopRecording}
+        disabled={isStreaming || isEditingImage}
       />
     </div>
   );

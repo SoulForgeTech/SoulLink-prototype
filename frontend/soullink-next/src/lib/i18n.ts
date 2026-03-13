@@ -154,6 +154,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     // ---- Chat - Image ----
     'chat.image.generating': 'Generating',
+    'chat.image.editing': 'Editing image',
 
     // ---- Changelog ----
     'changelog.title': 'Changelog',
@@ -392,6 +393,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     // ---- Chat - Image ----
     'chat.image.generating': '\u751F\u6210\u4E2D',
+    'chat.image.editing': '\u7F16\u8F91\u56FE\u7247\u4E2D',
 
     // ---- Changelog ----
     'changelog.title': '\u66F4\u65B0\u65E5\u5FD7',

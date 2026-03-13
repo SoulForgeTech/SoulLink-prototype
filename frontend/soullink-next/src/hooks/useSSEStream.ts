@@ -24,6 +24,7 @@ import {
   appendStreamText,
   appendThinkingContent,
   setImageGenerating,
+  setImageEditing,
   streamCompleted,
   setError,
 } from '@/store/chatSlice';
@@ -144,10 +145,13 @@ class ImageTagFilter {
 
   /** Number of complete IMAGE tags consumed since last reset. */
   tagCount = 0;
+  /** Number of complete IMAGE_EDIT tags consumed since last reset. */
+  editTagCount = 0;
 
   /** Reset the tag counter (call after dispatching to Redux). */
   resetTagCount() {
     this.tagCount = 0;
+    this.editTagCount = 0;
   }
 
   /** Find earliest occurrence of any tag start from position i. */
@@ -195,6 +199,9 @@ class ImageTagFilter {
 
       // Full tag found — skip it entirely and count it.
       // Also skip any whitespace/newlines immediately following the tag.
+      if (match.len === 12) { // '[IMAGE_EDIT:'.length === 12
+        this.editTagCount++;
+      }
       this.tagCount++;
       let afterTag = endIdx + 1;
       while (afterTag < this.buffer.length && (this.buffer[afterTag] === '\n' || this.buffer[afterTag] === '\r' || this.buffer[afterTag] === ' ')) {
@@ -382,7 +389,9 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                   }
                   // Notify Redux if new IMAGE tags were found (shows shimmer)
                   if (imageFilter.tagCount > 0) {
-                    dispatch(setImageGenerating(imageFilter.tagCount));
+                    const genCount = imageFilter.tagCount - imageFilter.editTagCount;
+                    if (genCount > 0) dispatch(setImageGenerating(genCount));
+                    if (imageFilter.editTagCount > 0) dispatch(setImageEditing(imageFilter.editTagCount));
                     imageFilter.resetTagCount();
                   }
                   break;
@@ -490,6 +499,11 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                   }
                   break;
                 }
+
+                case 'image_editing':
+                  // Backend started Kontext image edit — show editing placeholder
+                  dispatch(setImageEditing(1));
+                  break;
 
                 case 'image_limit':
                   // Informational — no action needed.

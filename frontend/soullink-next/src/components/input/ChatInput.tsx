@@ -76,10 +76,8 @@ interface ChatInputProps {
 
 // ==================== Styles (matching original CSS) ====================
 
-/** Outer wrapper — padding controlled by CSS .input-container for responsive overrides */
-const outerWrapperStyle: React.CSSProperties = {
-  position: 'relative',
-};
+/** Outer wrapper — positioned by CSS .input-container (absolute bottom overlay) */
+const outerWrapperStyle: React.CSSProperties = {};
 
 /** .input-wrapper layout + glassmorphism (inline to avoid Turbopack stripping)
  *  NOTE: padding/borderRadius are NOT set here — controlled by CSS class
