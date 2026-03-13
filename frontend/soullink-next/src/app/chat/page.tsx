@@ -45,29 +45,6 @@ export default function ChatPage() {
   // Voice recording hook (owned here, passed to ChatInput + VoiceRecordingBar)
   const voiceRecording = useVoiceRecording();
 
-  // Handle chat input send — wired to SSE streaming
-  const handleSend = useCallback(
-    (message: string, attachments: MessageAttachment[]) => {
-      // 1. Add user message to chat immediately
-      dispatch(
-        addMessage({
-          role: 'user',
-          content: message,
-          attachments: attachments.length > 0 ? attachments : undefined,
-          timestamp: new Date().toISOString(),
-        }),
-      );
-
-      // 2. Start SSE stream for AI response
-      sendStream({
-        message,
-        conversationId: currentConversationId,
-        attachments: attachments.length > 0 ? attachments : undefined,
-      });
-    },
-    [dispatch, sendStream, currentConversationId],
-  );
-
   // Handle TTS playback on message bubble
   const handleTTS = useCallback(
     async (text: string) => {
@@ -136,7 +113,37 @@ export default function ChatPage() {
         setIsEditingImage(false);
       }
     },
-    [authFetch, dispatch, isEditingImage],
+    [authFetch, dispatch, isEditingImage, currentConversationId],
+  );
+
+  // Handle chat input send — wired to SSE streaming
+  // When user uploads an image + types text: send to AI chat AND trigger image edit in parallel
+  const handleSend = useCallback(
+    (message: string, attachments: MessageAttachment[]) => {
+      // 1. Add user message to chat immediately
+      dispatch(
+        addMessage({
+          role: 'user',
+          content: message,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      // 2. Start SSE stream for AI response (always)
+      sendStream({
+        message,
+        conversationId: currentConversationId,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+
+      // 3. If user uploaded exactly 1 image + typed text, also trigger image edit in parallel
+      const imageAtts = attachments.filter((a) => a.isImage && a.dataUrl);
+      if (imageAtts.length === 1 && message.trim() && attachments.length === 1) {
+        handleImageEdit(imageAtts[0].dataUrl!, message);
+      }
+    },
+    [dispatch, sendStream, currentConversationId, handleImageEdit],
   );
 
   // Handle voice call — MUST call start() here (user gesture context)
@@ -173,7 +180,6 @@ export default function ChatPage() {
       <ChatInput
         onSend={handleSend}
         onVoiceCall={handleVoiceCall}
-        onImageEdit={handleImageEdit}
         onStartRecording={voiceRecording.startRecording}
         onStopRecording={voiceRecording.stopRecording}
       />
