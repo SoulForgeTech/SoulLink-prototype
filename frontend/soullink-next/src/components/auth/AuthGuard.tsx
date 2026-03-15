@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { setCredentials, logout } from '@/store/authSlice';
-import { verifyToken } from '@/lib/api/auth';
+import { verifyToken, refreshToken as refreshTokenApi } from '@/lib/api/auth';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ interface AuthGuardProps {
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { token, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { token, refreshToken: storedRefreshToken, isAuthenticated } = useAppSelector((state) => state.auth);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -26,7 +26,31 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
       // Token exists -- verify it with the server
       try {
-        const result = await verifyToken(token);
+        let result = await verifyToken(token);
+
+        // Access token expired but refresh token exists -- try to refresh
+        if (!result.valid && storedRefreshToken) {
+          try {
+            const refreshed = await refreshTokenApi(storedRefreshToken);
+            if (refreshed.token) {
+              // Re-verify with new token
+              result = await verifyToken(refreshed.token);
+              if (result.valid && result.user) {
+                // Save new access token
+                dispatch(
+                  setCredentials({
+                    token: refreshed.token,
+                    refreshToken: storedRefreshToken,
+                    user: result.user,
+                  }),
+                );
+              }
+            }
+          } catch {
+            // Refresh failed -- fall through to normal invalid handling
+          }
+        }
+
         if (result.valid && result.user) {
           // Merge server user data with existing localStorage user data
           // to preserve fields like avatar_url that may not be returned
@@ -36,13 +60,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
             const storedRaw = localStorage.getItem('soullink_user');
             if (storedRaw) {
               const storedUser = JSON.parse(storedRaw);
-              // Server data takes precedence, but keep local fields the server didn't return
               mergedUser = { ...storedUser, ...result.user };
-              // Preserve avatar_url if server didn't return one
               if (!result.user.avatar_url && storedUser.avatar_url) {
                 mergedUser.avatar_url = storedUser.avatar_url;
               }
-              // Preserve settings: merge local + server (server wins on conflicts)
               if (storedUser.settings || result.user.settings) {
                 mergedUser.settings = {
                   ...(storedUser.settings || {}),
@@ -61,7 +82,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
           );
           setChecking(false);
         } else {
-          // Token invalid -- clear and redirect
+          // Both token and refresh failed -- clear and redirect
           dispatch(logout());
           router.replace('/login');
         }
@@ -76,7 +97,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     check();
-  }, [token, isAuthenticated, router, dispatch]);
+  }, [token, storedRefreshToken, isAuthenticated, router, dispatch]);
 
   if (checking) {
     return (
