@@ -819,11 +819,11 @@ export default function SettingsModal() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={companionAvatar || '/images/default-avatar.png'}
+                    src={companionAvatar || '/images/default-avatar.webp'}
                     alt="Companion"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/default-avatar.png';
+                      (e.target as HTMLImageElement).src = '/images/default-avatar.webp';
                     }}
                   />
                 </div>

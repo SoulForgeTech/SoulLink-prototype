@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store';
 import {
@@ -28,21 +29,21 @@ import { WORKSPACE } from '@/lib/api/endpoints';
 import AuthGuard from '@/components/auth/AuthGuard';
 import Sidebar from '@/components/sidebar/Sidebar';
 
-// Modals
-import SettingsModal from '@/components/modals/SettingsModal';
-import ChangelogModal from '@/components/modals/ChangelogModal';
-import AboutModal from '@/components/modals/AboutModal';
-import RenameModal from '@/components/modals/RenameModal';
-import CropModal from '@/components/modals/CropModal';
-import CompanionAvatarModal from '@/components/modals/CompanionAvatarModal';
-import CommunityPopup from '@/components/modals/CommunityPopup';
+// Modals — lazy loaded (not needed on initial render)
+const SettingsModal = dynamic(() => import('@/components/modals/SettingsModal'), { ssr: false });
+const ChangelogModal = dynamic(() => import('@/components/modals/ChangelogModal'), { ssr: false });
+const AboutModal = dynamic(() => import('@/components/modals/AboutModal'), { ssr: false });
+const RenameModal = dynamic(() => import('@/components/modals/RenameModal'), { ssr: false });
+const CropModal = dynamic(() => import('@/components/modals/CropModal'), { ssr: false });
+const CompanionAvatarModal = dynamic(() => import('@/components/modals/CompanionAvatarModal'), { ssr: false });
+const CommunityPopup = dynamic(() => import('@/components/modals/CommunityPopup'), { ssr: false });
 
 // Voice call context (shared hook instance for user-gesture AudioContext)
 import { VoiceCallProvider } from '@/contexts/VoiceCallContext';
 
-// Overlays
-import VoiceCallOverlay from '@/components/voice/VoiceCallOverlay';
-import GameFullscreen from '@/components/games/GameFullscreen';
+// Overlays — lazy loaded
+const VoiceCallOverlay = dynamic(() => import('@/components/voice/VoiceCallOverlay'), { ssr: false });
+const GameFullscreen = dynamic(() => import('@/components/games/GameFullscreen'), { ssr: false });
 import LoadingOverlay from '@/components/ui/LoadingOverlay';
 import ImageViewer from '@/components/ui/ImageViewer';
 import Toast from '@/components/ui/Toast';
@@ -180,7 +181,7 @@ export default function ChatLayout({
     const bg = BACKGROUNDS.find((b) => b.id === chatBackground);
     return bg?.path || bg?.file
       ? `/${bg.path || `images/Background/${bg.file}`}`
-      : '/images/bg.png';
+      : '/images/bg.webp';
   }, [chatBackground, customBackgroundUrl]);
 
   // ---- Background crossfade (matches original dual-layer approach) ----

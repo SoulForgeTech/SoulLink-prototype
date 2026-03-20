@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: '*.cloudinary.com' },
+    ],
+  },
   /**
    * Rewrites proxy: routes /api/* requests through Next.js server
    * to the backend API, avoiding CORS issues during local development.

@@ -253,6 +253,8 @@ export default function Sidebar({
               <img
                 src={user.avatar_url}
                 alt={user.name}
+                width={40}
+                height={40}
                 style={{
                   width: '100%',
                   height: '100%',

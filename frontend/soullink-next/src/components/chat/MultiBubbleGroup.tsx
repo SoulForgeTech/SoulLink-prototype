@@ -112,6 +112,8 @@ export default function MultiBubbleGroup({
                 <img
                   src={url}
                   alt={`Generated image ${i + 1}`}
+                  width={280}
+                  height={280}
                   style={{ maxWidth: '280px', maxHeight: '320px', objectFit: 'cover', display: 'block', borderRadius: '12px' }}
                   loading="lazy"
                   onError={() => setFailedImages((prev) => new Set(prev).add(i))}

@@ -287,6 +287,8 @@ export default function MessageBubble({
             <img
               src={companionAvatar}
               alt={companionName || 'AI'}
+              width={45}
+              height={45}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
@@ -316,6 +318,8 @@ export default function MessageBubble({
             <img
               src={userAvatar}
               alt={user?.name || 'User'}
+              width={45}
+              height={45}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
@@ -345,6 +349,9 @@ export default function MessageBubble({
                   <img
                     src={src}
                     alt={att.name}
+                    width={200}
+                    height={200}
+                    loading="lazy"
                     style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover', cursor: 'pointer' }}
                   />
                   {onImageEdit && src && (

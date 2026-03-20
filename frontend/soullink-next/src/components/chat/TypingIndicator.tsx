@@ -25,6 +25,8 @@ export default function TypingIndicator() {
           <img
             src={companionAvatar}
             alt={companionName || 'AI'}
+            width={45}
+            height={45}
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
           />
         ) : (

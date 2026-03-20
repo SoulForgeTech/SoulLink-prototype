@@ -20,7 +20,7 @@ export const APP_VERSION = 'v0.1.8-beta';
 // ==================== Chat Backgrounds ====================
 
 export const BACKGROUNDS: BackgroundDef[] = [
-  { id: 'default', file: 'bg.png', path: 'images/bg.png', thumb: 'images/Background/thumbnails/bg.jpg', label: 'Default' },
+  { id: 'default', file: 'bg.webp', path: 'images/bg.webp', thumb: 'images/Background/thumbnails/bg.jpg', label: 'Default' },
   { id: 'bg01', file: 'aditya-anjagi-KZSDCocsOEE-unsplash.jpg', thumb: 'images/Background/thumbnails/aditya-anjagi-KZSDCocsOEE-unsplash.jpg' },
   { id: 'bg02', file: 'alex-mesmer-6h6O17NjZ_I-unsplash.jpg', thumb: 'images/Background/thumbnails/alex-mesmer-6h6O17NjZ_I-unsplash.jpg' },
   { id: 'bg03', file: 'ali-kazal-Vn7nOtD9DmQ-unsplash.jpg', thumb: 'images/Background/thumbnails/ali-kazal-Vn7nOtD9DmQ-unsplash.jpg' },

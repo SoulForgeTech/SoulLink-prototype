@@ -257,6 +257,8 @@ export default function ChatHeader() {
             src={companionAvatar}
             alt={companionName || 'Companion'}
             className="companion-avatar"
+            width={50}
+            height={50}
             style={currentAvatarStyle}
           />
         ) : (

@@ -69,6 +69,8 @@ function WelcomeMessage({ language }: { language: string }) {
           <img
             src={companionAvatar}
             alt={companionName || 'AI'}
+            width={80}
+            height={80}
           />
         ) : (
           <div className="welcome-avatar-placeholder">

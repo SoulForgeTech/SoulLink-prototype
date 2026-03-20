@@ -166,7 +166,7 @@ export default function LoginPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundImage: "url('/images/bg.png')",
+        backgroundImage: "url('/images/bg.webp')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         zIndex: 1000,

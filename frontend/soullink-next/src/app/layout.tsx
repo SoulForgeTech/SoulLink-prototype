@@ -6,9 +6,10 @@ import GlassRipple from "@/components/effects/GlassRipple";
 import "./globals.css";
 
 const poppins = Poppins({
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600"],
   subsets: ["latin"],
   variable: "--font-poppins",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

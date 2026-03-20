@@ -85,7 +85,7 @@ export default function CompanionNaming() {
           zIndex: -1,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundImage: "url('/images/bg.png')",
+          backgroundImage: "url('/images/bg.webp')",
         }}
       >
         <div
