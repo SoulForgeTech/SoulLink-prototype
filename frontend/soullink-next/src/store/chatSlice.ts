@@ -20,6 +20,12 @@ interface ChatState {
   imageEditingCount: number;
   /** Last error message, if any */
   error: string | null;
+  /** Detected character preset from chat message (pending user confirmation) */
+  detectedPersona: {
+    name: string | null;
+    core_persona: string;
+    appearance?: string;
+  } | null;
 }
 
 const initialState: ChatState = {
@@ -31,6 +37,7 @@ const initialState: ChatState = {
   imageGeneratingCount: 0,
   imageEditingCount: 0,
   error: null,
+  detectedPersona: null,
 };
 
 // ==================== Slice ====================
@@ -79,6 +86,16 @@ const chatSlice = createSlice({
       if (state.messages.length > 0) {
         state.messages[state.messages.length - 1] = action.payload;
       }
+    },
+
+    /** Set detected persona from chat (pending user confirmation) */
+    setDetectedPersona(state, action: PayloadAction<{ name: string | null; core_persona: string; appearance?: string }>) {
+      state.detectedPersona = action.payload;
+    },
+
+    /** Clear detected persona (after confirm or dismiss) */
+    clearDetectedPersona(state) {
+      state.detectedPersona = null;
     },
 
     /** Mark the start of an SSE stream */
@@ -145,6 +162,7 @@ const chatSlice = createSlice({
       state.error = null;
       state.isLoading = false;
       state.isStreaming = false;
+      state.detectedPersona = null;
     },
   },
 });
@@ -153,6 +171,8 @@ export const {
   setMessages,
   addMessage,
   replaceLastMessage,
+  setDetectedPersona,
+  clearDetectedPersona,
   startStreaming,
   appendStreamText,
   appendThinkingContent,

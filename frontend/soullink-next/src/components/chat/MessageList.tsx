@@ -23,6 +23,7 @@ import MultiBubbleGroup from './MultiBubbleGroup';
 import ThinkingBubble from './ThinkingBubble';
 import TypingIndicator from './TypingIndicator';
 import StreamingBubble from './StreamingBubble';
+import PersonaDetectedBanner from './PersonaDetectedBanner';
 
 // ==================== i18n ====================
 
@@ -237,6 +238,9 @@ export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
           {isStreaming && (
             <StreamingBubble showAvatar onTTS={onTTS} />
           )}
+
+          {/* Persona preset detection banner */}
+          <PersonaDetectedBanner />
 
           {/* Scroll anchor */}
           <div ref={bottomRef} className="scroll-anchor" />

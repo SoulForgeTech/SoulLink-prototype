@@ -126,6 +126,12 @@ export interface StreamDoneData {
   /** Backend returns array of image objects {url, b64, prompt} */
   images?: StreamDoneImage[] | string[];
   companionNameChanged?: string;
+  /** Backend detected a character preset in the user message and extracted it */
+  personaDetected?: {
+    name: string | null;
+    core_persona: string;
+    appearance?: string;
+  };
 }
 
 // ==================== Voice ====================

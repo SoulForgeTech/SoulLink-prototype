@@ -25,6 +25,7 @@ import {
   appendThinkingContent,
   setImageGenerating,
   setImageEditing,
+  setDetectedPersona,
   streamCompleted,
   setError,
 } from '@/store/chatSlice';
@@ -463,6 +464,11 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                     // Companion name change (via in-chat rename).
                     if (doneData.companionNameChanged) {
                       dispatch(setCompanionName(doneData.companionNameChanged));
+                    }
+
+                    // Persona preset detected in user message.
+                    if (doneData.personaDetected) {
+                      dispatch(setDetectedPersona(doneData.personaDetected));
                     }
 
                     // TTS auto-play: only when user sent a voice message AND tts is enabled
