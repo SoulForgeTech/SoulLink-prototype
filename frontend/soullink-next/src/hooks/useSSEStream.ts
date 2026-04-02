@@ -500,6 +500,17 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                   break;
                 }
 
+                case 'image_generating': {
+                  // Backend extracted IMAGE tags and started generation — show shimmer
+                  try {
+                    const parsed = JSON.parse(evt.data) as { count?: number };
+                    dispatch(setImageGenerating(parsed.count || 1));
+                  } catch {
+                    dispatch(setImageGenerating(1));
+                  }
+                  break;
+                }
+
                 case 'image_editing':
                   // Backend started Kontext image edit — show editing placeholder
                   dispatch(setImageEditing(1));
