@@ -1735,7 +1735,6 @@ export default function SettingsModal() {
                 />
               </div>
           </div>
-        </div>
 
           {/* ===================== MEMORY TAB ===================== */}
           <div style={{ display: activeTab === 'memory' ? 'block' : 'none', maxWidth: '100%', overflow: 'hidden' }}>
