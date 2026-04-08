@@ -53,7 +53,7 @@ const chatSlice = createSlice({
       state.messages = action.payload.map((msg) => {
         let updated = msg;
         // Map MongoDB "type: voice" to is_voice_call for voice call bubble rendering
-        if ((msg as Record<string, unknown>).type === 'voice' && !msg.audio_url) {
+        if ((msg as unknown as { type?: string }).type === 'voice' && !msg.audio_url) {
           updated = { ...updated, is_voice_call: true };
         }
         // Strip IMAGE tags + thinking blocks from assistant content
