@@ -45,6 +45,9 @@ class VoicePipelineHandler:
       idle → listening → processing → speaking → listening → ...
     """
 
+    # Voice: non-reasoning for speed. Text chat keeps its own model.
+    VOICE_MODEL = os.getenv("VOICE_CHAT_MODEL", "grok-4-1-fast-non-reasoning")
+
     def __init__(self, websocket: WebSocket, user: dict, conversation_id: str):
         self.ws = websocket
         self.user = user
@@ -428,10 +431,10 @@ class VoicePipelineHandler:
         # 4. Signal turn complete
         await self._send_json({"type": "done"})
 
-        # 5. Save both user message AND AI reply to MongoDB
+        # 5. Save + restore model (background)
         clean_reply = display_reply if full_reply else ""
         asyncio.create_task(self._save_turn(transcript, clean_reply))
-
+        asyncio.create_task(self._restore_model())
 
         # 6. Return to listening
         if not self._interrupted:
@@ -439,12 +442,14 @@ class VoicePipelineHandler:
             await self._start_stt()
 
     async def _get_anythingllm(self):
-        """Get AnythingLLM workspace and API instance for this user."""
+        """Get AnythingLLM workspace, switch to voice model."""
         loop = asyncio.get_event_loop()
         from workspace_manager import WorkspaceManager
         from anythingllm_api import AnythingLLMAPI
+        import requests as _req
 
         wm = WorkspaceManager()
+        self._wm = wm  # Save for restore
         ws_result = await loop.run_in_executor(
             None, wm.get_or_create_workspace, self.user_id
         )
@@ -452,12 +457,63 @@ class VoicePipelineHandler:
             raise Exception(f"Workspace error: {ws_result.get('error', 'unknown')}")
 
         slug = ws_result["workspace"]["slug"]
+        self._workspace_slug = slug
+
+        # Read current model before switching
+        try:
+            resp = await loop.run_in_executor(None, lambda: _req.get(
+                f"{wm.anythingllm_base_url}/api/v1/workspace/{slug}",
+                headers={"Authorization": f"Bearer {wm.anythingllm_api_key}"},
+                timeout=5,
+            ))
+            ws_list = resp.json().get("workspace", [])
+            ws_data = ws_list[0] if isinstance(ws_list, list) and ws_list else ws_list
+            self._original_model = ws_data.get("chatModel", "") if isinstance(ws_data, dict) else ""
+        except Exception:
+            self._original_model = "grok-4-1-fast-reasoning"
+
+        # Switch to fast non-reasoning model for voice
+        if self._original_model != self.VOICE_MODEL:
+            try:
+                await loop.run_in_executor(None, lambda: _req.post(
+                    f"{wm.anythingllm_base_url}/api/v1/workspace/{slug}/update",
+                    headers={"Authorization": f"Bearer {wm.anythingllm_api_key}",
+                             "Content-Type": "application/json"},
+                    json={"chatModel": self.VOICE_MODEL},
+                    timeout=5,
+                ))
+                logger.info(f"[WS] Voice model: {self._original_model} → {self.VOICE_MODEL}")
+            except Exception as e:
+                logger.warning(f"[WS] Model switch failed: {e}")
+
         api = AnythingLLMAPI(
             base_url=wm.anythingllm_base_url,
             api_key=wm.anythingllm_api_key,
             workspace_slug=slug,
         )
         return slug, api
+
+    async def _restore_model(self):
+        """Restore original model after voice call."""
+        if not getattr(self, '_original_model', None) or not getattr(self, '_wm', None):
+            return
+        if self._original_model == self.VOICE_MODEL:
+            return  # No change needed
+        try:
+            loop = asyncio.get_event_loop()
+            import requests as _req
+            slug = self._workspace_slug
+            wm = self._wm
+            await loop.run_in_executor(None, lambda: _req.post(
+                f"{wm.anythingllm_base_url}/api/v1/workspace/{slug}/update",
+                headers={"Authorization": f"Bearer {wm.anythingllm_api_key}",
+                         "Content-Type": "application/json"},
+                json={"chatModel": self._original_model},
+                timeout=5,
+            ))
+            logger.info(f"[WS] Restored model: {self.VOICE_MODEL} → {self._original_model}")
+        except Exception as e:
+            logger.warning(f"[WS] Model restore failed: {e}")
 
     async def _stream_anythingllm(
         self, api, transcript: str
@@ -573,6 +629,9 @@ class VoicePipelineHandler:
     async def cleanup(self):
         """Clean up resources when session ends."""
         self._running = False
+
+        # Always restore text chat model on disconnect
+        await self._restore_model()
 
         if self._stt:
             await self._stt.close()
