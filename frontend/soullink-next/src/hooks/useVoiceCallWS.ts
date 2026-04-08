@@ -238,16 +238,9 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
 
           case 'state':
             if (data.state === 'listening') {
-              // Stop any playing audio when transitioning to listening
-              // (handles interrupt: server says "listening" but old audio might still play)
-              if (audioElRef.current) {
-                try {
-                  audioElRef.current.pause();
-                  audioElRef.current.src = '';
-                } catch {}
-              }
-              audioQueueRef.current = [];
-              isPlayingRef.current = false;
+              // DON'T clear audio here — let it finish playing naturally.
+              // Audio is only cleared on explicit interrupt (sendInterrupt).
+              // If we clear here, normal responses get cut off mid-sentence.
               setStateAndRef('listening');
             } else if (data.state === 'processing') {
               setStateAndRef('processing');
