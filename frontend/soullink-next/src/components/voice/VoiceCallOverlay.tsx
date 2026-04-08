@@ -89,7 +89,7 @@ export default function VoiceCallOverlay() {
   // Use shared context — start() was already called from the phone button's
   // click handler (user gesture context), so AudioContext is 'running'.
   // We only need stop/isActive/callState/callSeconds here for rendering.
-  const { stop, isActive, callState, callSeconds } = useVoiceCallContext();
+  const { stop, interrupt, isActive, callState, callSeconds } = useVoiceCallContext();
 
   const companionName = useAppSelector((s) => s.settings.companionName);
   const companionAvatar = useAppSelector((s) => s.settings.companionAvatar);
@@ -102,13 +102,13 @@ export default function VoiceCallOverlay() {
         'voicecall.status.connecting': 'Connecting...',
         'voicecall.status.listening': 'Listening...',
         'voicecall.status.thinking': 'Thinking...',
-        'voicecall.status.speaking': 'Speaking...',
+        'voicecall.status.speaking': 'Speaking... Tap to interrupt',
       },
       'zh-CN': {
         'voicecall.status.connecting': '\u8FDE\u63A5\u4E2D...',
         'voicecall.status.listening': '\u6B63\u5728\u542C...',
         'voicecall.status.thinking': '\u601D\u8003\u4E2D...',
-        'voicecall.status.speaking': '\u6B63\u5728\u8BF4...',
+        'voicecall.status.speaking': '\u6B63\u5728\u8BF4... \u70B9\u51FB\u6253\u65AD',
       },
     };
     const dict = translations[language] ?? translations.en;
@@ -171,7 +171,9 @@ export default function VoiceCallOverlay() {
         </span>
 
         {/* .voice-call-avatar-ring — 160px matching original */}
+        {/* Tap to interrupt when AI is speaking */}
         <div
+          onClick={callState === 'speaking' ? interrupt : undefined}
           style={{
             width: 160,
             height: 160,
@@ -182,6 +184,7 @@ export default function VoiceCallOverlay() {
             justifyContent: 'center',
             overflow: 'hidden',
             transition: 'all 0.5s',
+            cursor: callState === 'speaking' ? 'pointer' : 'default',
             ...ringStyle,
           }}
         >

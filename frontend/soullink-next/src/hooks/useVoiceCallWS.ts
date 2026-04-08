@@ -80,6 +80,8 @@ const SILENT_WAV =
 interface UseVoiceCallWSReturn {
   start: () => Promise<void>;
   stop: () => void;
+  /** Interrupt AI speech — stops playback and returns to listening */
+  interrupt: () => void;
   isActive: boolean;
   callState: VoiceCallState;
   callSeconds: number;
@@ -594,6 +596,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
   return {
     start,
     stop,
+    interrupt: sendInterrupt,
     isActive,
     callState,
     callSeconds,
