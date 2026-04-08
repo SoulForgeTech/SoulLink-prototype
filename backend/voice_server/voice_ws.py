@@ -432,6 +432,7 @@ class VoicePipelineHandler:
         clean_reply = display_reply if full_reply else ""
         asyncio.create_task(self._save_turn(transcript, clean_reply))
 
+
         # 6. Return to listening
         if not self._interrupted:
             await self._send_state("listening")

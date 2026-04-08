@@ -60,14 +60,16 @@ const WS_BASE = getWSBase();
 const SAMPLE_RATE = 16000;
 const CHUNK_INTERVAL_MS = 100; // Send audio every 100ms
 
-/** VAD settings (client-side, for interrupt detection) */
+/**
+ * Auto-interrupt via VAD is DISABLED — too many false triggers from ambient noise.
+ * Interrupt only happens when user taps the "listening" area during AI speech.
+ * TODO: Replace RMS-based VAD with Silero VAD (ML model) for accurate detection.
+ */
+const ENABLE_AUTO_INTERRUPT = false;
 const VAD_POLL_INTERVAL = 50;
-/** RMS threshold for interrupt — raised from 0.05 to 0.12 to avoid noise triggers */
-const VAD_INTERRUPT_THRESHOLD = 0.12;
-/** Grace period after AI starts speaking — raised from 800ms to 1.5s */
-const INTERRUPT_GRACE_MS = 1500;
-/** Consecutive frames needed — raised from 6 to 10 (~500ms of sustained speech) */
-const INTERRUPT_DEBOUNCE_FRAMES = 10;
+const VAD_INTERRUPT_THRESHOLD = 0.15;
+const INTERRUPT_GRACE_MS = 2000;
+const INTERRUPT_DEBOUNCE_FRAMES = 12;
 
 /** Silent WAV for unlocking audio playback on mobile */
 const SILENT_WAV =
@@ -324,8 +326,9 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       }
       const rms = Math.sqrt(sum / bufLen);
 
-      // Only detect interrupt when AI is speaking
-      if (callStateRef.current === 'speaking') {
+      // Auto-interrupt: detect user speech while AI is speaking
+      // DISABLED by default — use Silero VAD when available
+      if (ENABLE_AUTO_INTERRUPT && callStateRef.current === 'speaking') {
         if (Date.now() - speakingStartTimeRef.current < INTERRUPT_GRACE_MS) {
           interruptCount = 0;
           return;
