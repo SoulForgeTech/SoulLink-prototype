@@ -436,11 +436,9 @@ class VoicePipelineHandler:
         asyncio.create_task(self._save_turn(transcript, clean_reply))
         asyncio.create_task(self._restore_model())
 
-        # 6. Return to listening — delay STT start to avoid echo pickup
-        #    (client may still be playing last audio chunks from speakers)
+        # 6. Return to listening
         if not self._interrupted:
             await self._send_state("listening")
-            await asyncio.sleep(1.5)  # Wait for client audio playback to finish
             await self._start_stt()
 
     async def _get_anythingllm(self):
