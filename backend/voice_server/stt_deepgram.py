@@ -87,8 +87,6 @@ class DeepgramStreamingSTT:
         params = {
             "model": "nova-3",
             "language": language if language != "multi" else "multi",
-            "sample_rate": str(sample_rate),
-            "encoding": encoding,
             "channels": str(channels),
             "interim_results": str(interim_results).lower(),
             "endpointing": str(endpointing),
@@ -96,6 +94,11 @@ class DeepgramStreamingSTT:
             "punctuate": "true",
             "smart_format": "true",
         }
+        # Only set encoding/sample_rate for raw formats (linear16, etc.)
+        # For container formats (webm, ogg), Deepgram auto-detects — don't specify
+        if encoding in ("linear16", "mulaw", "alaw", "flac"):
+            params["encoding"] = encoding
+            params["sample_rate"] = str(sample_rate)
         query = "&".join(f"{k}={v}" for k, v in params.items())
         url = f"{DEEPGRAM_WS_URL}?{query}"
 
