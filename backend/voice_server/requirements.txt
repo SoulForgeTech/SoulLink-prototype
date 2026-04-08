@@ -1,0 +1,18 @@
+# FastAPI voice server dependencies (in addition to backend/requirements.txt)
+
+# FastAPI + WebSocket
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+websockets>=12.0
+
+# Async HTTP (for Fish Audio TTS)
+httpx>=0.27.0
+
+# Deepgram Streaming STT
+deepgram-sdk>=3.7.0
+
+# Gemini Direct LLM
+google-generativeai>=0.8.0
+
+# Gemini Live S2S (Phase 2)
+google-genai>=1.0.0

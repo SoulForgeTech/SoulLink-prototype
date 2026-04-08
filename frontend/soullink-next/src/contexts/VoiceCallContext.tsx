@@ -16,7 +16,9 @@
  */
 
 import { createContext, useContext } from 'react';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
+// Phase 1: WebSocket voice call (streaming STT + direct Gemini + binary audio)
+// To revert to SSE mode, change this import back to useVoiceCall
+import { useVoiceCallWS as useVoiceCall } from '@/hooks/useVoiceCallWS';
 
 type VoiceCallContextType = ReturnType<typeof useVoiceCall>;
 

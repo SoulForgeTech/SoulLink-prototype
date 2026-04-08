@@ -66,6 +66,17 @@ export const VOICE = {
   CHAT_STREAM: `${BASE}/api/voice/chat-stream`,
 } as const;
 
+// ==================== Voice WebSocket (FastAPI voice server) ====================
+const VOICE_WS_BASE = process.env.NEXT_PUBLIC_VOICE_WS_URL || 'ws://localhost:8001';
+export const VOICE_WS = {
+  /** Optimized pipeline: streaming STT → Gemini Flash → Fish Audio TTS */
+  PIPELINE: `${VOICE_WS_BASE}/ws/voice`,
+  /** Gemini Live S2S (Phase 2) */
+  LIVE: `${VOICE_WS_BASE}/ws/voice-live`,
+  /** Health check */
+  HEALTH: `${VOICE_WS_BASE}/health`,
+} as const;
+
 // ==================== Upload ====================
 export const UPLOAD = {
   AVATAR: `${BASE}/api/upload-avatar`,
