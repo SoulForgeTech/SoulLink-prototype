@@ -165,7 +165,13 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
 
       if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
         // Binary frame = TTS audio chunk
+        // IMPORTANT: ignore audio arriving after interrupt (state is no longer speaking/processing)
+        if (callStateRef.current === 'listening') {
+          return; // Discard — this is leftover audio from before interrupt
+        }
+
         const processAudio = (buffer: ArrayBuffer) => {
+          if (callStateRef.current === 'listening') return; // Double-check
           if (callStateRef.current !== 'speaking') {
             setStateAndRef('speaking');
           }
@@ -223,6 +229,16 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
 
           case 'state':
             if (data.state === 'listening') {
+              // Stop any playing audio when transitioning to listening
+              // (handles interrupt: server says "listening" but old audio might still play)
+              if (audioElRef.current) {
+                try {
+                  audioElRef.current.pause();
+                  audioElRef.current.src = '';
+                } catch {}
+              }
+              audioQueueRef.current = [];
+              isPlayingRef.current = false;
               setStateAndRef('listening');
             } else if (data.state === 'processing') {
               setStateAndRef('processing');
