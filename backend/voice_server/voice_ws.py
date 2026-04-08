@@ -3,17 +3,22 @@ Voice Pipeline WebSocket Handler — orchestrates STT → LLM → TTS in real ti
 
 This is the main handler for /ws/voice connections. It manages:
   1. Receiving audio chunks from client → Deepgram streaming STT
-  2. Parallel memory retrieval on partial transcript
-  3. Streaming LLM response (Gemini Flash direct)
-  4. Pipelined TTS with ordered audio playback
-  5. User interrupt handling
+  2. LLM response via AnythingLLM (preserves all chat history & RAG)
+  3. Pipelined TTS with ordered audio playback
+  4. User interrupt handling
+
+LLM goes through AnythingLLM (not direct Gemini) so that:
+  - Chat history is automatically saved in AnythingLLM sessions
+  - RAG document retrieval works
+  - Voice ↔ text chat memory continuity is preserved
 """
 
 import json
 import asyncio
 import logging
+import re
 import time
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 from bson import ObjectId
@@ -23,7 +28,6 @@ from voice_server.stt_deepgram import DeepgramStreamingSTT, WhisperFallbackSTT
 
 # Feature flag: use Deepgram streaming STT or fallback to Whisper batch
 USE_DEEPGRAM = bool(os.getenv("DEEPGRAM_API_KEY", ""))
-from voice_server.llm_direct import gather_context, stream_reply, stream_reply_full
 from voice_server.tts_stream import (
     StreamingTTSPipeline,
     warmup as tts_warmup,
@@ -62,6 +66,9 @@ class VoicePipelineHandler:
 
         # Whisper fallback: collect raw audio chunks when Deepgram unavailable
         self._audio_chunks: list[bytes] = []
+
+        # Audio config (updated by client "config" message)
+        self._sample_rate = 48000  # Default; client sends actual rate
 
         # Timing
         self._session_start = time.time()
@@ -164,7 +171,14 @@ class VoicePipelineHandler:
             await self._handle_interrupt()
 
         elif msg_type == "config":
-            # Update session config (e.g., voice selection)
+            # Update session config
+            if "sample_rate" in data:
+                self._sample_rate = int(data["sample_rate"])
+                logger.info(f"[WS] Client sample rate: {self._sample_rate}Hz")
+                # Restart STT with correct sample rate
+                if self._stt:
+                    await self._stt.close()
+                await self._start_stt()
             if "voice_ref_id" in data:
                 self._voice_ref_id = data["voice_ref_id"]
                 logger.info(f"[WS] Voice changed to: {self._voice_ref_id}")
@@ -181,9 +195,9 @@ class VoicePipelineHandler:
                 self._stt = DeepgramStreamingSTT()
                 await self._stt.connect(
                     language=self._voice_lang,
-                    sample_rate=16000,
-                    encoding="linear16",  # Client sends PCM 16kHz 16-bit mono
-                    endpointing=400,      # 400ms silence → utterance end
+                    sample_rate=self._sample_rate,
+                    encoding="linear16",
+                    endpointing=400,
                 )
 
                 # Background: listen for speech_final → auto-trigger processing
@@ -318,40 +332,54 @@ class VoicePipelineHandler:
             "is_final": True,
         })
 
-        # 2. Gather context (parallel: memory + history)
-        system_prompt, memory_text, history = await gather_context(
-            self.user_id,
-            self.settings,
-            self.conversation_id,
-            transcript,
-        )
-        t_context = time.time()
-        logger.info(f"[WS] Context gathered ({t_context - t_start:.2f}s)")
+        # 2. Setup AnythingLLM workspace
+        try:
+            loop = asyncio.get_event_loop()
+            workspace_slug, api = await self._get_anythingllm()
+            t_setup = time.time()
+            logger.info(f"[WS] AnythingLLM ready ({t_setup - t_start:.2f}s)")
+        except Exception as e:
+            logger.error(f"[WS] AnythingLLM setup failed: {e}")
+            await self._send_json({"type": "error", "message": f"LLM setup error: {e}"})
+            await self._send_state("listening")
+            await self._start_stt()
+            return
 
-        # 3. Stream LLM → TTS → audio to client
+        # 3. Stream LLM (via AnythingLLM) → TTS → audio to client
         await self._send_state("speaking")
 
         tts = StreamingTTSPipeline(self._voice_ref_id)
         self._tts_pipeline = tts
         full_reply = ""
-
-        # Run LLM streaming and TTS audio sending concurrently
-        llm_done = asyncio.Event()
+        thinking_content = ""
+        in_thinking = False
 
         async def llm_to_tts():
-            """Stream LLM tokens into TTS pipeline."""
-            nonlocal full_reply
+            """Stream AnythingLLM tokens into TTS pipeline."""
+            nonlocal full_reply, thinking_content, in_thinking
             try:
-                async for token in stream_reply(transcript, system_prompt, history):
+                async for token in self._stream_anythingllm(api, transcript):
                     if self._interrupted:
                         break
+
                     full_reply += token
+
+                    # Filter <think> tags — don't TTS thinking content
+                    if "<think>" in token.lower() or "<thought>" in token.lower():
+                        in_thinking = True
+                        continue
+                    if "</think>" in token.lower() or "</thought>" in token.lower():
+                        in_thinking = False
+                        continue
+                    if in_thinking:
+                        thinking_content += token
+                        continue
+
                     tts.feed_token(token)
             except Exception as e:
                 logger.error(f"[WS] LLM stream error: {e}")
             finally:
                 await tts.flush()
-                llm_done.set()
 
         async def tts_to_client():
             """Send TTS audio segments to client as binary frames."""
@@ -360,7 +388,6 @@ class VoicePipelineHandler:
                     if self._interrupted:
                         break
                     if audio_bytes:
-                        # Send binary audio frame
                         await self._send_binary(audio_bytes)
                         logger.debug(f"[WS] Sent audio: '{clause_text[:20]}' ({len(audio_bytes)} bytes)")
             except Exception as e:
@@ -380,14 +407,12 @@ class VoicePipelineHandler:
         else:
             logger.info(
                 f"[WS] Turn complete: {t_done - t_start:.2f}s total "
-                f"(STT={t_stt - t_start:.2f}s, ctx={t_context - t_stt:.2f}s, "
-                f"LLM+TTS={t_done - t_context:.2f}s)"
+                f"(setup={t_setup - t_start:.2f}s, "
+                f"LLM+TTS={t_done - t_setup:.2f}s)"
             )
 
         # Send full reply text for chat display
         if full_reply:
-            # Strip thinking content for display
-            import re
             display_reply = re.sub(
                 r'<(?:think|thought)>.*?</(?:think|thought)>',
                 '', full_reply, flags=re.DOTALL
@@ -396,19 +421,126 @@ class VoicePipelineHandler:
             await self._send_json({
                 "type": "reply",
                 "text": display_reply,
+                "thinking": thinking_content if thinking_content else None,
                 "conversation_id": self.conversation_id,
             })
 
         # 4. Signal turn complete
         await self._send_json({"type": "done"})
 
-        # 5. Save to DB and process memory (background, non-blocking)
-        asyncio.create_task(self._save_conversation(transcript, full_reply))
+        # 5. Save user message to MongoDB (AnythingLLM already saved AI reply internally)
+        asyncio.create_task(self._save_user_message(transcript))
 
         # 6. Return to listening
         if not self._interrupted:
             await self._send_state("listening")
             await self._start_stt()
+
+    async def _get_anythingllm(self):
+        """Get AnythingLLM workspace and API instance for this user."""
+        loop = asyncio.get_event_loop()
+        from workspace_manager import WorkspaceManager
+        from anythingllm_api import AnythingLLMAPI
+
+        wm = WorkspaceManager()
+        ws_result = await loop.run_in_executor(
+            None, wm.get_or_create_workspace, self.user_id
+        )
+        if not ws_result.get("success"):
+            raise Exception(f"Workspace error: {ws_result.get('error', 'unknown')}")
+
+        slug = ws_result["workspace"]["slug"]
+        api = AnythingLLMAPI(
+            base_url=wm.anythingllm_base_url,
+            api_key=wm.anythingllm_api_key,
+            workspace_slug=slug,
+        )
+        return slug, api
+
+    async def _stream_anythingllm(
+        self, api, transcript: str
+    ) -> AsyncIterator[str]:
+        """
+        Stream tokens from AnythingLLM (sync generator → async yield).
+        Uses the same session_id as the conversation for history continuity.
+        """
+        loop = asyncio.get_event_loop()
+        import queue as queue_mod
+        token_queue: queue_mod.Queue = queue_mod.Queue()
+        _SENTINEL = object()
+
+        def _run_stream():
+            """Run AnythingLLM sync stream in thread, put tokens in queue."""
+            try:
+                for chunk in api.send_message_stream(
+                    transcript,
+                    session_id=self.conversation_id or "default-session",
+                ):
+                    if chunk.get("error"):
+                        logger.error(f"[WS] AnythingLLM error: {chunk['error']}")
+                        break
+                    token = chunk.get("textResponse", "")
+                    if token:
+                        token_queue.put(token)
+            except Exception as e:
+                logger.error(f"[WS] AnythingLLM stream error: {e}")
+            finally:
+                token_queue.put(_SENTINEL)
+
+        # Run sync stream in background thread
+        thread_future = loop.run_in_executor(None, _run_stream)
+
+        # Yield tokens as they arrive — poll queue with short timeouts
+        total_wait = 0.0
+        max_wait = 60.0  # Overall timeout for the entire LLM response
+        poll_interval = 0.1  # Check every 100ms
+
+        while total_wait < max_wait:
+            try:
+                # Non-blocking check
+                item = token_queue.get_nowait()
+                if item is _SENTINEL:
+                    break
+                yield item
+                total_wait = 0.0  # Reset timeout when we get a token
+            except queue_mod.Empty:
+                # No token yet — wait a bit and retry
+                await asyncio.sleep(poll_interval)
+                total_wait += poll_interval
+                # If thread died, stop waiting
+                if thread_future.done():
+                    # Drain remaining items
+                    while not token_queue.empty():
+                        item = token_queue.get_nowait()
+                        if item is _SENTINEL:
+                            break
+                        yield item
+                    break
+
+    async def _save_user_message(self, user_text: str):
+        """Save user voice message to MongoDB (AI reply is saved by AnythingLLM)."""
+        try:
+            loop = asyncio.get_event_loop()
+            from database import db
+
+            if self.conversation_id:
+                conv_id = ObjectId(self.conversation_id)
+            else:
+                conv = await loop.run_in_executor(
+                    None, db.get_active_conversation, self.user_id
+                )
+                conv_id = conv["_id"]
+                self.conversation_id = str(conv_id)
+
+            await loop.run_in_executor(
+                None,
+                db.add_message_to_conversation,
+                conv_id, self.user_id, "user", user_text,
+                None, None, None, "voice", None, None,
+            )
+            logger.info(f"[WS] Saved user message: {len(user_text)} chars")
+        except Exception as e:
+            logger.error(f"[WS] Save user message error: {e}")
 
     async def _handle_interrupt(self):
         """Handle user interrupt: stop TTS, return to listening."""
@@ -423,59 +555,7 @@ class VoicePipelineHandler:
         await self._send_state("listening")
         await self._start_stt()
 
-    async def _save_conversation(self, user_text: str, ai_reply: str):
-        """Save messages to DB and extract memories (background task)."""
-        try:
-            loop = asyncio.get_event_loop()
-            from database import db
 
-            # Get or create conversation
-            if self.conversation_id:
-                conv_id = ObjectId(self.conversation_id)
-            else:
-                conv = await loop.run_in_executor(
-                    None, db.get_active_conversation, self.user_id
-                )
-                conv_id = conv["_id"]
-                self.conversation_id = str(conv_id)
-
-            # Save user message
-            await loop.run_in_executor(
-                None,
-                db.add_message_to_conversation,
-                conv_id, self.user_id, "user", user_text,
-                None, None, None, "voice", None, None,
-            )
-
-            # Save AI reply (strip thinking tags)
-            import re
-            clean_reply = re.sub(
-                r'<(?:think|thought)>.*?</(?:think|thought)>',
-                '', ai_reply, flags=re.DOTALL
-            ).strip()
-
-            if clean_reply:
-                await loop.run_in_executor(
-                    None,
-                    db.add_message_to_conversation,
-                    conv_id, self.user_id, "assistant", clean_reply,
-                )
-
-            # Extract memories via Mem0 (async background)
-            try:
-                import os
-                if os.getenv("MEM0_ENABLED", "false").lower() == "true":
-                    from mem0_engine import process_memory
-                    await loop.run_in_executor(
-                        None, process_memory, self.user_id, user_text, clean_reply
-                    )
-            except Exception as e:
-                logger.warning(f"[WS] Memory extraction failed: {e}")
-
-            logger.info(f"[WS] Saved conversation: user={len(user_text)} chars, ai={len(clean_reply)} chars")
-
-        except Exception as e:
-            logger.error(f"[WS] Save conversation error: {e}")
 
     async def cleanup(self):
         """Clean up resources when session ends."""

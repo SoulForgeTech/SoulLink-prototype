@@ -85,7 +85,7 @@ class DeepgramStreamingSTT:
 
         # Build WebSocket URL with query params
         params = {
-            "model": "nova-2",
+            "model": "nova-3",
             "language": language if language != "multi" else "multi",
             "sample_rate": str(sample_rate),
             "encoding": encoding,

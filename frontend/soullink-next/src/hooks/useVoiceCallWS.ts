@@ -459,14 +459,16 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       });
       mediaStreamRef.current = stream;
 
-      // 2. Set up AudioContext
+      // 2. Set up AudioContext — use browser's default sample rate
+      //    (forcing 16kHz is not supported on all browsers, causes pitch distortion)
       const AudioCtx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
-      const ctx = new AudioCtx({ sampleRate: SAMPLE_RATE });
+      const ctx = new AudioCtx(); // Use default rate (usually 44100 or 48000)
       audioContextRef.current = ctx;
       if (ctx.state === 'suspended') ctx.resume();
+      console.log(`[VoiceCallWS] AudioContext sampleRate: ${ctx.sampleRate}`);
 
       // 3. Create & unlock audio element
       if (!audioElRef.current) {
@@ -510,10 +512,16 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
         }
       };
 
-      // 5. Start audio capture
+      // 5. Tell server our actual sample rate
+      ws.send(JSON.stringify({
+        type: 'config',
+        sample_rate: ctx.sampleRate,
+      }));
+
+      // 6. Start audio capture
       startAudioCapture();
 
-      // 6. Start call timer
+      // 7. Start call timer
       callTimerRef.current = setInterval(() => {
         dispatch(tickCallSeconds());
       }, 1000);
