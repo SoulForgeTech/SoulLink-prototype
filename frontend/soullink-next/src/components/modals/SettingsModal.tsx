@@ -266,7 +266,7 @@ export default function SettingsModal() {
 
   // ---- Not in Redux yet — use local state with defaults ----
   const [companionGender, setCompanionGenderState] = useState<'female' | 'male'>('female');
-  const [companionRelationship, setCompanionRelationshipState] = useState('');
+  const [companionRelationship, setCompanionRelationshipState] = useState('lover');
   const [companionSubtype, setCompanionSubtypeState] = useState('');
   const [customPersonaText] = useState('');
   const [customPersonaName, setCustomPersonaName] = useState('');
