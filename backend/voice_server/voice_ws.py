@@ -428,8 +428,9 @@ class VoicePipelineHandler:
         # 4. Signal turn complete
         await self._send_json({"type": "done"})
 
-        # 5. Save user message to MongoDB (AnythingLLM already saved AI reply internally)
-        asyncio.create_task(self._save_user_message(transcript))
+        # 5. Save both user message AND AI reply to MongoDB
+        clean_reply = display_reply if full_reply else ""
+        asyncio.create_task(self._save_turn(transcript, clean_reply))
 
         # 6. Return to listening
         if not self._interrupted:
@@ -517,8 +518,8 @@ class VoicePipelineHandler:
                         yield item
                     break
 
-    async def _save_user_message(self, user_text: str):
-        """Save user voice message to MongoDB (AI reply is saved by AnythingLLM)."""
+    async def _save_turn(self, user_text: str, ai_reply: str):
+        """Save both user voice message and AI reply to MongoDB."""
         try:
             loop = asyncio.get_event_loop()
             from database import db
@@ -532,15 +533,25 @@ class VoicePipelineHandler:
                 conv_id = conv["_id"]
                 self.conversation_id = str(conv_id)
 
+            # Save user message
             await loop.run_in_executor(
                 None,
                 db.add_message_to_conversation,
                 conv_id, self.user_id, "user", user_text,
                 None, None, None, "voice", None, None,
             )
-            logger.info(f"[WS] Saved user message: {len(user_text)} chars")
+
+            # Save AI reply
+            if ai_reply:
+                await loop.run_in_executor(
+                    None,
+                    db.add_message_to_conversation,
+                    conv_id, self.user_id, "assistant", ai_reply,
+                )
+
+            logger.info(f"[WS] Saved turn: user={len(user_text)} chars, ai={len(ai_reply)} chars")
         except Exception as e:
-            logger.error(f"[WS] Save user message error: {e}")
+            logger.error(f"[WS] Save turn error: {e}")
 
     async def _handle_interrupt(self):
         """Handle user interrupt: stop TTS, return to listening."""

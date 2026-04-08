@@ -184,6 +184,7 @@ export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
                     attachments={msg.attachments}
                     audioUrl={msg.audio_url}
                     audioDuration={msg.audio_duration}
+                    isVoiceCall={msg.is_voice_call}
                     animationIndex={isHistory ? -1 : 0}
                     onImageEdit={onImageEdit}
                   />
@@ -197,8 +198,17 @@ export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
                       <ThinkingBubble content={msg.thinking} />
                     )}
 
-                    {/* Voice message */}
-                    {msg.audio_url ? (
+                    {/* Voice call bubble — compact style */}
+                    {msg.is_voice_call ? (
+                      <MessageBubble
+                        role="assistant"
+                        content={msg.content}
+                        isVoiceCall
+                        showAvatar
+                        animationIndex={isHistory ? -1 : 0}
+                      />
+                    ) : msg.audio_url ? (
+                      /* Recorded voice message with waveform */
                       <MessageBubble
                         role="assistant"
                         content={msg.content}

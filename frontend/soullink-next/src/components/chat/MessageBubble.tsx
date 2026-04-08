@@ -139,6 +139,8 @@ interface MessageBubbleProps {
   animationIndex?: number;
   dangerousHtml?: string;
   className?: string;
+  /** True for voice call messages — renders as compact voice bubble */
+  isVoiceCall?: boolean;
   /** Callback for TTS playback */
   onTTS?: (text: string) => void;
   /** Callback for image editing — receives image data URL/URL + edit prompt */
@@ -233,12 +235,14 @@ export default function MessageBubble({
   animationIndex = 0,
   dangerousHtml,
   className = '',
+  isVoiceCall = false,
   onTTS,
   onImageEdit,
 }: MessageBubbleProps) {
   const companionAvatar = useAppSelector((s) => s.settings.companionAvatar);
   const companionName = useAppSelector((s) => s.settings.companionName);
   const userBubbleColor = useAppSelector((s) => s.settings.userBubbleColor);
+  const language = useAppSelector((s) => s.settings.language);
   const user = useAppSelector((s) => s.auth.user);
 
   // User avatar: avatar_url (Cloudinary) or avatar (legacy) or color initial
@@ -363,13 +367,43 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* Voice message */}
-        {isVoice && audioUrl && (
+        {/* Voice call bubble — WeChat style */}
+        {isVoiceCall && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '2px 4px',
+            minWidth: '80px',
+            cursor: 'default',
+          }}>
+            {/* Speaker icon — direction based on role */}
+            {!isUser && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M15.54 8.46a5 5 0 010 7.07" />
+                <path d="M19.07 4.93a10 10 0 010 14.14" />
+              </svg>
+            )}
+            <span style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'nowrap' }}>
+              {language?.startsWith('zh') ? '语音通话' : 'Voice Call'}
+            </span>
+            {isUser && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M15.54 8.46a5 5 0 010 7.07" />
+              </svg>
+            )}
+          </div>
+        )}
+
+        {/* Voice message (recorded audio with waveform) */}
+        {!isVoiceCall && isVoice && audioUrl && (
           <VoiceWaveform audioUrl={audioUrl} duration={audioDuration || 0} />
         )}
 
         {/* Text content — markdown */}
-        {!isVoice && html && (
+        {!isVoiceCall && !isVoice && html && (
           <div
             className="markdown-content"
             style={{ wordBreak: 'break-word' }}

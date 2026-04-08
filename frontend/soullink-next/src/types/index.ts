@@ -72,6 +72,8 @@ export interface Message {
   attachments?: MessageAttachment[];
   audio_url?: string;
   audio_duration?: number;
+  /** True for messages from voice call (show as voice bubble, not text) */
+  is_voice_call?: boolean;
 }
 
 export interface Conversation {

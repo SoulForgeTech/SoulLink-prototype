@@ -199,7 +199,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
             break;
 
           case 'reply': {
-            // Full reply text — add to chat
+            // Full reply text — add to chat as voice call bubbles
             const ts = new Date().toISOString();
             if (lastTranscriptRef.current) {
               dispatch(
@@ -207,6 +207,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
                   role: 'user',
                   content: lastTranscriptRef.current,
                   timestamp: ts,
+                  is_voice_call: true,
                 }),
               );
               lastTranscriptRef.current = '';
@@ -221,6 +222,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
                   content: cleanReply,
                   thinking: data.thinking || null,
                   timestamp: ts,
+                  is_voice_call: true,
                 }),
               );
             }
