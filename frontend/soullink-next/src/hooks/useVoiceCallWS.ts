@@ -62,9 +62,12 @@ const CHUNK_INTERVAL_MS = 100; // Send audio every 100ms
 
 /** VAD settings (client-side, for interrupt detection) */
 const VAD_POLL_INTERVAL = 50;
-const VAD_INTERRUPT_THRESHOLD = 0.05;
-const INTERRUPT_GRACE_MS = 800;
-const INTERRUPT_DEBOUNCE_FRAMES = 6;
+/** RMS threshold for interrupt — raised from 0.05 to 0.12 to avoid noise triggers */
+const VAD_INTERRUPT_THRESHOLD = 0.12;
+/** Grace period after AI starts speaking — raised from 800ms to 1.5s */
+const INTERRUPT_GRACE_MS = 1500;
+/** Consecutive frames needed — raised from 6 to 10 (~500ms of sustained speech) */
+const INTERRUPT_DEBOUNCE_FRAMES = 10;
 
 /** Silent WAV for unlocking audio playback on mobile */
 const SILENT_WAV =

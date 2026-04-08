@@ -541,12 +541,13 @@ class VoicePipelineHandler:
                 None, None, None, "voice", None, None,
             )
 
-            # Save AI reply
+            # Save AI reply (also marked as voice type for UI rendering)
             if ai_reply:
                 await loop.run_in_executor(
                     None,
                     db.add_message_to_conversation,
                     conv_id, self.user_id, "assistant", ai_reply,
+                    None, None, None, "voice", None, None,
                 )
 
             logger.info(f"[WS] Saved turn: user={len(user_text)} chars, ai={len(ai_reply)} chars")
