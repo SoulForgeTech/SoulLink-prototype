@@ -833,6 +833,87 @@ def edit_image():
         return jsonify({"error": "Internal server error"}), 500
 
 
+# ==================== User Memories ====================
+
+@app.route("/api/user/memories", methods=["GET"])
+@login_required
+def get_user_memories():
+    """获取用户的所有记忆（Mem0）— 用于前端记忆面板展示"""
+    user_id = get_current_user_id()
+    uid_str = str(user_id)
+
+    if os.getenv("MEM0_ENABLED", "false").lower() != "true":
+        return jsonify({"memories": [], "total": 0, "message": "Memory system not enabled"})
+
+    try:
+        from mem0_engine import _get_mem0
+        from datetime import datetime
+
+        m = _get_mem0()
+        all_mems = m.get_all(user_id=uid_str)
+        items = all_mems if isinstance(all_mems, list) else all_mems.get("results", [])
+
+        now = datetime.utcnow()
+        memories = []
+        for r in items:
+            meta = r.get("metadata", {})
+            tier = meta.get("tier", "long_term")
+            expires_at = meta.get("expires_at")
+
+            # Check expiry
+            is_expired = False
+            if expires_at:
+                try:
+                    is_expired = datetime.fromisoformat(expires_at) < now
+                except (ValueError, TypeError):
+                    pass
+
+            if is_expired:
+                continue
+
+            memories.append({
+                "id": r.get("id", ""),
+                "fact": r.get("memory", ""),
+                "tier": tier,
+                "created_at": meta.get("created_at", ""),
+                "expires_at": expires_at,
+            })
+
+        # Sort: permanent first, then by fact length (more important = longer)
+        tier_order = {"permanent": 0, "long_term": 1, "short_term": 2}
+        memories.sort(key=lambda x: (tier_order.get(x["tier"], 9),))
+
+        return jsonify({
+            "memories": memories,
+            "total": len(memories),
+            "counts": {
+                "permanent": sum(1 for m in memories if m["tier"] == "permanent"),
+                "long_term": sum(1 for m in memories if m["tier"] == "long_term"),
+                "short_term": sum(1 for m in memories if m["tier"] == "short_term"),
+            },
+        })
+    except Exception as e:
+        logger.error(f"[MEMORIES] Error fetching memories: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/memories/<memory_id>", methods=["DELETE"])
+@login_required
+def delete_user_memory(memory_id):
+    """删除指定记忆"""
+    if os.getenv("MEM0_ENABLED", "false").lower() != "true":
+        return jsonify({"error": "Memory system not enabled"}), 400
+
+    try:
+        from mem0_engine import _get_mem0
+        m = _get_mem0()
+        m.delete(memory_id)
+        return jsonify({"success": True, "deleted": memory_id})
+    except Exception as e:
+        logger.error(f"[MEMORIES] Error deleting memory {memory_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/user/settings", methods=["PUT"])
 @login_required
 def update_settings():

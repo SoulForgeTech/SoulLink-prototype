@@ -34,6 +34,9 @@ export const USER = {
   CLEAR_PERSONA: `${BASE}/api/user/clear-persona`,
   IMPORT_LORE: `${BASE}/api/user/import-lore`,
   CLEAR_LORE: `${BASE}/api/user/clear-lore`,
+  MEMORIES: `${BASE}/api/user/memories`,
+  /** Delete a specific memory */
+  deleteMemory: (id: string) => `${BASE}/api/user/memories/${id}`,
 } as const;
 
 // ==================== Chat ====================

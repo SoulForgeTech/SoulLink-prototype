@@ -352,7 +352,7 @@ export interface SubtypeDef {
 
 // ==================== UI ====================
 
-export type SettingsTab = 'profile' | 'companion' | 'advanced';
+export type SettingsTab = 'profile' | 'companion' | 'advanced' | 'memory';
 
 export type ModalName =
   | 'settings'
