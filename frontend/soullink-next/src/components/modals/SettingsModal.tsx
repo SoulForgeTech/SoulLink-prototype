@@ -80,8 +80,8 @@ const settingsTabsStyle: CSSProperties = {
 };
 
 const settingsTabBaseStyle: CSSProperties = {
-  padding: '10px 16px',
-  fontSize: '0.85rem',
+  padding: '10px 12px',
+  fontSize: '0.8rem',
   fontWeight: 600,
   color: '#718096',
   borderBottom: '2px solid transparent',
