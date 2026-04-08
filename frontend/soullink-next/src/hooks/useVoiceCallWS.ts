@@ -100,7 +100,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -350,44 +350,48 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
     const source = ctx.createMediaStreamSource(mediaStreamRef.current);
     sourceNodeRef.current = source;
 
-    // Create analyser for VAD
+    // Create analyser for VAD (interrupt detection)
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
     source.connect(analyser);
     analyserRef.current = analyser;
 
-    // Use ScriptProcessorNode to capture PCM audio chunks
-    // (AudioWorklet is better but more complex setup)
-    const bufferSize = Math.round(SAMPLE_RATE * (CHUNK_INTERVAL_MS / 1000));
-    // ScriptProcessor bufferSize must be power of 2
-    const processorSize = Math.pow(2, Math.ceil(Math.log2(bufferSize)));
-    const processor = ctx.createScriptProcessor(processorSize, 1, 1);
-    processorRef.current = processor;
+    // Use MediaRecorder for high-quality audio capture (webm/opus)
+    // Much better than ScriptProcessorNode raw PCM — browser's codec optimizes audio
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
 
-    processor.onaudioprocess = (e) => {
-      if (!activeRef.current) return;
-      if (callStateRef.current !== 'listening' && callStateRef.current !== 'speaking') return;
+    try {
+      const recorder = new MediaRecorder(mediaStreamRef.current, {
+        ...(mimeType ? { mimeType } : {}),
+      });
+      recorderRef.current = recorder;
 
-      const input = e.inputBuffer.getChannelData(0);
+      recorder.ondataavailable = (e) => {
+        if (
+          e.data.size > 0 &&
+          activeRef.current &&
+          callStateRef.current === 'listening' &&
+          wsRef.current?.readyState === WebSocket.OPEN
+        ) {
+          // Send webm/opus chunks as binary to server
+          e.data.arrayBuffer().then((buf) => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(buf);
+            }
+          });
+        }
+      };
 
-      // Convert float32 to int16 PCM
-      const pcm16 = new Int16Array(input.length);
-      for (let i = 0; i < input.length; i++) {
-        const s = Math.max(-1, Math.min(1, input[i]));
-        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-      }
-
-      // Send binary PCM to server (only in listening state)
-      if (
-        callStateRef.current === 'listening' &&
-        wsRef.current?.readyState === WebSocket.OPEN
-      ) {
-        wsRef.current.send(pcm16.buffer);
-      }
-    };
-
-    source.connect(processor);
-    processor.connect(ctx.destination); // Required for ScriptProcessor to work
+      // Produce chunks every 250ms
+      recorder.start(250);
+      console.log(`[VoiceCallWS] MediaRecorder started: ${recorder.mimeType}`);
+    } catch (err) {
+      console.error('[VoiceCallWS] MediaRecorder failed:', err);
+    }
 
     startVAD();
   }, [startVAD]);
@@ -417,13 +421,13 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       callTimerRef.current = null;
     }
 
-    // Disconnect audio nodes
-    if (processorRef.current) {
+    // Stop MediaRecorder
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       try {
-        processorRef.current.disconnect();
+        recorderRef.current.stop();
       } catch {}
-      processorRef.current = null;
     }
+    recorderRef.current = null;
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.disconnect();
@@ -531,10 +535,11 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
         }
       };
 
-      // 5. Tell server our actual sample rate
+      // 5. Tell server our audio format (MediaRecorder uses webm/opus)
       ws.send(JSON.stringify({
         type: 'config',
         sample_rate: ctx.sampleRate,
+        encoding: 'opus',
       }));
 
       // 6. Start audio capture

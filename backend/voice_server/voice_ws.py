@@ -26,8 +26,8 @@ from bson import ObjectId
 import os
 from voice_server.stt_deepgram import DeepgramStreamingSTT, WhisperFallbackSTT
 
-# Feature flag: use Deepgram streaming STT or fallback to Whisper batch
-USE_DEEPGRAM = bool(os.getenv("DEEPGRAM_API_KEY", ""))
+# STT engine: "deepgram" (streaming, low latency) or "whisper" (batch, better Chinese)
+STT_ENGINE = os.getenv("STT_ENGINE", "deepgram")
 from voice_server.tts_stream import (
     StreamingTTSPipeline,
     warmup as tts_warmup,
@@ -70,8 +70,9 @@ class VoicePipelineHandler:
         # Whisper fallback: collect raw audio chunks when Deepgram unavailable
         self._audio_chunks: list[bytes] = []
 
-        # Audio config (updated by client "config" message)
-        self._sample_rate = 48000  # Default; client sends actual rate
+        # Audio config — client sends webm/opus via MediaRecorder
+        self._sample_rate = 48000
+        self._encoding = "opus"  # MediaRecorder default
 
         # Timing
         self._session_start = time.time()
@@ -175,10 +176,13 @@ class VoicePipelineHandler:
 
         elif msg_type == "config":
             # Update session config
-            if "sample_rate" in data:
-                self._sample_rate = int(data["sample_rate"])
-                logger.info(f"[WS] Client sample rate: {self._sample_rate}Hz")
-                # Restart STT with correct sample rate
+            if "sample_rate" in data or "encoding" in data:
+                if "sample_rate" in data:
+                    self._sample_rate = int(data["sample_rate"])
+                if "encoding" in data:
+                    self._encoding = data["encoding"]
+                logger.info(f"[WS] Audio config: {self._encoding} @ {self._sample_rate}Hz")
+                # Restart STT with correct config
                 if self._stt:
                     await self._stt.close()
                 await self._start_stt()
@@ -193,13 +197,13 @@ class VoicePipelineHandler:
         """Initialize STT: Deepgram streaming or Whisper fallback."""
         self._audio_chunks = []  # Reset audio buffer
 
-        if USE_DEEPGRAM:
+        if STT_ENGINE == "deepgram":
             try:
                 self._stt = DeepgramStreamingSTT()
                 await self._stt.connect(
                     language=self._voice_lang,
                     sample_rate=self._sample_rate,
-                    encoding="linear16",
+                    encoding=self._encoding,
                     endpointing=400,
                 )
 
