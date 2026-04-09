@@ -215,7 +215,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
         {/* Header — fixed top section */}
         <div className="about-modal-header">
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a202c', margin: 0 }}>SoulLink</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a202c', margin: 0 }}>SoulForge</h2>
             <p style={{ fontSize: '0.875rem', color: '#718096', marginTop: 4, marginBottom: 0 }}>
               {t('about.tagline')}
             </p>
@@ -527,7 +527,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
         {/* Footer */}
         <div style={{ padding: '16px 30px', borderTop: '1px solid rgba(0,0,0,0.06)', textAlign: 'center', flexShrink: 0 }}>
           <p style={{ fontSize: '0.75rem', color: '#a0aec0', margin: 0 }}>
-            &copy; {new Date().getFullYear()} SoulLink. All rights reserved.
+            &copy; {new Date().getFullYear()} SoulForge. All rights reserved.
           </p>
         </div>
       </div>
