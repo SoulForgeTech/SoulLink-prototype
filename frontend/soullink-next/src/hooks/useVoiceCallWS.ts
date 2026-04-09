@@ -154,8 +154,9 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       URL.revokeObjectURL(url);
       if (audioQueueRef.current.length > 0) {
         playNextSegment();
-      } else if (activeRef.current && callStateRef.current === 'speaking') {
-        // All audio played — server will send "done" to transition state
+      } else if (activeRef.current) {
+        // All audio played — now actually transition to listening
+        setStateAndRef('listening');
       }
     };
 
@@ -239,10 +240,13 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
 
           case 'state':
             if (data.state === 'listening') {
-              // DON'T clear audio here — let it finish playing naturally.
-              // Audio is only cleared on explicit interrupt (sendInterrupt).
-              // If we clear here, normal responses get cut off mid-sentence.
-              setStateAndRef('listening');
+              // Don't switch to listening until audio queue is empty.
+              // Server sends this when LLM+TTS generation is done,
+              // but client may still be playing queued audio segments.
+              if (audioQueueRef.current.length === 0 && !isPlayingRef.current) {
+                setStateAndRef('listening');
+              }
+              // Otherwise: playNextSegment's onDone will set listening when queue empties
             } else if (data.state === 'processing') {
               setStateAndRef('processing');
             } else if (data.state === 'speaking') {

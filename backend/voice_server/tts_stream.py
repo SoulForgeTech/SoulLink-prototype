@@ -194,9 +194,11 @@ class StreamingTTSPipeline:
     Accumulates LLM tokens, detects clause boundaries,
     and fires off TTS requests as soon as clauses are ready.
     Maintains ordering for sequential playback.
+
+    Rate limiting: max 2 concurrent TTS requests to avoid Fish Audio 429.
     """
 
-    def __init__(self, ref_id: str):
+    def __init__(self, ref_id: str, max_concurrent: int = 1):
         self.ref_id = ref_id
         self._buffer = ""
         self._audio_queue: asyncio.Queue[Tuple[int, str, bytes] | None] = asyncio.Queue()
@@ -205,6 +207,8 @@ class StreamingTTSPipeline:
         self._results: dict[int, Tuple[str, bytes]] = {}
         self._next_yield_idx = 0
         self._finished_feeding = False
+        # Semaphore limits concurrent Fish Audio API calls
+        self._tts_semaphore = asyncio.Semaphore(max_concurrent)
 
     def feed_token(self, token: str):
         """
@@ -299,9 +303,10 @@ class StreamingTTSPipeline:
         await self._audio_queue.put(None)
 
     async def _tts_and_enqueue(self, idx: int, text: str):
-        """TTS a clause and put result in the queue."""
+        """TTS a clause and put result in the queue (rate-limited)."""
         try:
-            audio = await synthesize_async(text, self.ref_id)
+            async with self._tts_semaphore:
+                audio = await synthesize_async(text, self.ref_id)
             await self._audio_queue.put((idx, text, audio))
         except asyncio.CancelledError:
             pass
