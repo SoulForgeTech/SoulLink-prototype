@@ -57,17 +57,25 @@ export default function MemoryPanel() {
   const fetchMemories = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const resp = await authFetch(USER.MEMORIES);
-      if (!resp.ok) throw new Error('Failed to fetch');
-      const data: MemoriesResponse = await resp.json();
-      setMemories(data.memories || []);
-      setCounts(data.counts || { permanent: 0, long_term: 0, short_term: 0 });
-    } catch (e) {
-      setError(language === 'zh-CN' ? '加载失败' : 'Failed to load');
-    } finally {
-      setLoading(false);
+    // Retry up to 3 times — Qdrant embedded mode may fail if request
+    // hits the wrong Gunicorn worker (only one can hold the lock)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const resp = await authFetch(USER.MEMORIES);
+        if (!resp.ok) throw new Error('Failed to fetch');
+        const data: MemoriesResponse = await resp.json();
+        setMemories(data.memories || []);
+        setCounts(data.counts || { permanent: 0, long_term: 0, short_term: 0 });
+        setLoading(false);
+        return; // Success
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 500)); // Wait before retry
+        }
+      }
     }
+    setError(language === 'zh-CN' ? '加载失败' : 'Failed to load');
+    setLoading(false);
   }, [authFetch, language]);
 
   useEffect(() => {
