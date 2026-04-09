@@ -275,10 +275,10 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/images/wechat_group_qr.jpg"
+                  src="/images/wechat_group_qr.jpg?v=20260409"
                   alt="WeChat QR"
                   style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, cursor: 'pointer' }}
-                  onClick={() => window.open('/images/wechat_group_qr.jpg', '_blank')}
+                  onClick={() => window.open('/images/wechat_group_qr.jpg?v=20260409', '_blank')}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
