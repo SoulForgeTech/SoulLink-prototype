@@ -706,7 +706,7 @@ def upload_background():
             public_id=public_id,
             resource_type="image",
             overwrite=True,
-            transformation=[{"width": 1080, "quality": "auto:good", "crop": "limit"}],
+            transformation=[{"width": 2560, "quality": "auto:best", "crop": "limit"}],
         )
         url = result.get("secure_url", "")
         if not url:
