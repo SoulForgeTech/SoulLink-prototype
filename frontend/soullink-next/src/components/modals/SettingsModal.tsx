@@ -44,7 +44,7 @@ const modalContentStyle: CSSProperties = {
   WebkitBackdropFilter: 'blur(40px) saturate(180%)',
   width: 'min(90%, 500px)',
   minWidth: 'min(90%, 500px)',
-  maxHeight: '85vh',
+  height: '85vh',
   boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
   display: 'flex',
   flexDirection: 'column',
