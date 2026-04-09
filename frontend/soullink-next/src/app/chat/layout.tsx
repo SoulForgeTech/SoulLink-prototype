@@ -13,9 +13,9 @@ import {
 import { clearMessages, setMessages } from '@/store/chatSlice';
 import { updateSettings } from '@/store/settingsSlice';
 import { setUser } from '@/store/authSlice';
-import { setLoading, updateLoadingProgress } from '@/store/uiSlice';
+import { setLoading, updateLoadingProgress, openModal } from '@/store/uiSlice';
 import { setPresets, setCurrentPresetId } from '@/store/voiceSlice';
-import { BACKGROUNDS } from '@/lib/constants';
+import { BACKGROUNDS, APP_VERSION } from '@/lib/constants';
 import { extractWallpaperColor } from '@/lib/extractWallpaperColor';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { getVoiceList } from '@/lib/api/voice';
@@ -191,6 +191,17 @@ export default function ChatLayout({
   >([]);
   const bgKeyRef = useRef(0);
   const isFirstRender = useRef(true);
+
+  // Auto-show changelog when version updates
+  useEffect(() => {
+    const STORAGE_KEY = 'soullink_last_seen_version';
+    const lastSeen = localStorage.getItem(STORAGE_KEY);
+    if (lastSeen !== APP_VERSION) {
+      localStorage.setItem(STORAGE_KEY, APP_VERSION);
+      // Small delay so the main UI loads first
+      setTimeout(() => dispatch(openModal({ modal: 'changelog' })), 800);
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     bgKeyRef.current += 1;

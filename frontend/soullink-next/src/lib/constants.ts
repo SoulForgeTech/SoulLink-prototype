@@ -15,7 +15,7 @@ import type {
 
 // ==================== App Version ====================
 
-export const APP_VERSION = 'v0.1.8-beta';
+export const APP_VERSION = 'v0.2.0-beta';
 
 // ==================== Chat Backgrounds ====================
 
