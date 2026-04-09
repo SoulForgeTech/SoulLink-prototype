@@ -688,8 +688,8 @@ def upload_background():
 
     img_data = file.read()
 
-    if len(img_data) > 2 * 1024 * 1024:
-        return jsonify({"error": "Image too large (max 2MB)"}), 400
+    if len(img_data) > 10 * 1024 * 1024:
+        return jsonify({"error": "Image too large (max 10MB)"}), 400
 
     try:
         import image_gen as _img_mod
