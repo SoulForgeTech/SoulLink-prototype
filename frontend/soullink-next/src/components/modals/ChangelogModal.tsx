@@ -44,6 +44,20 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.2.0-beta', date: '2026-04-09',
+    changes: [
+      { badge: 'feat', text: 'Memory panel — view and delete what AI remembers about you in Settings', text_zh: '\u8BB0\u5FC6\u9762\u677F \u2014 \u8BBE\u7F6E\u9875\u53EF\u67E5\u770B/\u5220\u9664 AI \u8BB0\u4F4F\u7684\u5173\u4E8E\u4F60\u7684\u4E8B' },
+      { badge: 'opt', text: 'Voice call optimized — WebSocket full-duplex, lower latency, auto-detect speech end', text_zh: '\u8BED\u97F3\u901A\u8BDD\u4F18\u5316 \u2014 WebSocket \u5168\u53CC\u5DE5\uFF0C\u5EF6\u8FDF\u964D\u4F4E\uFF0C\u8BF4\u5B8C\u81EA\u52A8\u8BC6\u522B\u56DE\u590D' },
+      { badge: 'opt', text: 'Voice auto-switches to fast model (non-reasoning), text chat unaffected', text_zh: '\u8BED\u97F3\u81EA\u52A8\u5207\u6362\u5FEB\u901F\u6A21\u578B\uFF08non-reasoning\uFF09\uFF0C\u6587\u5B57\u804A\u5929\u4E0D\u53D7\u5F71\u54CD' },
+      { badge: 'opt', text: 'Deepgram streaming STT + sub-clause TTS pipeline', text_zh: 'Deepgram \u6D41\u5F0F STT + \u5B50\u53E5\u7EA7 TTS \u6D41\u6C34\u7EBF' },
+      { badge: 'ui', text: 'Voice call messages shown as WeChat-style voice bubbles', text_zh: '\u8BED\u97F3\u901A\u8BDD\u6D88\u606F\u663E\u793A\u4E3A\u5FAE\u4FE1\u98CE\u683C\u8BED\u97F3\u6C14\u6CE1' },
+      { badge: 'ui', text: 'New "Memory" tab in Settings', text_zh: '\u8BBE\u7F6E\u9875\u65B0\u589E\u201C\u8BB0\u5FC6\u201D\u6807\u7B7E\u9875' },
+      { badge: 'fix', text: 'Voice call AI replies now saved to chat history', text_zh: '\u8BED\u97F3\u901A\u8BDD AI \u56DE\u590D\u73B0\u5728\u4E5F\u4FDD\u5B58\u5230\u804A\u5929\u8BB0\u5F55' },
+      { badge: 'fix', text: 'Mem0 memory system fixed (Qdrant version compatibility)', text_zh: 'Mem0 \u8BB0\u5FC6\u7CFB\u7EDF\u4FEE\u590D\uFF08Qdrant \u7248\u672C\u517C\u5BB9\u6027\uFF09' },
+      { badge: 'fix', text: 'Settings modal height consistent across all tabs', text_zh: '\u8BBE\u7F6E\u9875\u5404\u6807\u7B7E\u9875\u5185\u5BB9\u9AD8\u5EA6\u7EDF\u4E00' },
+    ],
+  },
+  {
     version: 'v0.1.9-beta', date: '2026-03-10',
     changes: [
       { badge: 'opt', text: 'Full frontend rewrite \u2014 pages load faster, animations smoother, ~30% less GPU usage on your device', text_zh: '\u524D\u7AEF\u5168\u9762\u91CD\u5199 \u2014 \u9875\u9762\u52A0\u8F7D\u66F4\u5FEB\u3001\u52A8\u753B\u66F4\u6D41\u7545\u3001\u8BBE\u5907GPU\u538B\u529B\u964D\u4F4E\u7EA630%' },
