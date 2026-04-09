@@ -26,8 +26,9 @@ from bson import ObjectId
 import os
 from voice_server.stt_deepgram import DeepgramStreamingSTT, WhisperFallbackSTT
 
-# STT engine: "whisper" (accurate Chinese) or "deepgram" (streaming but needs raw PCM)
-STT_ENGINE = os.getenv("STT_ENGINE", "whisper")
+# STT engine: "deepgram" (streaming PCM 16kHz) or "whisper" (batch)
+# AudioWorklet on frontend sends proper PCM 16kHz linear16 now
+STT_ENGINE = os.getenv("STT_ENGINE", "deepgram")
 from voice_server.tts_stream import (
     StreamingTTSPipeline,
     warmup as tts_warmup,

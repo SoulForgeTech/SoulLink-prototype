@@ -101,8 +101,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -334,37 +333,12 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
           if (!silenceStart) {
             silenceStart = Date.now();
           } else if (Date.now() - silenceStart > SILENCE_TIMEOUT_MS) {
-            // 1.5s silence after speech → stop recorder, send complete audio
+            // 1.5s silence after speech → tell server to process
             hasSpoken = false;
             silenceStart = 0;
-
-            // Stop recorder to flush final data
-            const rec = recorderRef.current;
-            if (rec && rec.state !== 'inactive') {
-              rec.stop();
-
-              // Wait for final ondataavailable, then send complete blob
-              setTimeout(() => {
-                const chunks = recordedChunksRef.current;
-                recordedChunksRef.current = [];
-
-                if (chunks.length > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-                  const mimeType = rec.mimeType || 'audio/webm';
-                  const blob = new Blob(chunks, { type: mimeType });
-                  console.log(`[VoiceCallWS] Sending audio: ${blob.size} bytes (${mimeType})`);
-                  blob.arrayBuffer().then((buf) => {
-                    if (wsRef.current?.readyState === WebSocket.OPEN) {
-                      wsRef.current.send(buf);
-                      wsRef.current.send(JSON.stringify({ type: 'end_turn' }));
-                    }
-                  });
-                }
-
-                // Restart recorder for next turn
-                if (activeRef.current && recorderRef.current) {
-                  try { recorderRef.current.start(250); } catch {}
-                }
-              }, 200); // Wait for final chunk
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ type: 'end_turn' }));
+              console.log('[VoiceCallWS] Auto end_turn (silence detected)');
             }
           }
         }
@@ -409,32 +383,30 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
     source.connect(analyser);
     analyserRef.current = analyser;
 
-    // Use MediaRecorder for high-quality audio capture (webm/opus)
-    // Much better than ScriptProcessorNode raw PCM — browser's codec optimizes audio
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : '';
-
+    // Use AudioWorklet to capture PCM 16kHz 16-bit mono for Deepgram streaming.
+    // AudioWorklet runs in a separate thread — no main thread jank.
+    // The processor downsamples from native rate (44.1k/48k) to 16kHz.
     try {
-      const recorder = new MediaRecorder(mediaStreamRef.current, {
-        ...(mimeType ? { mimeType } : {}),
-      });
-      recorderRef.current = recorder;
+      await ctx.audioWorklet.addModule('/pcm-processor.js');
+      const workletNode = new AudioWorkletNode(ctx, 'pcm-processor');
+      workletNodeRef.current = workletNode;
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0 && activeRef.current) {
-          // Collect chunks — will be sent as complete blob on end_turn
-          recordedChunksRef.current.push(e.data);
+      workletNode.port.onmessage = (e) => {
+        // e.data is an ArrayBuffer of Int16 PCM 16kHz
+        if (
+          activeRef.current &&
+          callStateRef.current === 'listening' &&
+          wsRef.current?.readyState === WebSocket.OPEN
+        ) {
+          wsRef.current.send(e.data);
         }
       };
 
-      // Produce chunks every 250ms
-      recorder.start(250);
-      console.log(`[VoiceCallWS] MediaRecorder started: ${recorder.mimeType}`);
+      source.connect(workletNode);
+      workletNode.connect(ctx.destination); // Required for worklet to process
+      console.log(`[VoiceCallWS] AudioWorklet started: PCM 16kHz → Deepgram`);
     } catch (err) {
-      console.error('[VoiceCallWS] MediaRecorder failed:', err);
+      console.error('[VoiceCallWS] AudioWorklet failed:', err);
     }
 
     startVAD();
@@ -465,13 +437,14 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       callTimerRef.current = null;
     }
 
-    // Stop MediaRecorder
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+    // Stop AudioWorklet
+    if (workletNodeRef.current) {
       try {
-        recorderRef.current.stop();
+        workletNodeRef.current.disconnect();
+        workletNodeRef.current.port.close();
       } catch {}
+      workletNodeRef.current = null;
     }
-    recorderRef.current = null;
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.disconnect();
@@ -579,11 +552,11 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
         }
       };
 
-      // 5. Tell server our audio format (MediaRecorder uses webm/opus)
+      // 5. Tell server audio format: PCM 16kHz 16-bit mono via AudioWorklet
       ws.send(JSON.stringify({
         type: 'config',
-        sample_rate: ctx.sampleRate,
-        encoding: 'opus',
+        sample_rate: 16000,
+        encoding: 'linear16',
       }));
 
       // 6. Start audio capture
