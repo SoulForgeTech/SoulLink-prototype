@@ -60,13 +60,14 @@ const WS_BASE = getWSBase();
 const SAMPLE_RATE = 16000;
 const CHUNK_INTERVAL_MS = 100; // Send audio every 100ms
 
-/**
- * Auto-interrupt via VAD is DISABLED — too many false triggers from ambient noise.
- * Interrupt only happens when user taps the "listening" area during AI speech.
- * TODO: Replace RMS-based VAD with Silero VAD (ML model) for accurate detection.
- */
-const ENABLE_AUTO_INTERRUPT = false;
+/** VAD for silence detection (auto end_turn) and interrupt detection */
 const VAD_POLL_INTERVAL = 50;
+/** RMS threshold: speech detected when above this */
+const VAD_SPEECH_THRESHOLD = 0.015;
+/** Silence after speech — 1.5s triggers auto end_turn */
+const SILENCE_TIMEOUT_MS = 1500;
+/** Auto-interrupt disabled — user taps to interrupt instead */
+const ENABLE_AUTO_INTERRUPT = false;
 const VAD_INTERRUPT_THRESHOLD = 0.15;
 const INTERRUPT_GRACE_MS = 2000;
 const INTERRUPT_DEBOUNCE_FRAMES = 12;
@@ -309,6 +310,8 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
     const bufLen = analyser.fftSize;
     const dataArr = new Uint8Array(bufLen);
     let interruptCount = 0;
+    let hasSpoken = false;
+    let silenceStart = 0;
 
     vadIntervalRef.current = setInterval(() => {
       if (!activeRef.current) return;
@@ -321,8 +324,32 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       }
       const rms = Math.sqrt(sum / bufLen);
 
-      // Auto-interrupt: detect user speech while AI is speaking
-      // DISABLED by default — use Silero VAD when available
+      // --- Silence detection in listening state → auto end_turn ---
+      if (callStateRef.current === 'listening') {
+        if (rms > VAD_SPEECH_THRESHOLD) {
+          hasSpoken = true;
+          silenceStart = 0;
+        } else if (hasSpoken) {
+          if (!silenceStart) {
+            silenceStart = Date.now();
+          } else if (Date.now() - silenceStart > SILENCE_TIMEOUT_MS) {
+            // 1.5s silence after speech → send end_turn
+            hasSpoken = false;
+            silenceStart = 0;
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ type: 'end_turn' }));
+              console.log('[VoiceCallWS] Auto end_turn (silence detected)');
+            }
+          }
+        }
+        return; // Don't check interrupt in listening state
+      }
+
+      // --- Reset silence tracking when not listening ---
+      hasSpoken = false;
+      silenceStart = 0;
+
+      // --- Auto-interrupt while AI speaking (DISABLED) ---
       if (ENABLE_AUTO_INTERRUPT && callStateRef.current === 'speaking') {
         if (Date.now() - speakingStartTimeRef.current < INTERRUPT_GRACE_MS) {
           interruptCount = 0;

@@ -26,8 +26,8 @@ from bson import ObjectId
 import os
 from voice_server.stt_deepgram import DeepgramStreamingSTT, WhisperFallbackSTT
 
-# STT engine: "deepgram" (streaming, low latency) or "whisper" (batch, better Chinese)
-STT_ENGINE = os.getenv("STT_ENGINE", "deepgram")
+# STT engine: "whisper" (accurate Chinese) or "deepgram" (streaming but needs raw PCM)
+STT_ENGINE = os.getenv("STT_ENGINE", "whisper")
 from voice_server.tts_stream import (
     StreamingTTSPipeline,
     warmup as tts_warmup,
@@ -270,17 +270,17 @@ class VoicePipelineHandler:
             await self._stt.close()
             self._stt = None
         elif self._audio_chunks:
-            # Whisper batch fallback: concatenate PCM chunks, transcribe
+            # Whisper batch: concatenate webm chunks, send to Whisper API
             await self._send_state("processing")
             raw_audio = b"".join(self._audio_chunks)
             self._audio_chunks = []
-            if len(raw_audio) > 600:  # Skip too-short recordings
+            if len(raw_audio) > 500:  # Skip too-short recordings
                 try:
-                    # PCM 16kHz 16-bit → WAV header + data for Whisper
-                    wav_audio = self._pcm_to_wav(raw_audio)
-                    transcript = await WhisperFallbackSTT.transcribe(wav_audio, "wav")
+                    # MediaRecorder sends webm/opus — Whisper accepts it directly
+                    transcript = await WhisperFallbackSTT.transcribe(raw_audio, "webm")
+                    logger.info(f"[WS] Whisper transcript: '{transcript[:80]}'")
                 except Exception as e:
-                    logger.error(f"[WS] Whisper fallback error: {e}")
+                    logger.error(f"[WS] Whisper error: {e}")
 
         if not transcript or not transcript.strip():
             logger.info("[WS] Empty transcript, returning to listening")
