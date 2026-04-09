@@ -387,26 +387,31 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
     // AudioWorklet runs in a separate thread — no main thread jank.
     // The processor downsamples from native rate (44.1k/48k) to 16kHz.
     try {
-      await ctx.audioWorklet.addModule('/pcm-processor.js');
-      const workletNode = new AudioWorkletNode(ctx, 'pcm-processor');
-      workletNodeRef.current = workletNode;
+      // addModule is async — use .then() since this callback isn't async
+      ctx.audioWorklet.addModule('/pcm-processor.js').then(() => {
+        if (!activeRef.current || !audioContextRef.current || !sourceNodeRef.current) return;
+        const actx = audioContextRef.current;
+        const workletNode = new AudioWorkletNode(actx, 'pcm-processor');
+        workletNodeRef.current = workletNode;
 
-      workletNode.port.onmessage = (e) => {
-        // e.data is an ArrayBuffer of Int16 PCM 16kHz
-        if (
-          activeRef.current &&
-          callStateRef.current === 'listening' &&
-          wsRef.current?.readyState === WebSocket.OPEN
-        ) {
-          wsRef.current.send(e.data);
-        }
-      };
+        workletNode.port.onmessage = (e) => {
+          if (
+            activeRef.current &&
+            callStateRef.current === 'listening' &&
+            wsRef.current?.readyState === WebSocket.OPEN
+          ) {
+            wsRef.current.send(e.data);
+          }
+        };
 
-      source.connect(workletNode);
-      workletNode.connect(ctx.destination); // Required for worklet to process
-      console.log(`[VoiceCallWS] AudioWorklet started: PCM 16kHz → Deepgram`);
+        sourceNodeRef.current!.connect(workletNode);
+        workletNode.connect(actx.destination);
+        console.log('[VoiceCallWS] AudioWorklet started: PCM 16kHz → Deepgram');
+      }).catch((err: unknown) => {
+        console.error('[VoiceCallWS] AudioWorklet addModule failed:', err);
+      });
     } catch (err) {
-      console.error('[VoiceCallWS] AudioWorklet failed:', err);
+      console.error('[VoiceCallWS] AudioWorklet setup failed:', err);
     }
 
     startVAD();
