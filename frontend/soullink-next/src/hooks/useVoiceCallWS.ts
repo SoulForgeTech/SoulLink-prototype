@@ -102,6 +102,7 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -333,12 +334,37 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
           if (!silenceStart) {
             silenceStart = Date.now();
           } else if (Date.now() - silenceStart > SILENCE_TIMEOUT_MS) {
-            // 1.5s silence after speech → send end_turn
+            // 1.5s silence after speech → stop recorder, send complete audio
             hasSpoken = false;
             silenceStart = 0;
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              wsRef.current.send(JSON.stringify({ type: 'end_turn' }));
-              console.log('[VoiceCallWS] Auto end_turn (silence detected)');
+
+            // Stop recorder to flush final data
+            const rec = recorderRef.current;
+            if (rec && rec.state !== 'inactive') {
+              rec.stop();
+
+              // Wait for final ondataavailable, then send complete blob
+              setTimeout(() => {
+                const chunks = recordedChunksRef.current;
+                recordedChunksRef.current = [];
+
+                if (chunks.length > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
+                  const mimeType = rec.mimeType || 'audio/webm';
+                  const blob = new Blob(chunks, { type: mimeType });
+                  console.log(`[VoiceCallWS] Sending audio: ${blob.size} bytes (${mimeType})`);
+                  blob.arrayBuffer().then((buf) => {
+                    if (wsRef.current?.readyState === WebSocket.OPEN) {
+                      wsRef.current.send(buf);
+                      wsRef.current.send(JSON.stringify({ type: 'end_turn' }));
+                    }
+                  });
+                }
+
+                // Restart recorder for next turn
+                if (activeRef.current && recorderRef.current) {
+                  try { recorderRef.current.start(250); } catch {}
+                }
+              }, 200); // Wait for final chunk
             }
           }
         }
@@ -398,18 +424,9 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
       recorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
-        if (
-          e.data.size > 0 &&
-          activeRef.current &&
-          callStateRef.current === 'listening' &&
-          wsRef.current?.readyState === WebSocket.OPEN
-        ) {
-          // Send webm/opus chunks as binary to server
-          e.data.arrayBuffer().then((buf) => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              wsRef.current.send(buf);
-            }
-          });
+        if (e.data.size > 0 && activeRef.current) {
+          // Collect chunks — will be sent as complete blob on end_turn
+          recordedChunksRef.current.push(e.data);
         }
       };
 

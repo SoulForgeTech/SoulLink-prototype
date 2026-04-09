@@ -270,15 +270,17 @@ class VoicePipelineHandler:
             await self._stt.close()
             self._stt = None
         elif self._audio_chunks:
-            # Whisper batch: concatenate webm chunks, send to Whisper API
+            # Whisper batch: use the last (complete) blob from client
+            # Client sends one complete webm blob right before end_turn
             await self._send_state("processing")
-            raw_audio = b"".join(self._audio_chunks)
+            # The last chunk is the complete webm blob (sent by client before end_turn)
+            # Earlier chunks may be partial — use only the last big one
+            complete_blob = max(self._audio_chunks, key=len) if self._audio_chunks else b""
             self._audio_chunks = []
-            if len(raw_audio) > 500:  # Skip too-short recordings
+            if len(complete_blob) > 500:
                 try:
-                    # MediaRecorder sends webm/opus — Whisper accepts it directly
-                    transcript = await WhisperFallbackSTT.transcribe(raw_audio, "webm")
-                    logger.info(f"[WS] Whisper transcript: '{transcript[:80]}'")
+                    transcript = await WhisperFallbackSTT.transcribe(complete_blob, "webm")
+                    logger.info(f"[WS] Whisper transcript ({len(complete_blob)} bytes): '{transcript[:80]}'")
                 except Exception as e:
                     logger.error(f"[WS] Whisper error: {e}")
 
