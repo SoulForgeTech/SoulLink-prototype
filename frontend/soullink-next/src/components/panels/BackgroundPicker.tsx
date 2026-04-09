@@ -27,6 +27,7 @@ export default function BackgroundPicker() {
   const isOpen = useAppSelector((s) => s.ui.panels.backgroundPicker);
   const currentBg = useAppSelector((s) => s.settings.chatBackground);
   const customBgUrl = useAppSelector((s) => s.settings.customBackgroundUrl);
+  const language = useAppSelector((s) => s.settings.language);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
@@ -58,6 +59,13 @@ export default function BackgroundPicker() {
 
       // Validate file type
       if (!file.type.startsWith('image/')) return;
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(language?.startsWith('zh') ? '图片太大，请选择10MB以内的图片' : 'Image too large. Please choose an image under 10MB.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
 
       // Apply immediately using local blob URL for instant feedback
       const localUrl = URL.createObjectURL(file);
