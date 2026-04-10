@@ -603,11 +603,21 @@ export default function SettingsModal() {
   const handleConfirmPersona = useCallback(async () => {
     if (!localPreview) return;
     try {
-      await apiConfirmPersona(authFetch, localPreview.core_persona, localPreview.name, localPreview.appearance);
+      await apiConfirmPersona(
+        authFetch,
+        localPreview.core_persona,
+        localPreview.name,
+        localPreview.appearance,
+        localPreview.gender,
+      );
       dispatch(setCustomPersonaActive(true));
       setLocalPersonaActive(true);
       setLocalPersonaCleared(false);
       setCustomPersonaName(localPreview.name || '');
+      // Auto-sync gender extracted from persona
+      if (localPreview.gender === 'female' || localPreview.gender === 'male') {
+        setLocalGender(localPreview.gender);
+      }
       setLocalPreview(null);
       setPersonaText('');
     } catch (err) {
@@ -856,14 +866,15 @@ export default function SettingsModal() {
                 </div>
               </div>
 
-              {/* Gender Selector — matches original .settings-gender-row */}
+              {/* Gender Selector — disabled when custom persona active (auto-extracted) */}
               <div style={formGroupStyle}>
                 <label style={formLabelStyle}>{t('settings.companion.style')}</label>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, opacity: localPersonaActive ? 0.5 : 1 }}>
                   {GENDER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
-                      onClick={() => setLocalGender(opt.value)}
+                      disabled={localPersonaActive}
+                      onClick={() => { if (!localPersonaActive) setLocalGender(opt.value); }}
                       style={{
                         flex: 1,
                         padding: '12px 16px',
@@ -878,7 +889,7 @@ export default function SettingsModal() {
                           ? 'rgba(107,163,214,0.08)'
                           : 'rgba(255,255,255,0.5)',
                         color: localGender === opt.value ? '#6BA3D6' : '#4a5568',
-                        cursor: 'pointer',
+                        cursor: localPersonaActive ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
                         boxShadow: localGender === opt.value
                           ? '0 2px 12px rgba(107,163,214,0.12)'
@@ -922,42 +933,40 @@ export default function SettingsModal() {
                 </div>
               </div>
 
-              {/* Subtype Selector */}
-              {/* Subtype Selector — 2-column grid matching original */}
-              {!localPersonaActive && (
-                <div style={formGroupStyle}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                    {subtypes.map((st) => (
-                      <button
-                        key={st.id}
-                        onClick={() => setLocalSubtype(st.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          textAlign: 'left',
-                          border: localSubtype === st.id
-                            ? '2px solid #6BA3D6'
-                            : '2px solid rgba(0,0,0,0.06)',
-                          background: localSubtype === st.id
-                            ? 'rgba(107,163,214,0.08)'
-                            : 'rgba(255,255,255,0.5)',
-                          color: localSubtype === st.id ? '#6BA3D6' : '#4a5568',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <span style={{ fontSize: '1.125rem' }}>{st.icon}</span>
-                        <span>{language === 'zh-CN' ? st.name_zh : st.name_en}</span>
-                      </button>
-                    ))}
-                  </div>
+              {/* Subtype Selector — 2-column grid, disabled when custom persona active */}
+              <div style={formGroupStyle}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, opacity: localPersonaActive ? 0.5 : 1 }}>
+                  {subtypes.map((st) => (
+                    <button
+                      key={st.id}
+                      disabled={localPersonaActive}
+                      onClick={() => { if (!localPersonaActive) setLocalSubtype(st.id); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        textAlign: 'left',
+                        border: localSubtype === st.id
+                          ? '2px solid #6BA3D6'
+                          : '2px solid rgba(0,0,0,0.06)',
+                        background: localSubtype === st.id
+                          ? 'rgba(107,163,214,0.08)'
+                          : 'rgba(255,255,255,0.5)',
+                        color: localSubtype === st.id ? '#6BA3D6' : '#4a5568',
+                        cursor: localPersonaActive ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <span style={{ fontSize: '1.125rem' }}>{st.icon}</span>
+                      <span>{language === 'zh-CN' ? st.name_zh : st.name_en}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Voice Section — matches original: title, TTS toggle, current voice, presets, search */}
               <div style={formGroupStyle}>

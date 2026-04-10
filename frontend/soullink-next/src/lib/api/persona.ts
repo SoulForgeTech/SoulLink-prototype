@@ -70,6 +70,7 @@ export async function confirmPersona(
   corePersona: string,
   name?: string,
   appearance?: string,
+  gender?: string,
 ): Promise<ConfirmPersonaResponse> {
   const response = await authFetch(USER.CONFIRM_PERSONA, {
     method: 'POST',
@@ -78,6 +79,7 @@ export async function confirmPersona(
       core_persona: corePersona,
       name,
       appearance: appearance || undefined,
+      gender: gender || undefined,
     }),
   });
 

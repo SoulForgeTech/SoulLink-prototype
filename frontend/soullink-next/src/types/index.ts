@@ -253,6 +253,7 @@ export interface PersonaPreview {
   core_persona: string;
   name?: string;
   appearance?: string;
+  gender?: 'female' | 'male';
 }
 
 export interface SearchCharacterResponse {

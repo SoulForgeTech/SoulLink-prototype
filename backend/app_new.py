@@ -3523,6 +3523,7 @@ def import_persona():
     if result.get("success"):
         preview = {
             "name": result.get("name"),
+            "gender": result.get("gender", "female"),
             "core_persona": result.get("core_persona")
         }
         if result.get("appearance"):
@@ -3554,6 +3555,9 @@ def confirm_persona():
 
     persona_name = (data.get("name") or "").strip() or None
     appearance = (data.get("appearance") or "").strip() or None
+    persona_gender = (data.get("gender") or "").strip().lower()
+    if persona_gender not in ("female", "male"):
+        persona_gender = None
 
     try:
         from datetime import datetime
@@ -3567,6 +3571,10 @@ def confirm_persona():
             update_fields["settings.custom_persona_name"] = persona_name
         else:
             update_fields["settings.custom_persona_name"] = None
+
+        # 自动设置 companion_gender 从 persona 提取的性别
+        if persona_gender:
+            update_fields["settings.companion_gender"] = persona_gender
 
         # 如果有提取到的外观描述，直接缓存到 image_appearance（用于图片生成）
         # 这样即使用户改了昵称，图片生成仍然使用原始角色的外貌特征

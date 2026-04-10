@@ -125,12 +125,14 @@ EXTRACTION_PROMPT_ZH = """你是一个角色设定提取专家。用户会给你
    - 示例（动漫）："Rem from Re:Zero, anime art style, female, short blue hair covering right eye, light blue eyes, fair skin, petite build, maid outfit with white headband and hair ornament"
    - 示例（游戏）："Ganyu from Genshin Impact, anime art style, female, long blue gradient hair with red horns, purple eyes, fair skin, cryo vision holder, elegant Liyue-style outfit"
    - 示例（原创）："Female, long silver hair, heterochromia (red and blue eyes), fair skin, slender build, gothic lolita dress"
-4. **用中文输出** core_persona，**用英文输出** appearance
-5. **输出格式**严格为JSON：
+4. **判断角色性别**：根据原文描述判断是 "female" 还是 "male"。如果原文明确是女性/女生/girl/she → "female"，明确是男性/男生/boy/he → "male"。如果完全无法判断，默认 "female"。
+5. **用中文输出** core_persona，**用英文输出** appearance
+6. **输出格式**严格为JSON：
 
 ```json
 {{
   "name": "角色名字" 或 null（如果文本中没有明确角色名）,
+  "gender": "female" 或 "male",
   "core_persona": "精炼后的核心性格设定文本（不含身份声明句）",
   "appearance": "English visual appearance description for image generation"
 }}
@@ -175,12 +177,14 @@ Your task is to extract the core character persona and output a JSON object.
    - Example (anime): "Rem from Re:Zero, anime art style, female, short blue hair covering right eye, light blue eyes, fair skin, petite build, maid outfit with white headband and hair ornament"
    - Example (game): "Ganyu from Genshin Impact, anime art style, female, long blue gradient hair with red horns, purple eyes, fair skin, cryo vision holder, elegant Liyue-style outfit"
    - Example (original): "Female, long silver hair, heterochromia (red and blue eyes), fair skin, slender build, gothic lolita dress"
-4. **Output core_persona in English**, **appearance in English**
-5. **Output format** must be strict JSON:
+4. **Determine gender**: Based on the description, identify if the character is "female" or "male". If the text clearly says female/girl/she → "female", male/boy/he → "male". If ambiguous, default to "female".
+5. **Output core_persona in English**, **appearance in English**
+6. **Output format** must be strict JSON:
 
 ```json
 {{
   "name": "Character name" or null (if no explicit name found),
+  "gender": "female" or "male",
   "core_persona": "Distilled core personality text (no identity statements)",
   "appearance": "English visual appearance description for image generation"
 }}
@@ -247,6 +251,9 @@ def extract_persona_with_ai(raw_text: str, language: str = "zh-CN") -> Dict:
         name = parsed.get("name")
         core_persona = parsed.get("core_persona", "")
         appearance = parsed.get("appearance", "")
+        gender = parsed.get("gender", "female")
+        if gender not in ("female", "male"):
+            gender = "female"
 
         if not core_persona:
             return {"success": False, "error": "未能提取到角色性格"}
@@ -254,6 +261,7 @@ def extract_persona_with_ai(raw_text: str, language: str = "zh-CN") -> Dict:
         result = {
             "success": True,
             "name": name,
+            "gender": gender,
             "core_persona": core_persona
         }
         if appearance:

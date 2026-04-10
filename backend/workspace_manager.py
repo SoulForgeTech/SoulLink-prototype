@@ -398,6 +398,21 @@ class WorkspaceManager:
         model_display = current_model or self.SUPPORTED_MODELS.get(self.DEFAULT_MODEL, {}).get("name", "Gemini 3 Flash")
         system_prompt = system_prompt.replace("{{current_model}}", model_display)
 
+        # 自定义角色模板专用：替换性别和关系占位符
+        if use_custom_template:
+            gender_zh = "女性" if companion_gender == "female" else "男性"
+            gender_en = "female" if companion_gender == "female" else "male"
+            if companion_relationship == "friend":
+                relationship_zh = "好朋友（闺蜜）" if companion_gender == "female" else "好朋友（好兄弟）"
+                relationship_en = "best friend"
+            else:
+                relationship_zh = "女朋友" if companion_gender == "female" else "男朋友"
+                relationship_en = "girlfriend" if companion_gender == "female" else "boyfriend"
+            system_prompt = system_prompt.replace("{{gender_zh}}", gender_zh)
+            system_prompt = system_prompt.replace("{{gender_en}}", gender_en)
+            system_prompt = system_prompt.replace("{{relationship_zh}}", relationship_zh)
+            system_prompt = system_prompt.replace("{{relationship_en}}", relationship_en)
+
         # 好友模式：将恋人关系替换为好友关系
         if companion_relationship == "friend":
             # 先替换带斜杠的完整标签（persona 里的格式）
