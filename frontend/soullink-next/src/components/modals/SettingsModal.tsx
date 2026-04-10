@@ -589,7 +589,9 @@ export default function SettingsModal() {
           core_persona: preview.core_persona,
           name: preview.name || '',
           appearance: preview.appearance || '',
+          gender: preview.gender,
         });
+        // Note: do NOT update localGender here — only update on confirm/save
       }
     } catch (err) {
       console.error('Persona extraction failed:', err);
@@ -615,15 +617,29 @@ export default function SettingsModal() {
       setLocalPersonaCleared(false);
       setCustomPersonaName(localPreview.name || '');
       // Auto-sync gender extracted from persona
-      if (localPreview.gender === 'female' || localPreview.gender === 'male') {
-        setLocalGender(localPreview.gender);
+      const extractedGender =
+        localPreview.gender === 'female' || localPreview.gender === 'male'
+          ? localPreview.gender
+          : null;
+      if (extractedGender) {
+        setLocalGender(extractedGender);
+      }
+      // Update Redux user so next modal open reads correct gender
+      if (user) {
+        const updatedSettings = {
+          ...(user.settings || {}),
+          custom_persona: localPreview.core_persona,
+          custom_persona_name: localPreview.name || null,
+          ...(extractedGender ? { companion_gender: extractedGender } : {}),
+        };
+        dispatch(setUser({ ...user, settings: updatedSettings }));
       }
       setLocalPreview(null);
       setPersonaText('');
     } catch (err) {
       console.error('Confirm persona failed:', err);
     }
-  }, [localPreview, authFetch, dispatch]);
+  }, [localPreview, authFetch, dispatch, user]);
 
   // Mark persona for clearing — actual API call happens on Save
   const handleClearPersona = useCallback(() => {

@@ -14,8 +14,10 @@ export interface UserSettings {
   tts_enabled?: boolean;
   kb_enabled?: boolean;
   custom_persona_active?: boolean;
-  custom_persona_name?: string;
+  custom_persona_name?: string | null;
   custom_persona_text?: string;
+  custom_persona?: string;
+  custom_persona_gender?: 'male' | 'female';
   model?: string;
   image_appearance?: string;
   language?: string;
