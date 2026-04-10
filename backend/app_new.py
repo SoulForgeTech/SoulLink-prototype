@@ -3559,6 +3559,19 @@ def confirm_persona():
     if persona_gender not in ("female", "male"):
         persona_gender = None
 
+    # 如果前端没传 gender（旧前端），从 core_persona 里自动提取
+    if not persona_gender:
+        try:
+            from character_parser import extract_persona_with_ai
+            refresh_result = extract_persona_with_ai(core_persona, language="zh-CN")
+            if refresh_result.get("success"):
+                detected = refresh_result.get("gender")
+                if detected in ("female", "male"):
+                    persona_gender = detected
+                    logger.info(f"[PERSONA] Auto-extracted gender from persona text: {persona_gender}")
+        except Exception as e:
+            logger.warning(f"[PERSONA] Gender auto-extraction failed: {e}")
+
     try:
         from datetime import datetime
 
