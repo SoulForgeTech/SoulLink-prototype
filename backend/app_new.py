@@ -3575,6 +3575,7 @@ def confirm_persona():
         # 自动设置 companion_gender 从 persona 提取的性别
         if persona_gender:
             update_fields["settings.companion_gender"] = persona_gender
+            update_fields["settings.custom_persona_gender"] = persona_gender
 
         # 如果有提取到的外观描述，直接缓存到 image_appearance（用于图片生成）
         # 这样即使用户改了昵称，图片生成仍然使用原始角色的外貌特征

@@ -594,8 +594,27 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
                 persona = custom_persona
                 use_custom_template = True  # 使用自定义角色专用模板
                 print(f"[PROMPT] Using custom_persona for user {user_id}")
-                # companion_name 保留用户自己设的昵称，不用角色原名覆盖
-                # persona 里只有性格描述，不含身份声明（"你就是雷姆"之类）
+
+                # 自动修复旧 persona 的性别 — 如果没存过 custom_persona_gender，
+                # 从 persona 文本重新提取性别并更新 companion_gender
+                if user and not user.get("settings", {}).get("custom_persona_gender"):
+                    try:
+                        from character_parser import extract_persona_with_ai
+                        refresh_result = extract_persona_with_ai(custom_persona, language=language or "zh-CN")
+                        if refresh_result.get("success"):
+                            detected_gender = refresh_result.get("gender", "female")
+                            db.db["users"].update_one(
+                                {"_id": user_id},
+                                {"$set": {
+                                    "settings.companion_gender": detected_gender,
+                                    "settings.custom_persona_gender": detected_gender,
+                                }}
+                            )
+                            # 重新加载 user 数据以用新值
+                            user = db.db["users"].find_one({"_id": user_id})
+                            print(f"[PROMPT] Auto-detected gender '{detected_gender}' for existing custom persona (user {user_id})")
+                    except Exception as e:
+                        print(f"[PROMPT] Failed to auto-detect gender: {e}")
             else:
                 # 回退到性格测试结果
                 pt = (user.get("personality_test") or {}) if user else {}
