@@ -325,11 +325,20 @@ export default function SettingsModal() {
   // Reset local state when modal opens + load custom status
   useEffect(() => {
     if (isOpen) {
+      // Read companion settings directly from user object (not in Redux yet)
+      const userSettings = (user as { settings?: Record<string, unknown> })?.settings || {};
+      const savedGender = (userSettings.companion_gender as 'female' | 'male') || 'female';
+      const savedRelationship = (userSettings.companion_relationship as string) || 'lover';
+      const savedSubtype = (userSettings.companion_subtype as string) || '';
+
       setNickname(user?.name ?? '');
       setAvatarColor(user?.avatar_color ?? AVATAR_COLORS[0]);
-      setLocalGender(companionGender);
-      setLocalRelationship(companionRelationship);
-      setLocalSubtype(companionSubtype);
+      setCompanionGenderState(savedGender);
+      setCompanionRelationshipState(savedRelationship);
+      setCompanionSubtypeState(savedSubtype);
+      setLocalGender(savedGender);
+      setLocalRelationship(savedRelationship);
+      setLocalSubtype(savedSubtype);
       setLocalTts(ttsEnabled);
       setLocalVoiceId(voicePresetId);
       setLocalModel(model);
