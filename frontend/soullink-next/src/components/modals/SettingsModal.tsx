@@ -866,17 +866,16 @@ export default function SettingsModal() {
                 </div>
               </div>
 
-              {/* Gender Selector — disabled when custom persona active (auto-extracted) */}
+              {/* Gender Selector — always editable (auto-filled from custom persona if set) */}
               <div style={formGroupStyle}>
                 <label style={formLabelStyle}>{t('settings.companion.style')}</label>
-                <div style={{ display: 'flex', gap: 10, opacity: localPersonaActive ? 0.5 : 1 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
                   {GENDER_OPTIONS.map((opt) => {
-                    const isSelected = !localPersonaActive && localGender === opt.value;
+                    const isSelected = localGender === opt.value;
                     return (
                       <button
                         key={opt.value}
-                        disabled={localPersonaActive}
-                        onClick={() => { if (!localPersonaActive) setLocalGender(opt.value); }}
+                        onClick={() => setLocalGender(opt.value)}
                         style={{
                           flex: 1,
                           padding: '12px 16px',
@@ -891,7 +890,7 @@ export default function SettingsModal() {
                             ? 'rgba(107,163,214,0.08)'
                             : 'rgba(255,255,255,0.5)',
                           color: isSelected ? '#6BA3D6' : '#4a5568',
-                          cursor: localPersonaActive ? 'not-allowed' : 'pointer',
+                          cursor: 'pointer',
                           transition: 'all 0.2s',
                           boxShadow: isSelected
                             ? '0 2px 12px rgba(107,163,214,0.12)'
@@ -972,6 +971,18 @@ export default function SettingsModal() {
                     );
                   })}
                 </div>
+                {localPersonaActive && (
+                  <p style={{
+                    fontSize: '0.7rem',
+                    color: '#a0aec0',
+                    margin: '6px 0 0 0',
+                    fontStyle: 'italic',
+                  }}>
+                    {language === 'zh-CN'
+                      ? '已启用自定义性格，角色预设暂不可用'
+                      : 'Custom persona active — presets unavailable'}
+                  </p>
+                )}
               </div>
 
               {/* Voice Section — matches original: title, TTS toggle, current voice, presets, search */}
