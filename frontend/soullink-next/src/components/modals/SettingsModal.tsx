@@ -852,7 +852,7 @@ export default function SettingsModal() {
                 </label>
                 <PersonalityResultCard
                   onRetake={() => {
-                    dispatch(closeModal());
+                    dispatch(closeModal('settings'));
                     // Same flow as sidebar retake
                     import('@/store/personalitySlice').then(({ resetTest, setRetake }) => {
                       dispatch(resetTest());
@@ -861,7 +861,7 @@ export default function SettingsModal() {
                     window.location.href = '/onboarding';
                   }}
                   onStartTest={() => {
-                    dispatch(closeModal());
+                    dispatch(closeModal('settings'));
                     window.location.href = '/onboarding';
                   }}
                 />
