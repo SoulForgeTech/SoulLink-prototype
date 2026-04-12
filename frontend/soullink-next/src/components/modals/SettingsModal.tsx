@@ -21,6 +21,7 @@ import { getVoiceList, searchVoices, previewVoice } from '@/lib/api/voice';
 import { setPresets, setCurrentPresetId } from '@/store/voiceSlice';
 import type { SettingsTab, VoicePreset, LoreDocument, PersonaPreview } from '@/types';
 import MemoryPanel from './MemoryPanel';
+import PersonalityResultCard from '@/components/personality/PersonalityResultCard';
 
 // ==================== Inline Style Constants ====================
 
@@ -842,6 +843,14 @@ export default function SettingsModal() {
                   style={formInputDisabledStyle}
                 />
                 <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: 4 }}>{t('settings.email.hint')}</p>
+              </div>
+
+              {/* Personality Test Results */}
+              <div style={formGroupStyle}>
+                <label style={formLabelStyle}>
+                  {language === 'zh-CN' ? '🔮 性格测试' : '🔮 Personality Test'}
+                </label>
+                <PersonalityResultCard />
               </div>
           </div>
 

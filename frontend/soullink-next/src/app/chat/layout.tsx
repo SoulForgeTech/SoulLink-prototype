@@ -16,6 +16,8 @@ import { setUser } from '@/store/authSlice';
 import { setLoading, updateLoadingProgress, openModal } from '@/store/uiSlice';
 import { setPresets, setCurrentPresetId } from '@/store/voiceSlice';
 import { BACKGROUNDS, APP_VERSION } from '@/lib/constants';
+import { loadSavedResults } from '@/store/personalitySlice';
+import { PERSONALITY } from '@/lib/api/endpoints';
 import { extractWallpaperColor } from '@/lib/extractWallpaperColor';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { getVoiceList } from '@/lib/api/voice';
@@ -155,7 +157,21 @@ export default function ChatLayout({
           console.error('Failed to load conversations:', err);
         }
 
-        // 5. Load voice presets from Fish Audio (non-blocking)
+        // 5. Load personality test results (non-blocking)
+        authFetch(PERSONALITY.STATUS)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.completed && data.mbti) {
+              dispatch(loadSavedResults({
+                mbti: data.mbti,
+                dimensions: data.dimensions || {},
+                tarot_cards: data.tarot_cards || [],
+              }));
+            }
+          })
+          .catch((err) => console.warn('Failed to load personality test:', err));
+
+        // 6. Load voice presets from Fish Audio (non-blocking)
         const voiceLang = language === 'zh-CN' ? 'zh' : 'en';
         getVoiceList(authFetch, voiceLang)
           .then((result) => {

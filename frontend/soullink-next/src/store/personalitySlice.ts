@@ -149,6 +149,18 @@ const personalitySlice = createSlice({
       state.isRetake = action.payload;
     },
 
+    /** Load previously saved results from backend (on app init) */
+    loadSavedResults(state, action: PayloadAction<{
+      mbti: string;
+      dimensions: Record<string, number>;
+      tarot_cards: TarotCard[];
+    }>) {
+      state.mbtiType = action.payload.mbti;
+      state.dimensions = action.payload.dimensions;
+      state.tarotCards = action.payload.tarot_cards;
+      state.testStatus = 'completed';
+    },
+
     /** Reset the entire personality test state (e.g. to retake) */
     resetTest(state) {
       Object.assign(state, initialState);
@@ -169,6 +181,7 @@ export const {
   selectGender,
   selectRelationship,
   selectSubtype,
+  loadSavedResults,
   resetTest,
 } = personalitySlice.actions;
 
