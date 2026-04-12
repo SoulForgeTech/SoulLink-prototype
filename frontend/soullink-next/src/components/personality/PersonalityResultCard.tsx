@@ -145,16 +145,19 @@ export default function PersonalityResultCard({ onRetake, onStartTest }: Persona
     );
   }
 
-  // Show results — compact layout
+  // Show results
   return (
     <div style={{
-      padding: '12px',
+      padding: '14px',
       borderRadius: '12px',
       background: 'rgba(107,163,214,0.06)',
       border: '1px solid rgba(107,163,214,0.15)',
     }}>
-      {/* Row 1: MBTI badge + tarot cards + retake button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      {/* MBTI badge + tarot cards */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: '0.75rem', color: '#718096' }}>
+          {language === 'zh-CN' ? '性格测试结果' : 'Personality Test'}
+        </span>
         <span style={{
           padding: '3px 10px',
           borderRadius: '6px',
@@ -163,60 +166,48 @@ export default function PersonalityResultCard({ onRetake, onStartTest }: Persona
           fontSize: '0.85rem',
           fontWeight: 700,
           letterSpacing: '0.05em',
-          flexShrink: 0,
         }}>
           {mbtiType}
         </span>
-        {/* Tarot card names inline */}
-        {tarotCards.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, flex: 1, overflow: 'hidden' }}>
-            {tarotCards.map((card, i) => {
-              const cardNameZh = card.card_name_zh || card.name_zh;
-              const cardName = card.card_name || card.name;
-              const name = language === 'zh-CN' && cardNameZh ? cardNameZh : cardName;
-              return (
-                <span key={i} style={{
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  background: 'rgba(107,163,214,0.1)',
-                  fontSize: '0.65rem',
-                  color: '#6BA3D6',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {name}
-                </span>
-              );
-            })}
-          </div>
-        )}
-        {onRetake && (
-          <button
-            onClick={onRetake}
-            style={{
-              padding: '3px 10px',
-              borderRadius: '6px',
-              border: '1px solid rgba(107,163,214,0.3)',
-              background: 'transparent',
-              color: '#6BA3D6',
-              fontSize: '0.65rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            {language === 'zh-CN' ? '重新测试' : 'Retake'}
-          </button>
-        )}
       </div>
 
-      {/* Dimension bars — compact spacing */}
+      {/* Tarot cards row */}
+      {tarotCards.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {tarotCards.map((card, i) => (
+            <MiniCard key={i} card={card} language={language} />
+          ))}
+        </div>
+      )}
+
+      {/* Dimension bars */}
       {Object.keys(dimensions).length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {Object.entries(dimensions).map(([key, value]) => (
             <DimensionBar key={key} dimKey={key} value={value as number} language={language} />
           ))}
         </div>
+      )}
+
+      {/* Retake button */}
+      {onRetake && (
+        <button
+          onClick={onRetake}
+          style={{
+            marginTop: 12,
+            padding: '6px 16px',
+            borderRadius: '8px',
+            border: '1px solid rgba(107,163,214,0.3)',
+            background: 'transparent',
+            color: '#6BA3D6',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            width: '100%',
+          }}
+        >
+          {language === 'zh-CN' ? '重新测试' : 'Retake Test'}
+        </button>
       )}
     </div>
   );
