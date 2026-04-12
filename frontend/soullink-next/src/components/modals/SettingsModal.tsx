@@ -850,7 +850,21 @@ export default function SettingsModal() {
                 <label style={formLabelStyle}>
                   {language === 'zh-CN' ? '🔮 性格测试' : '🔮 Personality Test'}
                 </label>
-                <PersonalityResultCard />
+                <PersonalityResultCard
+                  onRetake={() => {
+                    dispatch(closeModal());
+                    // Same flow as sidebar retake
+                    import('@/store/personalitySlice').then(({ resetTest, setRetake }) => {
+                      dispatch(resetTest());
+                      dispatch(setRetake(true));
+                    });
+                    window.location.href = '/onboarding';
+                  }}
+                  onStartTest={() => {
+                    dispatch(closeModal());
+                    window.location.href = '/onboarding';
+                  }}
+                />
               </div>
           </div>
 
