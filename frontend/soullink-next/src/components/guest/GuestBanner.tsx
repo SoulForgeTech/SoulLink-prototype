@@ -24,6 +24,9 @@ export default function GuestBanner() {
   const isZh = language === 'zh-CN';
 
   return (
+    <>
+      {/* Remove header bottom radius so banner connects flush */}
+      <style>{`.chat-header { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }`}</style>
       <div
         style={{
           position: 'absolute',
@@ -39,7 +42,7 @@ export default function GuestBanner() {
           background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%) border-box',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          borderRadius: '0 0 24px 24px',
+          borderRadius: '0 0 28px 28px',
           border: '1px solid rgba(255,255,255,0.15)',
           borderTop: 'none',
           boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
@@ -64,5 +67,6 @@ export default function GuestBanner() {
           fontWeight: 600, cursor: 'pointer',
         }}>{isZh ? '免费注册' : 'Sign Up'}</button>
       </div>
+    </>
   );
 }
