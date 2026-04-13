@@ -28,12 +28,12 @@ export default function GuestBanner() {
         gap: 16,
         padding: '8px 16px',
         margin: '8px 12px 0',
-        background: 'rgba(255, 255, 255, 0.75)',
+        background: 'rgba(30, 40, 60, 0.65)',
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(107, 163, 214, 0.25)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
         borderRadius: '12px',
         fontSize: '0.78rem',
-        color: '#2d3748',
+        color: 'rgba(255, 255, 255, 0.9)',
         flexWrap: 'wrap',
         flexShrink: 0,
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -42,13 +42,13 @@ export default function GuestBanner() {
       <span style={{ fontWeight: 600 }}>
         {isZh ? '🎁 试用模式' : '🎁 Trial Mode'}
       </span>
-      <span style={{ color: '#4a5568' }}>
+      <span style={{ color: 'rgba(255,255,255,0.7)' }}>
         {isZh ? '文字' : 'Text'} {usage.text}/{limits.text}
       </span>
-      <span style={{ color: '#4a5568' }}>
+      <span style={{ color: 'rgba(255,255,255,0.7)' }}>
         {isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}
       </span>
-      <span style={{ color: '#4a5568' }}>
+      <span style={{ color: 'rgba(255,255,255,0.7)' }}>
         {isZh ? '图片' : 'Image'} {usage.image}/{limits.image}
       </span>
       <button
