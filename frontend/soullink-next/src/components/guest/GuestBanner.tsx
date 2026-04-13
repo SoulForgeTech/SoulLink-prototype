@@ -28,8 +28,8 @@ export default function GuestBanner() {
         style={{
           position: 'absolute',
           top: 'var(--chat-header-height, 72px)',
-          left: '5%',
-          right: '5%',
+          left: 0,
+          right: 0,
           zIndex: 19,
           display: 'flex',
           alignItems: 'center',
