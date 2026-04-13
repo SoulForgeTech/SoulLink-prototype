@@ -86,6 +86,10 @@ export default function ChatLayout({
           const { initGuestSession } = await import('@/lib/api/guest');
           const { setGuestUsage, setGuestLimits } = await import('@/store/guestSlice');
 
+          // Set default companion name for guest
+          const { updateSettings: updateSettingsAction } = await import('@/store/settingsSlice');
+          dispatch(updateSettingsAction({ companionName: 'Abigail' }));
+
           // Init session with server
           const sessionId = localStorage.getItem('soullink_guest_session_id') || '';
           const result = await initGuestSession(sessionId);
