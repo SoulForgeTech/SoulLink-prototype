@@ -12,7 +12,9 @@ interface GuestLimits {
   text: number;
   text_window_seconds: number;
   voice: number;
+  voice_window_seconds: number;
   image: number;
+  image_window_seconds: number;
 }
 
 interface GuestState {
