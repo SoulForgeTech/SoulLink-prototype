@@ -36,21 +36,32 @@ export default function BackgroundPicker() {
     dispatch(closePanel('backgroundPicker'));
   }, [dispatch]);
 
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+
   const handleSelectBackground = useCallback(
     async (bgId: string) => {
       dispatch(setChatBackground(bgId));
-      try {
-        await updateSettings(authFetch, { chat_background: bgId });
-      } catch (err) {
-        console.error('Failed to save background setting:', err);
+      if (!isGuest) {
+        try {
+          await updateSettings(authFetch, { chat_background: bgId });
+        } catch (err) {
+          console.error('Failed to save background setting:', err);
+        }
       }
+      // Guest: setChatBackground already persists to localStorage via settingsSlice
     },
-    [dispatch, authFetch],
+    [dispatch, authFetch, isGuest],
   );
 
   const handleUploadClick = useCallback(() => {
+    if (isGuest) {
+      import('@/store/guestSlice').then(({ openUpgradeModal }) => {
+        dispatch(openUpgradeModal('feature_locked'));
+      });
+      return;
+    }
     fileInputRef.current?.click();
-  }, []);
+  }, [isGuest, dispatch]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
