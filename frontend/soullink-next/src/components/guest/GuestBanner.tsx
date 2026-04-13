@@ -24,32 +24,28 @@ export default function GuestBanner() {
   const isZh = language === 'zh-CN';
 
   return (
-    <>
-      {/* Inject style to remove header bottom border-radius when guest banner is shown */}
-      <style>{`.chat-header { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; box-shadow: none !important; }`}</style>
       <div
         style={{
           position: 'absolute',
           top: 'var(--chat-header-height, 72px)',
-          left: 0,
-          right: 0,
+          left: '5%',
+          right: '5%',
           zIndex: 19,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 10,
-          padding: '5px 12px',
-          /* Same glassmorphism as ChatHeader */
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 100%) border-box',
+          padding: '5px 16px',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%) border-box',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          /* Only bottom border-radius — flush with header top */
-          borderRadius: '0 0 20px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          borderRadius: '0 0 24px 24px',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderTop: 'none',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
           fontSize: '0.68rem',
-          color: 'rgba(255,255,255,0.8)',
-          textShadow: '0 1px 3px rgba(0,0,0,0.25)',
+          color: 'rgba(255,255,255,0.85)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.2)',
           flexWrap: 'wrap',
         }}
       >
@@ -68,6 +64,5 @@ export default function GuestBanner() {
           fontWeight: 600, cursor: 'pointer',
         }}>{isZh ? '免费注册' : 'Sign Up'}</button>
       </div>
-    </>
   );
 }
