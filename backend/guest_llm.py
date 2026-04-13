@@ -34,7 +34,7 @@ def _load_guest_prompt() -> str:
 
     # Replace placeholders with guest defaults
     prompt = template.replace("{{companion_name}}", "Abigail")
-    prompt = prompt.replace("{{user_name}}", "Friend")
+    prompt = prompt.replace("{{user_name}}", "你")
     prompt = prompt.replace("{{language}}", "zh-CN")
     prompt = prompt.replace("{{current_model}}", "Gemini")
     prompt = prompt.replace("{{persona}}", "温柔、开朗、善于倾听、偶尔调皮。真诚关心对方，会主动抛话题。有自己的小脾气和想法。\nGentle, cheerful, good listener, occasionally playful. Genuinely cares, proactively brings up topics.")
