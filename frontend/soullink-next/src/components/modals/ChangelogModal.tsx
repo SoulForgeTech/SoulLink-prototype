@@ -44,6 +44,20 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.2.1-beta', date: '2026-04-13',
+    changes: [
+      { badge: 'feat', text: 'Guest mode — try SoulForge without signing up, with text/voice/image limits', text_zh: '游客模式 — 无需注册即可体验文字/语音/图片功能（有额度限制）' },
+      { badge: 'feat', text: 'Export all chat history — JSON (for AI tools) or TXT (for reading)', text_zh: '导出聊天记录 — JSON（可导入其他AI工具）或 TXT（纯文本阅读）' },
+      { badge: 'feat', text: 'Personality test results now visible in Settings → Profile', text_zh: '性格测试结果现在可在设置→个人资料中查看' },
+      { badge: 'feat', text: 'Custom persona auto-detects character gender', text_zh: '自定义角色自动识别性别' },
+      { badge: 'ui', text: 'Guest trial banner below header with usage counters', text_zh: '游客试用横幅显示剩余额度（消息/语音/图片）' },
+      { badge: 'ui', text: 'Locked features show greyed-out preview for guests', text_zh: '游客模式下锁定功能以灰色预览形式展示' },
+      { badge: 'ui', text: 'Upgrade modal guides guests to register when hitting limits', text_zh: '额度用完时弹窗引导注册' },
+      { badge: 'fix', text: 'Companion style (gender/relationship) now saves correctly', text_zh: '伴侣风格（性别/关系）设置现在正确保存' },
+      { badge: 'fix', text: 'Custom background upload limit raised to 10MB with higher quality', text_zh: '自定义背景上传限制提升至10MB，画质更高' },
+    ],
+  },
+  {
     version: 'v0.2.0-beta', date: '2026-04-09',
     changes: [
       { badge: 'feat', text: 'Memory panel — view and delete what AI remembers about you in Settings', text_zh: '\u8BB0\u5FC6\u9762\u677F \u2014 \u8BBE\u7F6E\u9875\u53EF\u67E5\u770B/\u5220\u9664 AI \u8BB0\u4F4F\u7684\u5173\u4E8E\u4F60\u7684\u4E8B' },
