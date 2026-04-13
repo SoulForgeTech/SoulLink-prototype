@@ -361,7 +361,6 @@ export default function ChatLayout({
 
         {/* Main chat area */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
-          <GuestBanner />
           {children}
         </main>
       </div>
