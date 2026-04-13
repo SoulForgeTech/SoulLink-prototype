@@ -27,15 +27,16 @@ export default function GuestBanner() {
       <div
         style={{
           position: 'absolute',
-          top: 'var(--chat-header-height, 72px)',
-          left: 0,
-          right: 0,
-          zIndex: 19,
+          /* Push up to overlap header's bottom rounded area */
+          top: 'calc(var(--chat-header-height, 72px) - 14px)',
+          left: -1,
+          right: -1,
+          zIndex: 15, /* Below header (20) so header rounds show on top */
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 10,
-          padding: '5px 16px',
+          padding: '20px 16px 6px',  /* Extra top padding to account for overlap */
           background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%) border-box',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
