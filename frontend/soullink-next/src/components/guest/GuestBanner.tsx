@@ -29,8 +29,8 @@ export default function GuestBanner() {
           position: 'absolute',
           /* Push up to fully overlap header's bottom rounded area */
           top: 'calc(var(--chat-header-height, 72px) - 28px)',
-          left: -2,
-          right: -2,
+          left: 0,
+          right: 0,
           zIndex: 15, /* Below header (20) so header rounds show on top */
           display: 'flex',
           alignItems: 'center',
