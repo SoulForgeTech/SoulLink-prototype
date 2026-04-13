@@ -57,7 +57,7 @@ When conversation naturally calls for visual expression (selfie, scene, outfit):
 def stream_guest_chat(
     messages: list,
     language: str = "zh-CN",
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-2.5-flash",
 ) -> Iterator[str]:
     """
     Stream tokens from Gemini directly for guest users.

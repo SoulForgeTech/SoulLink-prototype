@@ -119,6 +119,9 @@ def guest_chat_stream():
 
     language = data.get("language", "zh-CN")
 
+    # Capture values before entering generator (request context ends after return)
+    session_id = request.guest_session_id
+
     def generate():
         try:
             full_reply = ""
@@ -128,7 +131,7 @@ def guest_chat_stream():
 
             # Send done event in same format as authenticated /api/chat/stream
             limiter = get_limiter()
-            usage = limiter.get_usage(request.guest_session_id)
+            usage = limiter.get_usage(session_id)
             done_data = {
                 "reply": full_reply,
                 "thinking": None,
