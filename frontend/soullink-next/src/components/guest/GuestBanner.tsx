@@ -24,8 +24,6 @@ export default function GuestBanner() {
   const isZh = language === 'zh-CN';
 
   return (
-    <>
-      <style>{`.chat-header { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }`}</style>
       <div
         style={{
           position: 'absolute',
@@ -66,6 +64,5 @@ export default function GuestBanner() {
           fontWeight: 600, cursor: 'pointer',
         }}>{isZh ? '免费注册' : 'Sign Up'}</button>
       </div>
-    </>
   );
 }
