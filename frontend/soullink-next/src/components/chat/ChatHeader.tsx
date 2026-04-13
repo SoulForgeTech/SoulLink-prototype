@@ -370,23 +370,29 @@ function GuestBannerInline() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 12,
-      padding: '6px 12px',
-      background: 'rgba(30, 40, 60, 0.7)',
-      backdropFilter: 'blur(10px)',
-      fontSize: '0.72rem',
-      color: 'rgba(255,255,255,0.85)',
+      gap: 10,
+      padding: '5px 12px',
+      background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 100%) border-box',
+      backdropFilter: 'blur(40px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      borderBottom: '1px solid rgba(255,255,255,0.1)',
+      fontSize: '0.7rem',
+      color: 'rgba(255,255,255,0.8)',
+      textShadow: '0 1px 3px rgba(0,0,0,0.3)',
       flexWrap: 'wrap',
     }}>
       <span style={{ fontWeight: 600 }}>{isZh ? '🎁 试用模式' : '🎁 Trial'}</span>
-      <span>{isZh ? '文字' : 'Text'} {usage.text}/{limits.text}</span>
-      <span>{isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}</span>
-      <span>{isZh ? '图片' : 'Image'} {usage.image}/{limits.image}</span>
+      <span style={{ opacity: 0.8 }}>
+        {isZh ? '文字' : 'Text'} {usage.text}/{limits.text}
+        <span style={{ opacity: 0.5, marginLeft: 2 }}>({isZh ? '2h重置' : '2h reset'})</span>
+      </span>
+      <span style={{ opacity: 0.8 }}>{isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}</span>
+      <span style={{ opacity: 0.8 }}>{isZh ? '图片' : 'Image'} {usage.image}/{limits.image}</span>
       <button onClick={() => { window.location.href = '/login'; }} style={{
         padding: '2px 10px', borderRadius: 6, border: 'none',
-        background: '#6BA3D6', color: 'white', fontSize: '0.68rem',
+        background: '#6BA3D6', color: 'white', fontSize: '0.66rem',
         fontWeight: 600, cursor: 'pointer',
-      }}>{isZh ? '注册' : 'Sign Up'}</button>
+      }}>{isZh ? '注册解锁' : 'Sign Up'}</button>
     </div>
   );
 }
