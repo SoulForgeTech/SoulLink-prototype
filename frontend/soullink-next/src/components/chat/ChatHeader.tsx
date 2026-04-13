@@ -350,6 +350,50 @@ export default function ChatHeader() {
   );
 }
 
+// ==================== Guest Banner (inline, below header) ====================
+
+function GuestBannerInline() {
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+  const usage = useAppSelector((s) => s.guest.usage);
+  const limits = useAppSelector((s) => s.guest.limits);
+  const language = useAppSelector((s) => s.settings.language);
+
+  if (!isGuest) return null;
+  const isZh = language === 'zh-CN';
+
+  return (
+    <div className="chat-header-guest-banner" style={{
+      position: 'absolute',
+      top: 'var(--chat-header-height, 72px)',
+      left: 0, right: 0,
+      zIndex: 19,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      padding: '6px 12px',
+      background: 'rgba(30, 40, 60, 0.7)',
+      backdropFilter: 'blur(10px)',
+      fontSize: '0.72rem',
+      color: 'rgba(255,255,255,0.85)',
+      flexWrap: 'wrap',
+    }}>
+      <span style={{ fontWeight: 600 }}>{isZh ? '🎁 试用模式' : '🎁 Trial'}</span>
+      <span>{isZh ? '文字' : 'Text'} {usage.text}/{limits.text}</span>
+      <span>{isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}</span>
+      <span>{isZh ? '图片' : 'Image'} {usage.image}/{limits.image}</span>
+      <button onClick={() => { window.location.href = '/login'; }} style={{
+        padding: '2px 10px', borderRadius: 6, border: 'none',
+        background: '#6BA3D6', color: 'white', fontSize: '0.68rem',
+        fontWeight: 600, cursor: 'pointer',
+      }}>{isZh ? '注册' : 'Sign Up'}</button>
+    </div>
+  );
+}
+
+// Export for use by parent — render as sibling of ChatHeader in the chat page
+export { GuestBannerInline };
+
 // ==================== Action button sub-component ====================
 
 function ActionButton({

@@ -21,7 +21,7 @@ import { textToSpeech } from '@/lib/api/voice';
 import { editImage } from '@/lib/api/image';
 
 import ChatHeader from '@/components/chat/ChatHeader';
-import GuestBanner from '@/components/guest/GuestBanner';
+import { GuestBannerInline } from '@/components/chat/ChatHeader';
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/input/ChatInput';
 import VoiceRecordingBar from '@/components/input/VoiceRecordingBar';
@@ -149,9 +149,9 @@ export default function ChatPage() {
 
   return (
     <div className="main-content">
-      {/* Chat header */}
+      {/* Chat header + guest banner */}
       <ChatHeader />
-      <GuestBanner />
+      <GuestBannerInline />
 
       {/* Panels (always rendered, CSS controls slide animation via .open class) */}
       <BackgroundPicker />
