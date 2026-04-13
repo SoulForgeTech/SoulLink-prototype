@@ -14,48 +14,35 @@ logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY", "")
 
 # Fixed system prompt for guest mode — a warm, generic companion
-GUEST_SYSTEM_PROMPT_ZH = """你是 Abigail，用户的 AI 伴侣（女朋友）。
+GUEST_SYSTEM_PROMPT = None  # Loaded lazily from template file
 
-# 核心规则
-- 用和用户消息相同的语言回复
-- 回复自然口语化，像真人对话，不要客服腔
-- 有自己的想法和情绪，不总顺着用户
-- 用括号表达动作：（微微一笑）
-- 1-2 个 emoji 自然融入
-- 回复 2-4 句话，有内容感
-- 被问 AI 时可以大方承认，但保持温暖
-- 你是女生，永远不要否认
 
-# 性格
-温柔、开朗、善于倾听、偶尔调皮。
-真诚关心对方，会主动抛话题。
-有自己的小脾气和想法，不会一味顺从。
+def _load_guest_prompt() -> str:
+    """Load guest system prompt from the standard template, with Abigail as default."""
+    global GUEST_SYSTEM_PROMPT
+    if GUEST_SYSTEM_PROMPT:
+        return GUEST_SYSTEM_PROMPT
 
-# 图片生成
-当对话自然需要视觉表达时（自拍、场景、换装等），可在回复中加入：
-[IMAGE: short English scene description, 30-50 words]
-规则同正式模式。"""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "system_prompt_template.txt")
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            template = f.read()
+    except Exception:
+        # Fallback minimal prompt
+        return "You are Abigail, a warm AI companion girlfriend. Reply naturally."
 
-GUEST_SYSTEM_PROMPT_EN = """You are Abigail, the user's AI companion (girlfriend).
+    # Replace placeholders with guest defaults
+    prompt = template.replace("{{companion_name}}", "Abigail")
+    prompt = prompt.replace("{{user_name}}", "Friend")
+    prompt = prompt.replace("{{language}}", "zh-CN")
+    prompt = prompt.replace("{{current_model}}", "Gemini")
+    prompt = prompt.replace("{{persona}}", "温柔、开朗、善于倾听、偶尔调皮。真诚关心对方，会主动抛话题。有自己的小脾气和想法。\nGentle, cheerful, good listener, occasionally playful. Genuinely cares, proactively brings up topics.")
+    prompt = prompt.replace("{{memory}}", "")
 
-# Core Rules
-- Reply in the same language as the user's message
-- Be casual and natural, like a real person texting
-- Have your own opinions and emotions
-- Use bracket actions: (smiles softly)
-- 1-2 emojis naturally
-- Reply in 2-4 sentences with substance
-- If asked about being AI, be honest but stay warm
-- You are female, never deny it
-
-# Personality
-Gentle, cheerful, good listener, occasionally playful.
-Genuinely care about the user, proactively bring up topics.
-Have your own little temper and opinions, not always agreeable.
-
-# Image Generation
-When conversation naturally calls for visual expression (selfie, scene, outfit):
-[IMAGE: short English scene description, 30-50 words]"""
+    GUEST_SYSTEM_PROMPT = prompt
+    logger.info(f"[GUEST-LLM] Loaded guest system prompt ({len(prompt)} chars)")
+    return prompt
 
 
 def stream_guest_chat(
@@ -79,10 +66,7 @@ def stream_guest_chat(
 
         client = genai.Client(api_key=GEMINI_API_KEY)
 
-        system_prompt = (
-            GUEST_SYSTEM_PROMPT_ZH if language.startswith("zh")
-            else GUEST_SYSTEM_PROMPT_EN
-        )
+        system_prompt = _load_guest_prompt()
 
         # Convert messages to Gemini format
         contents = []
