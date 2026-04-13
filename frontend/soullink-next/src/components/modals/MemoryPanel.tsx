@@ -46,6 +46,22 @@ export default function MemoryPanel() {
   const authFetch = useAuthFetch();
   const t = useT();
   const language = useAppSelector((s) => s.settings.language);
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+
+  // Guest mode: show lock prompt
+  if (isGuest) {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0' }}>
+        <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
+        <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
+          {language === 'zh-CN' ? '注册后解锁记忆功能' : 'Sign up to unlock memories'}
+        </p>
+        <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+          {language === 'zh-CN' ? 'AI 会记住你们的对话，建立长期记忆' : 'AI will remember your conversations and build long-term memory'}
+        </p>
+      </div>
+    );
+  }
 
   const [memories, setMemories] = useState<Memory[]>([]);
   const [counts, setCounts] = useState({ permanent: 0, long_term: 0, short_term: 0 });

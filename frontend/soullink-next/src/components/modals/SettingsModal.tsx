@@ -253,6 +253,8 @@ export default function SettingsModal() {
     (state) => state.ui.modals.settings,
   );
 
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+
   // ---- Read data from Redux store ----
   const user = useAppSelector((s) => s.auth.user);
   const companionName = useAppSelector((s) => s.settings.companionName);
@@ -845,31 +847,44 @@ export default function SettingsModal() {
                 <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: 4 }}>{t('settings.email.hint')}</p>
               </div>
 
-              {/* Personality Test Results */}
-              <div style={formGroupStyle}>
-                <label style={formLabelStyle}>
-                  {language === 'zh-CN' ? '🔮 性格测试' : '🔮 Personality Test'}
-                </label>
-                <PersonalityResultCard
-                  onRetake={() => {
-                    dispatch(closeModal('settings'));
-                    // Same flow as sidebar retake
-                    import('@/store/personalitySlice').then(({ resetTest, setRetake }) => {
-                      dispatch(resetTest());
-                      dispatch(setRetake(true));
-                    });
-                    window.location.href = '/onboarding';
-                  }}
-                  onStartTest={() => {
-                    dispatch(closeModal('settings'));
-                    window.location.href = '/onboarding';
-                  }}
-                />
-              </div>
+              {/* Personality Test Results — not shown for guests */}
+              {!isGuest && (
+                <div style={formGroupStyle}>
+                  <label style={formLabelStyle}>
+                    {language === 'zh-CN' ? '🔮 性格测试' : '🔮 Personality Test'}
+                  </label>
+                  <PersonalityResultCard
+                    onRetake={() => {
+                      dispatch(closeModal('settings'));
+                      import('@/store/personalitySlice').then(({ resetTest, setRetake }) => {
+                        dispatch(resetTest());
+                        dispatch(setRetake(true));
+                      });
+                      window.location.href = '/onboarding';
+                    }}
+                    onStartTest={() => {
+                      dispatch(closeModal('settings'));
+                      window.location.href = '/onboarding';
+                    }}
+                  />
+                </div>
+              )}
           </div>
 
           {/* ===================== COMPANION TAB ===================== */}
           <div style={{ display: activeTab === 'companion' ? 'block' : 'none', maxWidth: '100%', overflow: 'hidden' }}>
+              {isGuest && (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
+                  <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
+                    {language === 'zh-CN' ? '注册后可自定义 AI 伴侣' : 'Sign up to customize your companion'}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+                    {language === 'zh-CN' ? '选择性别、性格、声音，打造专属 AI' : 'Choose gender, personality, voice — make it yours'}
+                  </p>
+                </div>
+              )}
+              {!isGuest && <>
               {/* Companion Avatar + Name */}
               <div style={{ ...formGroupStyle, display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div
@@ -1327,10 +1342,23 @@ export default function SettingsModal() {
                     )}
                   </div>
                 </div>
+              </>}
           </div>
 
           {/* ===================== ADVANCED TAB ===================== */}
           <div style={{ display: activeTab === 'advanced' ? 'block' : 'none', maxWidth: '100%', overflow: 'hidden' }}>
+              {isGuest && (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
+                  <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
+                    {language === 'zh-CN' ? '注册后可使用高级设置' : 'Sign up to access advanced settings'}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+                    {language === 'zh-CN' ? '自定义角色、导入知识库、选择 AI 模型' : 'Custom persona, knowledge base, AI model selection'}
+                  </p>
+                </div>
+              )}
+              {!isGuest && <>
               {/* AI Model Selector — uses .model-selector, .model-option CSS */}
               <div style={formGroupStyle}>
                 <label style={formLabelStyle}>{t('settings.model')}</label>
@@ -1808,6 +1836,7 @@ export default function SettingsModal() {
                   style={{ display: 'none' }}
                 />
               </div>
+              </>}
           </div>
 
           {/* ===================== MEMORY TAB ===================== */}
