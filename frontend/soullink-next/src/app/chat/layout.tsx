@@ -49,6 +49,8 @@ const GameFullscreen = dynamic(() => import('@/components/games/GameFullscreen')
 import LoadingOverlay from '@/components/ui/LoadingOverlay';
 import ImageViewer from '@/components/ui/ImageViewer';
 import Toast from '@/components/ui/Toast';
+import GuestBanner from '@/components/guest/GuestBanner';
+const GuestUpgradeModal = dynamic(() => import('@/components/modals/GuestUpgradeModal'), { ssr: false });
 
 export default function ChatLayout({
   children,
@@ -64,16 +66,49 @@ export default function ChatLayout({
   const modals = useAppSelector((s) => s.ui.modals);
   const user = useAppSelector((s) => s.auth.user);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
   const language = useAppSelector((s) => s.settings.language);
 
-  // ---- App initialization (runs once after auth) ----
+  // ---- App initialization (runs once after auth or guest mode) ----
   const initDone = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated || initDone.current) return;
+    if ((!isAuthenticated && !isGuest) || initDone.current) return;
     initDone.current = true;
 
     (async () => {
+      // Guest mode initialization — skip workspace, load from localStorage
+      if (isGuest) {
+        try {
+          const { getOrCreateGuestConversation, loadGuestConversations } = await import('@/lib/guestStorage');
+          const { setConversations, setCurrentId } = await import('@/store/conversationsSlice');
+          const { setMessages } = await import('@/store/chatSlice');
+          const { initGuestSession } = await import('@/lib/api/guest');
+          const { setGuestUsage, setGuestLimits } = await import('@/store/guestSlice');
+
+          // Init session with server
+          const sessionId = localStorage.getItem('soullink_guest_session_id') || '';
+          const result = await initGuestSession(sessionId);
+          if (result.usage) dispatch(setGuestUsage(result.usage));
+          if (result.limits) dispatch(setGuestLimits(result.limits));
+
+          // Load conversations from localStorage
+          const conv = getOrCreateGuestConversation();
+          const allConvs = loadGuestConversations();
+          dispatch(setConversations(allConvs.map((c) => ({
+            id: c.id,
+            title: c.title,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+          }))));
+          dispatch(setCurrentId(conv.id));
+          dispatch(setMessages(conv.messages));
+        } catch (err) {
+          console.error('Guest init failed:', err);
+        }
+        return; // Skip authenticated user init
+      }
+
       try {
         let isNewUser = false;
 
@@ -187,7 +222,7 @@ export default function ChatLayout({
         console.error('App initialization failed:', err);
       }
     })();
-  }, [isAuthenticated, authFetch, dispatch, user, router, language]);
+  }, [isAuthenticated, isGuest, authFetch, dispatch, user, router, language]);
 
   // Background — matches original .bg-layer (child of #app, not .main-content)
   const chatBackground = useAppSelector((s) => s.settings.chatBackground);
@@ -326,6 +361,7 @@ export default function ChatLayout({
 
         {/* Main chat area */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
+          <GuestBanner />
           {children}
         </main>
       </div>
@@ -338,6 +374,7 @@ export default function ChatLayout({
       {modals.crop && <CropModal />}
       {modals.companionAvatar && <CompanionAvatarModal />}
       {modals.community && <CommunityPopup />}
+      <GuestUpgradeModal />
 
       {/* ---- Overlays ---- */}
       {callActive && <VoiceCallOverlay />}

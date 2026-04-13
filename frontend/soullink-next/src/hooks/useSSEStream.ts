@@ -297,6 +297,8 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
   const dispatch = useAppDispatch();
   const model = useAppSelector((s) => s.settings.model);
   const ttsEnabled = useAppSelector((s) => s.settings.ttsEnabled);
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+  const guestSessionId = useAppSelector((s) => s.guest.sessionId);
   const abortRef = useRef<AbortController | null>(null);
   /** Ref to the currently playing TTS audio (auto-play) */
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -333,14 +335,50 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
 
       const attemptStream = async (): Promise<void> => {
         try {
-          const response = await streamChat(authFetch, {
-            message: params.message,
-            conversationId: params.conversationId,
-            showThinking,
-            attachments: params.attachments,
-          });
+          let response: Response;
+
+          if (isGuest && guestSessionId) {
+            // Guest mode: send full conversation history, call guest endpoint
+            const { streamGuestChat } = await import('@/lib/api/guest');
+            const { loadGuestConversations, appendGuestMessage } = await import('@/lib/guestStorage');
+            const convs = loadGuestConversations();
+            const activeConv = convs[0];
+            const messages = activeConv
+              ? [...activeConv.messages.map((m) => ({ role: m.role, content: m.content })),
+                 { role: 'user' as const, content: params.message }]
+              : [{ role: 'user' as const, content: params.message }];
+
+            // Save user message to localStorage
+            if (activeConv) {
+              appendGuestMessage(activeConv.id, {
+                role: 'user',
+                content: params.message,
+                timestamp: new Date().toISOString(),
+              });
+            }
+
+            response = await streamGuestChat(guestSessionId, messages);
+
+            // After stream completes, we'll save assistant reply in the SSE handler below
+          } else {
+            response = await streamChat(authFetch, {
+              message: params.message,
+              conversationId: params.conversationId,
+              showThinking,
+              attachments: params.attachments,
+            });
+          }
 
           if (!response.ok) {
+            // Guest 429 = limit exceeded → show upgrade modal
+            if (isGuest && response.status === 429) {
+              const errData = await response.json().catch(() => ({}));
+              const kind = errData.kind || 'text';
+              import('@/store/guestSlice').then(({ openUpgradeModal }) => {
+                dispatch(openUpgradeModal(kind));
+              });
+              return;
+            }
             const errorText = await response.text().catch(() => 'Unknown error');
             dispatch(setError(`Stream failed: ${response.status} ${errorText}`));
             return;
@@ -436,6 +474,27 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                     };
 
                     dispatch(streamCompleted(assistantMsg));
+
+                    // Guest mode: save assistant reply to localStorage + update usage
+                    if (isGuest) {
+                      import('@/lib/guestStorage').then(({ loadGuestConversations, appendGuestMessage: appendMsg }) => {
+                        const convs = loadGuestConversations();
+                        if (convs[0]) {
+                          appendMsg(convs[0].id, {
+                            role: 'assistant',
+                            content: cleanedReply,
+                            timestamp: new Date().toISOString(),
+                          });
+                        }
+                      });
+                      // Update usage from server response
+                      if (doneData.usage) {
+                        const u = doneData.usage;
+                        import('@/store/guestSlice').then(({ setGuestUsage }) => {
+                          dispatch(setGuestUsage(u));
+                        });
+                      }
+                    }
 
                     // Update conversation ID if new.
                     if (doneData.conversation_id) {

@@ -16,8 +16,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const { token, refreshToken: storedRefreshToken, isAuthenticated } = useAppSelector((state) => state.auth);
   const [checking, setChecking] = useState(true);
 
+  const isGuest = useAppSelector((state) => state.guest.isGuest);
+
   useEffect(() => {
     async function check() {
+      // Guest mode -- skip auth verification entirely
+      if (isGuest) {
+        setChecking(false);
+        return;
+      }
+
       // No token at all -- redirect immediately
       if (!token) {
         router.replace('/login');
@@ -97,7 +105,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     check();
-  }, [token, storedRefreshToken, isAuthenticated, router, dispatch]);
+  }, [token, storedRefreshToken, isAuthenticated, isGuest, router, dispatch]);
 
   if (checking) {
     return (

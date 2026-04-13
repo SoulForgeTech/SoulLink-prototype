@@ -182,7 +182,13 @@ app = Flask(__name__)
 
 # CORS 配置 - 生产环境应限制来源
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-CORS(app, resources={r"/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": ALLOWED_ORIGINS}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "X-Guest-Session-Id"])
+
+# Register guest mode Blueprint
+from guest_routes import guest_bp
+app.register_blueprint(guest_bp)
 
 
 # ==================== 健康检查 ====================
@@ -516,6 +522,80 @@ def reset_password():
         return jsonify(result)
     else:
         return jsonify(result), 400
+
+
+# ==================== Guest Migration ====================
+
+@app.route("/api/auth/migrate-guest", methods=["POST"])
+@login_required
+def migrate_guest():
+    """
+    Migrate guest conversations to a registered user's account.
+    Called immediately after signup/login when guest data exists.
+
+    Body: { "conversations": [{ "id": "...", "title": "...", "messages": [...] }] }
+    """
+    import threading as _thr
+
+    user_id = get_current_user_id()
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    conversations = data.get("conversations", [])
+    if not conversations:
+        return jsonify({"success": True, "migrated": 0})
+
+    id_map = {}
+    migrated = 0
+
+    for guest_conv in conversations[:5]:  # Safety cap: max 5 conversations
+        try:
+            title = (guest_conv.get("title") or "")[:200] or "Migrated Chat"
+            messages = guest_conv.get("messages", [])[:100]  # Max 100 messages
+            guest_id = guest_conv.get("id", "")
+
+            # Create MongoDB conversation
+            new_conv = db.create_conversation(user_id, title=title)
+            conv_id = new_conv["_id"]
+
+            for msg in messages:
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+                if role in ("user", "assistant") and content:
+                    db.add_message_to_conversation(
+                        conv_id, user_id, role, content[:10000]
+                    )
+
+            id_map[guest_id] = str(conv_id)
+            migrated += 1
+
+            # Async: trigger Mem0 memory extraction
+            if os.getenv("MEM0_ENABLED", "false").lower() == "true":
+                try:
+                    from mem0_engine import process_memory
+                    for i in range(0, len(messages) - 1, 2):
+                        if (messages[i].get("role") == "user" and
+                                messages[i + 1].get("role") == "assistant"):
+                            _thr.Thread(
+                                target=process_memory,
+                                args=(user_id, messages[i]["content"], messages[i + 1]["content"]),
+                                daemon=True,
+                            ).start()
+                except Exception as mem_err:
+                    logger.warning(f"[MIGRATE] Memory extraction failed: {mem_err}")
+
+            logger.info(f"[MIGRATE] Migrated conversation {guest_id} → {conv_id} ({len(messages)} msgs)")
+
+        except Exception as e:
+            logger.error(f"[MIGRATE] Failed to migrate conversation: {e}")
+            continue
+
+    return jsonify({
+        "success": True,
+        "migrated": migrated,
+        "id_map": id_map,
+    })
 
 
 # ==================== 用户接口 ====================

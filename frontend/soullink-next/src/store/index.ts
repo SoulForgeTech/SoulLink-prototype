@@ -9,6 +9,7 @@ import voiceReducer from './voiceSlice';
 import settingsReducer from './settingsSlice';
 import imageViewerReducer from './imageViewerSlice';
 import personalityReducer from './personalitySlice';
+import guestReducer from './guestSlice';
 
 // ==================== Store ====================
 
@@ -22,6 +23,7 @@ export const store = configureStore({
     settings: settingsReducer,
     imageViewer: imageViewerReducer,
     personality: personalityReducer,
+    guest: guestReducer,
   },
 });
 

@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setCredentials } from '@/store/authSlice';
+import { enterGuestMode } from '@/store/guestSlice';
 import { googleCallback } from '@/lib/api/auth';
+import { initGuestSession } from '@/lib/api/guest';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import VerifyForm from '@/components/auth/VerifyForm';
@@ -41,7 +43,7 @@ export default function LoginPage() {
   }, [isAuthenticated, router]);
 
   const handleAuthSuccess = useCallback(
-    (data: AuthResponse) => {
+    async (data: AuthResponse) => {
       if (data.token && data.user) {
         dispatch(
           setCredentials({
@@ -50,6 +52,39 @@ export default function LoginPage() {
             user: data.user,
           }),
         );
+
+        // Migrate guest conversations if coming from guest mode
+        const guestSessionId = localStorage.getItem('soullink_guest_session_id');
+        if (guestSessionId) {
+          try {
+            const { loadGuestConversations, clearGuestStorage } = await import('@/lib/guestStorage');
+            const { migrateGuestConversations } = await import('@/lib/api/guest');
+            const { exitGuestMode } = await import('@/store/guestSlice');
+
+            const guestConvs = loadGuestConversations();
+            if (guestConvs.length > 0) {
+              // Create an auth-aware fetch using the new token
+              const migrateFetch = (url: string, init?: RequestInit) =>
+                fetch(url, {
+                  ...init,
+                  headers: {
+                    ...init?.headers,
+                    Authorization: `Bearer ${data.token}`,
+                  },
+                });
+
+              await migrateGuestConversations(migrateFetch, guestConvs);
+              console.log('[AUTH] Guest conversations migrated');
+            }
+
+            dispatch(exitGuestMode());
+            clearGuestStorage();
+          } catch (err) {
+            console.warn('[AUTH] Guest migration failed:', err);
+            // Non-blocking — user still enters chat normally
+          }
+        }
+
         router.push('/chat');
       }
     },
@@ -142,6 +177,7 @@ export default function LoginPage() {
       signup: 'Sign Up',
       or: 'or',
       googleBtn: 'Continue with Google',
+      tryIt: '✨ Try it out — no signup needed',
       wechat: '💬 Join our WeChat community',
       langToggle: '中文',
     },
@@ -151,6 +187,7 @@ export default function LoginPage() {
       signup: '注册',
       or: '或者',
       googleBtn: '使用 Google 登录',
+      tryIt: '✨ 先试试看 — 无需注册',
       wechat: '💬 加入微信社群',
       langToggle: 'EN',
     },
@@ -440,6 +477,48 @@ export default function LoginPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Guest mode — "Try it out" button */}
+        {view === 'auth' && (
+          <button
+            onClick={async () => {
+              try {
+                const existingId = localStorage.getItem('soullink_guest_session_id') || '';
+                const result = await initGuestSession(existingId);
+                dispatch(enterGuestMode(result.session_id));
+                router.push('/chat');
+              } catch (err) {
+                console.error('Guest init failed:', err);
+              }
+            }}
+            style={{
+              marginTop: '12px',
+              padding: '12px 28px',
+              background: 'transparent',
+              color: 'rgba(255, 255, 255, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              width: '100%',
+              maxWidth: '320px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+            }}
+          >
+            {t.tryIt}
+          </button>
         )}
 
         {/* .login-community-link */}

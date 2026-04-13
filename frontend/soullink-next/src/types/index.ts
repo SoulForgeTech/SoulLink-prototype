@@ -136,6 +136,8 @@ export interface StreamDoneData {
     core_persona: string;
     appearance?: string;
   };
+  /** Guest mode: updated usage counters from server */
+  usage?: { text: number; voice: number; image: number };
 }
 
 // ==================== Voice ====================
