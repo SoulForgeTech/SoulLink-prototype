@@ -2988,6 +2988,143 @@ def delete_conversation(conv_id):
     return jsonify({"success": True})
 
 
+# ==================== 聊天记录导出 ====================
+
+@app.route("/api/conversations/export-all", methods=["GET"])
+@login_required
+def export_all_conversations():
+    """导出用户所有聊天记录（JSON 或 TXT 格式）"""
+    from datetime import datetime
+
+    user_id = get_current_user_id()
+    user = get_current_user()
+    fmt = request.args.get("format", "json").lower()
+
+    # 1. 获取所有对话（含完整 messages）
+    convs = list(db.db["conversations"].find(
+        {"user_id": user_id, "is_active": True}
+    ).sort("updated_at", -1))
+
+    # 2. 获取角色信息
+    settings = user.get("settings", {})
+    companion_name = settings.get("custom_persona_name") or settings.get("companion_name", "Companion")
+    companion_gender = settings.get("companion_gender", "female")
+    companion_persona = settings.get("custom_persona", "")
+
+    # 3. 获取记忆
+    memories = []
+    try:
+        if os.getenv("MEM0_ENABLED", "false").lower() == "true":
+            from mem0_engine import get_permanent_memories, search_relevant_memories
+            uid_str = str(user_id)
+            perms = get_permanent_memories(uid_str)
+            relevants = search_relevant_memories(uid_str, "", limit=20)
+            memories = [{"fact": m["fact"], "tier": m["tier"]} for m in perms + relevants]
+    except Exception as e:
+        logger.warning(f"[EXPORT] Memory fetch failed: {e}")
+
+    user_name = user.get("name", "User")
+    now = datetime.utcnow()
+
+    if fmt == "txt":
+        # ===== TXT 格式 =====
+        lines = [
+            f"=== SoulForge Chat Export ===",
+            f"Companion: {companion_name}",
+            f"User: {user_name}",
+            f"Exported: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC",
+            f"Conversations: {len(convs)}",
+            "",
+        ]
+
+        if memories:
+            lines.append("--- Memories ---")
+            for m in memories:
+                lines.append(f"  [{m['tier']}] {m['fact']}")
+            lines.append("")
+
+        for conv in convs:
+            title = conv.get("title", "Untitled")
+            lines.append(f"--- {title} ---")
+            for msg in conv.get("messages", []):
+                ts = msg.get("timestamp", "")
+                if hasattr(ts, "strftime"):
+                    ts = ts.strftime("%Y-%m-%d %H:%M")
+                role_name = user_name if msg.get("role") == "user" else companion_name
+                content = msg.get("content", "")
+                msg_type = msg.get("type", "text")
+                if msg_type == "voice":
+                    content = f"[语音消息] {content}" if content else "[语音消息]"
+                # Image URLs
+                if msg.get("attachments"):
+                    for att in msg["attachments"]:
+                        if att.get("url"):
+                            content += f" [图片: {att['url']}]"
+                lines.append(f"[{ts}] {role_name}: {content}")
+            lines.append("")
+
+        text_content = "\n".join(lines)
+        filename = f"soulforge-chats-{now.strftime('%Y%m%d')}.txt"
+        return Response(
+            text_content,
+            mimetype="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    else:
+        # ===== JSON 格式 =====
+        export_data = {
+            "app": "SoulForge",
+            "version": "0.2.0",
+            "exported_at": now.isoformat(),
+            "companion": {
+                "name": companion_name,
+                "gender": companion_gender,
+                "persona": companion_persona[:2000] if companion_persona else None,
+            },
+            "user": {
+                "name": user_name,
+            },
+            "memories": memories,
+            "conversations": [],
+        }
+
+        for conv in convs:
+            conv_data = {
+                "id": str(conv["_id"]),
+                "title": conv.get("title", "Untitled"),
+                "created_at": conv.get("created_at", "").isoformat() if hasattr(conv.get("created_at", ""), "isoformat") else str(conv.get("created_at", "")),
+                "messages": [],
+            }
+            for msg in conv.get("messages", []):
+                ts = msg.get("timestamp", "")
+                if hasattr(ts, "isoformat"):
+                    ts = ts.isoformat()
+                msg_data = {
+                    "role": msg.get("role", "user"),
+                    "content": msg.get("content", ""),
+                    "timestamp": str(ts),
+                    "type": msg.get("type", "text"),
+                }
+                if msg.get("audio_url"):
+                    msg_data["audio_url"] = msg["audio_url"]
+                if msg.get("attachments"):
+                    msg_data["attachments"] = [
+                        {"url": a.get("url", ""), "name": a.get("name", "")}
+                        for a in msg["attachments"] if a.get("url")
+                    ]
+                conv_data["messages"].append(msg_data)
+            export_data["conversations"].append(conv_data)
+
+        json_content = json.dumps(export_data, ensure_ascii=False, indent=2)
+        filename = f"soulforge-chats-{now.strftime('%Y%m%d')}.json"
+        return Response(
+            json_content,
+            mimetype="application/json; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+
 # ==================== 聊天记录导入接口 ====================
 
 @app.route("/api/import/chatgpt", methods=["POST"])

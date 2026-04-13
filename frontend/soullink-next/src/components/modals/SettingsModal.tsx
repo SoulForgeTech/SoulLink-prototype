@@ -871,6 +871,71 @@ export default function SettingsModal() {
                   />
                 </div>
               )}
+
+              {/* Export Chat History — not shown for guests */}
+              {!isGuest && (
+                <div style={formGroupStyle}>
+                  <label style={formLabelStyle}>
+                    {language === 'zh-CN' ? '📁 导出聊天记录' : '📁 Export Chat History'}
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        const token = localStorage.getItem('soullink_token');
+                        const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/conversations/export-all?format=json`;
+                        fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                          .then(r => r.blob())
+                          .then(blob => {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `soulforge-chats-${new Date().toISOString().slice(0,10)}.json`;
+                            a.click();
+                          });
+                      }}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8,
+                        border: '1px solid rgba(107,163,214,0.3)',
+                        background: 'rgba(107,163,214,0.06)',
+                        color: '#4a5568', fontSize: '0.8rem', fontWeight: 500,
+                        cursor: 'pointer', textAlign: 'center',
+                      }}
+                    >
+                      JSON
+                      <br/>
+                      <span style={{ fontSize: '0.65rem', color: '#a0aec0' }}>
+                        {language === 'zh-CN' ? '可导入其他AI工具' : 'Import to other AI tools'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const token = localStorage.getItem('soullink_token');
+                        const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/conversations/export-all?format=txt`;
+                        fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                          .then(r => r.blob())
+                          .then(blob => {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `soulforge-chats-${new Date().toISOString().slice(0,10)}.txt`;
+                            a.click();
+                          });
+                      }}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8,
+                        border: '1px solid rgba(107,163,214,0.3)',
+                        background: 'rgba(107,163,214,0.06)',
+                        color: '#4a5568', fontSize: '0.8rem', fontWeight: 500,
+                        cursor: 'pointer', textAlign: 'center',
+                      }}
+                    >
+                      TXT
+                      <br/>
+                      <span style={{ fontSize: '0.65rem', color: '#a0aec0' }}>
+                        {language === 'zh-CN' ? '纯文本，可直接阅读' : 'Plain text, readable'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
           </div>
 
           {/* ===================== COMPANION TAB ===================== */}

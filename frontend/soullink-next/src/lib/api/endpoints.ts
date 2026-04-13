@@ -55,6 +55,8 @@ export const CONVERSATIONS = {
   update: (id: string) => `${BASE}/api/conversations/${id}`,
   /** Alias for detail — used for DELETE. */
   delete: (id: string) => `${BASE}/api/conversations/${id}`,
+  /** Export all conversations */
+  EXPORT_ALL: `${BASE}/api/conversations/export-all`,
 } as const;
 
 // ==================== Voice ====================
