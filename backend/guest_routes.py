@@ -139,11 +139,31 @@ def guest_chat_stream():
                     allowed, _ = limiter.check_and_increment(session_id, "image", ip="")
                     if allowed:
                         try:
-                            from image_gen import generate_image
+                            from image_gen import generate_image, _ensure_cloudinary, _cloudinary_configured
+                            import cloudinary.uploader as _cu
+
+                            yield f"event: image_generating\ndata: {json.dumps({'status': 'generating'})}\n\n"
+
                             result = generate_image(prompt=prompt.strip()[:500])
-                            if result and result.get("url"):
-                                image_urls.append(result["url"])
-                                yield f"event: image_generating\ndata: {json.dumps({'status': 'generating'})}\n\n"
+                            if result:
+                                img_url = result.get("url")
+                                if not img_url and result.get("b64"):
+                                    # Upload b64 to Cloudinary for a persistent URL
+                                    try:
+                                        _ensure_cloudinary()
+                                        if _cloudinary_configured:
+                                            import base64
+                                            upload_result = _cu.upload(
+                                                f"data:image/png;base64,{result['b64']}",
+                                                folder="soullink/guest_images",
+                                                resource_type="image",
+                                            )
+                                            img_url = upload_result.get("secure_url")
+                                    except Exception:
+                                        # Fallback: use inline b64
+                                        img_url = f"data:image/png;base64,{result['b64'][:100000]}"
+                                if img_url:
+                                    image_urls.append(img_url)
                         except Exception as img_err:
                             logger.warning(f"[GUEST-IMAGE] Generation failed: {img_err}")
                     else:
