@@ -128,15 +128,19 @@ export default function RenameModal() {
   const isGuest = useAppSelector((s) => s.guest.isGuest);
 
   const handleSave = useCallback(() => {
+    if (isGuest) {
+      handleClose();
+      import('@/store/guestSlice').then(({ openUpgradeModal }) => {
+        dispatch(openUpgradeModal('feature_locked'));
+      });
+      return;
+    }
     const trimmed = name.trim();
     if (trimmed && trimmed.length <= 20) {
       dispatch(setCompanionName(trimmed));
-      // Guest: only save to Redux/localStorage, skip API
-      if (!isGuest) {
-        updateSettings(authFetch, { companion_name: trimmed }).catch((err) => {
-          console.error('Failed to save companion name:', err);
-        });
-      }
+      updateSettings(authFetch, { companion_name: trimmed }).catch((err) => {
+        console.error('Failed to save companion name:', err);
+      });
       handleClose();
     }
   }, [name, dispatch, handleClose, authFetch, isGuest]);
