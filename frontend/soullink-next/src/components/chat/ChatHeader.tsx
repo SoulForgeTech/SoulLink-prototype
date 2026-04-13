@@ -384,11 +384,11 @@ function GuestBannerInline() {
       <span style={{ fontWeight: 600 }}>{isZh ? '🎁 体验中' : '🎁 Trial'}</span>
       <span style={{ opacity: 0.7 }}>
         {isZh
-          ? `剩余 ${limits.text - usage.text} 条消息`
-          : `${limits.text - usage.text} messages left`}
+          ? `消息 ${limits.text - usage.text} · 语音 ${limits.voice - usage.voice} · 图片 ${limits.image - usage.image}`
+          : `Text ${limits.text - usage.text} · Voice ${limits.voice - usage.voice} · Image ${limits.image - usage.image}`}
       </span>
       <span style={{ opacity: 0.5, fontSize: '0.62rem' }}>
-        {isZh ? '注册免费解锁无限对话 + 记忆 + 自定义角色' : 'Sign up for unlimited chat + memory + custom characters'}
+        {isZh ? '注册免费解锁全部功能' : 'Sign up to unlock all features'}
       </span>
       <button onClick={() => { window.location.href = '/login'; }} style={{
         padding: '3px 12px', borderRadius: 6, border: 'none',
