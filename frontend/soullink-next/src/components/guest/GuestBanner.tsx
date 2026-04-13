@@ -25,7 +25,6 @@ export default function GuestBanner() {
 
   return (
     <>
-      {/* Remove header bottom radius so banner connects flush */}
       <style>{`.chat-header { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }`}</style>
       <div
         style={{
