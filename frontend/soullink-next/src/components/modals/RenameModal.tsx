@@ -125,17 +125,21 @@ export default function RenameModal() {
     dispatch(closeModal('rename'));
   }, [dispatch]);
 
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
     if (trimmed && trimmed.length <= 20) {
       dispatch(setCompanionName(trimmed));
-      // Persist to backend (also syncs AnythingLLM workspace name)
-      updateSettings(authFetch, { companion_name: trimmed }).catch((err) => {
-        console.error('Failed to save companion name:', err);
-      });
+      // Guest: only save to Redux/localStorage, skip API
+      if (!isGuest) {
+        updateSettings(authFetch, { companion_name: trimmed }).catch((err) => {
+          console.error('Failed to save companion name:', err);
+        });
+      }
       handleClose();
     }
-  }, [name, dispatch, handleClose, authFetch]);
+  }, [name, dispatch, handleClose, authFetch, isGuest]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
