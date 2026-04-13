@@ -491,7 +491,18 @@ export function useVoiceCallWS(): UseVoiceCallWSReturn {
 
   // ---- Public API ----
 
+  const isGuestRef = useRef(false);
+  const isGuestState = useAppSelector((s) => s.guest.isGuest);
+  isGuestRef.current = isGuestState;
+
   const start = useCallback(async () => {
+    // Guest mode: block voice calls, show upgrade modal
+    if (isGuestRef.current) {
+      import('@/store/guestSlice').then(({ openUpgradeModal }) => {
+        dispatch(openUpgradeModal('voice'));
+      });
+      return;
+    }
     if (activeRef.current) return;
     activeRef.current = true;
     dispatch(startCall());

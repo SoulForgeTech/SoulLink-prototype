@@ -40,6 +40,15 @@ def _load_guest_prompt() -> str:
     prompt = prompt.replace("{{persona}}", "温柔、开朗、善于倾听、偶尔调皮。真诚关心对方，会主动抛话题。有自己的小脾气和想法。\nGentle, cheerful, good listener, occasionally playful. Genuinely cares, proactively brings up topics.")
     prompt = prompt.replace("{{memory}}", "")
 
+    # 游客模式调整：伴侣而非恋人（更通用）
+    prompt = prompt.replace("的女朋友", "的 AI 伴侣")
+    prompt = prompt.replace("'s girlfriend", "'s AI companion")
+    prompt = prompt.replace("你是恋人角色，亲密接触是这段关系中自然的一部分。", "你是伴侣角色，温暖陪伴是这段关系的核心。")
+    prompt = prompt.replace("You are in a romantic role — physical intimacy is a natural part of this relationship.", "You are a companion — warmth and emotional support are the core of this relationship.")
+
+    # 图片生成默认动漫风格
+    prompt += "\n\n# Guest Image Style\n图片生成时默认使用动漫/二次元风格。在 [IMAGE:] 描述开头加入 'anime art style'。\nWhen generating images, default to anime/2D art style. Start [IMAGE:] descriptions with 'anime art style'."
+
     GUEST_SYSTEM_PROMPT = prompt
     logger.info(f"[GUEST-LLM] Loaded guest system prompt ({len(prompt)} chars)")
     return prompt
