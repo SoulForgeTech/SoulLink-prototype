@@ -123,19 +123,42 @@ def guest_chat_stream():
     session_id = request.guest_session_id
 
     def generate():
+        import re
         try:
             full_reply = ""
             for token in stream_guest_chat(clean_messages, language=language):
                 full_reply += token
                 yield f"event: text\ndata: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
 
-            # Send done event in same format as authenticated /api/chat/stream
+            # Extract [IMAGE:...] tags and generate images
+            image_urls = []
+            image_pattern = re.findall(r'\[IMAGE:\s*([^\]]+)\]', full_reply)
+            if image_pattern:
+                limiter = get_limiter()
+                for prompt in image_pattern[:1]:  # Max 1 image per message
+                    allowed, _ = limiter.check_and_increment(session_id, "image", ip="")
+                    if allowed:
+                        try:
+                            from image_gen import generate_image
+                            result = generate_image(prompt=prompt.strip()[:500], user_id=None)
+                            if result and result.get("url"):
+                                image_urls.append(result["url"])
+                                yield f"event: image_generating\ndata: {json.dumps({'status': 'generating'})}\n\n"
+                        except Exception as img_err:
+                            logger.warning(f"[GUEST-IMAGE] Generation failed: {img_err}")
+                    else:
+                        logger.info(f"[GUEST-IMAGE] Limit reached for session {session_id}")
+
+                # Strip IMAGE tags from reply text
+                full_reply = re.sub(r'\[IMAGE:[^\]]*\]', '', full_reply).strip()
+
+            # Send done event
             limiter = get_limiter()
             usage = limiter.get_usage(session_id)
             done_data = {
                 "reply": full_reply,
                 "thinking": None,
-                "images": [],
+                "images": [{"url": u} for u in image_urls] if image_urls else [],
                 "conversation_id": None,
                 "usage": usage,
             }

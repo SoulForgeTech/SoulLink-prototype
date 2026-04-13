@@ -57,7 +57,7 @@ export default function GuestBanner() {
             : `Text ${limits.text - usage.text} · Voice ${limits.voice - usage.voice} · Image ${limits.image - usage.image}`}
         </span>
         <span style={{ opacity: 0.5, fontSize: '0.6rem' }}>
-          {isZh ? '注册免费解锁全部功能' : 'Sign up to unlock all'}
+          {isZh ? '自动重置 · 注册解锁无限使用' : 'Auto-reset · Sign up for unlimited'}
         </span>
         <button onClick={() => { window.location.href = '/login'; }} style={{
           padding: '2px 10px', borderRadius: 5, border: 'none',

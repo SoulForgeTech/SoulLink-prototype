@@ -22,8 +22,10 @@ logger = logging.getLogger(__name__)
 GUEST_LIMITS = {
     "text": 50,                 # max messages per rolling window
     "text_window_seconds": 7200,  # 2 hours
-    "voice": 5,                 # total voice turns (lifetime)
-    "image": 3,                 # total image generations (lifetime)
+    "voice": 5,                 # max voice turns per rolling window
+    "voice_window_seconds": 18000,  # 5 hours
+    "image": 3,                 # max image generations per rolling window
+    "image_window_seconds": 18000,  # 5 hours
 }
 
 # IP-level abuse prevention
@@ -44,9 +46,9 @@ class GuestLimiter:
 
     def __init__(self):
         self._lock = threading.Lock()
-        # session_id -> {"text": deque([ts, ...]), "voice": int, "image": int}
+        # session_id -> {"text": deque([ts, ...]), "voice": deque([ts, ...]), "image": deque([ts, ...])}
         self._sessions: dict = defaultdict(
-            lambda: {"text": deque(), "voice": 0, "image": 0}
+            lambda: {"text": deque(), "voice": deque(), "image": deque()}
         )
         # IP -> {"sessions": deque([ts, ...]), "messages": deque([ts, ...])}
         self._ip_state: dict = defaultdict(
@@ -73,36 +75,29 @@ class GuestLimiter:
             state = self._sessions[session_id]
             now = time.time()
 
-            if kind == "text":
-                window = GUEST_LIMITS["text_window_seconds"]
-                self._clean_window(state["text"], window)
-                count = len(state["text"])
-                limit = GUEST_LIMITS["text"]
+            if kind not in ("text", "voice", "image"):
+                return True, self._get_usage(session_id)
 
-                if count >= limit:
-                    reset_at = state["text"][0] + window if state["text"] else now + window
-                    return False, {
-                        "text": count,
-                        "voice": state["voice"],
-                        "image": state["image"],
-                        "reset_at": reset_at,
-                    }
+            window = GUEST_LIMITS[f"{kind}_window_seconds"]
+            limit = GUEST_LIMITS[kind]
+            self._clean_window(state[kind], window)
+            count = len(state[kind])
 
-                state["text"].append(now)
+            if count >= limit:
+                reset_at = state[kind][0] + window if state[kind] else now + window
+                usage = self._get_usage(session_id)
+                usage["reset_at"] = reset_at
+                return False, usage
 
-                # IP-level message tracking
-                if ip:
-                    ip_state = self._ip_state[ip]
-                    self._clean_window(ip_state["messages"], 3600)
-                    if len(ip_state["messages"]) >= IP_MAX_MESSAGES_PER_HOUR:
-                        return False, self._get_usage(session_id)
-                    ip_state["messages"].append(now)
+            state[kind].append(now)
 
-            elif kind in ("voice", "image"):
-                limit = GUEST_LIMITS[kind]
-                if state[kind] >= limit:
+            # IP-level message tracking (text only)
+            if kind == "text" and ip:
+                ip_state = self._ip_state[ip]
+                self._clean_window(ip_state["messages"], 3600)
+                if len(ip_state["messages"]) >= IP_MAX_MESSAGES_PER_HOUR:
                     return False, self._get_usage(session_id)
-                state[kind] += 1
+                ip_state["messages"].append(now)
 
             return True, self._get_usage(session_id)
 
@@ -124,11 +119,12 @@ class GuestLimiter:
     def _get_usage(self, session_id: str) -> dict:
         """Internal: get usage dict (must hold lock)."""
         state = self._sessions[session_id]
-        self._clean_window(state["text"], GUEST_LIMITS["text_window_seconds"])
+        for kind in ("text", "voice", "image"):
+            self._clean_window(state[kind], GUEST_LIMITS[f"{kind}_window_seconds"])
         return {
             "text": len(state["text"]),
-            "voice": state["voice"],
-            "image": state["image"],
+            "voice": len(state["voice"]),
+            "image": len(state["image"]),
         }
 
 
