@@ -25,40 +25,44 @@ export default function GuestBanner() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
+        gap: 16,
         padding: '8px 16px',
-        background: 'linear-gradient(90deg, rgba(107,163,214,0.15), rgba(147,130,209,0.15))',
-        borderBottom: '1px solid rgba(107, 163, 214, 0.2)',
-        fontSize: '0.75rem',
-        color: '#1a202c',
+        margin: '8px 12px 0',
+        background: 'rgba(255, 255, 255, 0.75)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(107, 163, 214, 0.25)',
+        borderRadius: '12px',
+        fontSize: '0.78rem',
+        color: '#2d3748',
         flexWrap: 'wrap',
         flexShrink: 0,
-        zIndex: 10,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}
     >
-      <span>
+      <span style={{ fontWeight: 600 }}>
         {isZh ? '🎁 试用模式' : '🎁 Trial Mode'}
       </span>
-      <span style={{ color: '#718096' }}>
+      <span style={{ color: '#4a5568' }}>
         {isZh ? '文字' : 'Text'} {usage.text}/{limits.text}
       </span>
-      <span style={{ color: '#718096' }}>
+      <span style={{ color: '#4a5568' }}>
         {isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}
       </span>
-      <span style={{ color: '#718096' }}>
+      <span style={{ color: '#4a5568' }}>
         {isZh ? '图片' : 'Image'} {usage.image}/{limits.image}
       </span>
       <button
         onClick={() => dispatch(openUpgradeModal('feature_locked'))}
         style={{
-          padding: '3px 12px',
-          borderRadius: '6px',
+          padding: '4px 14px',
+          borderRadius: '8px',
           border: 'none',
           background: '#6BA3D6',
           color: 'white',
-          fontSize: '0.7rem',
+          fontSize: '0.72rem',
           fontWeight: 600,
           cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(107,163,214,0.3)',
         }}
       >
         {isZh ? '立即注册' : 'Sign Up'}
