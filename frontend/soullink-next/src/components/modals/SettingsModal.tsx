@@ -819,11 +819,12 @@ export default function SettingsModal() {
                 <label style={formLabelStyle}>{t('settings.nickname', { companion: companionName || 'Companion' })}</label>
                 <input
                   type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
+                  value={isGuest ? 'Guest' : nickname}
+                  onChange={(e) => { if (!isGuest) setNickname(e.target.value); }}
+                  disabled={isGuest}
                   placeholder={t('settings.nickname.placeholder')}
                   maxLength={30}
-                  style={formInputStyle}
+                  style={isGuest ? formInputDisabledStyle : formInputStyle}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = '#6BA3D6';
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
@@ -879,9 +880,12 @@ export default function SettingsModal() {
                   <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
                     {language === 'zh-CN' ? '注册后可自定义 AI 伴侣' : 'Sign up to customize your companion'}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+                  <p style={{ fontSize: '0.75rem', color: '#a0aec0', margin: '0 0 12px 0' }}>
                     {language === 'zh-CN' ? '选择性别、性格、声音，打造专属 AI' : 'Choose gender, personality, voice — make it yours'}
                   </p>
+                  <button onClick={() => { dispatch(closeModal('settings')); window.location.href = '/login'; }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+                    {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
+                  </button>
                 </div>
               )}
               {!isGuest && <>
@@ -1353,9 +1357,12 @@ export default function SettingsModal() {
                   <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
                     {language === 'zh-CN' ? '注册后可使用高级设置' : 'Sign up to access advanced settings'}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
+                  <p style={{ fontSize: '0.75rem', color: '#a0aec0', margin: '0 0 12px 0' }}>
                     {language === 'zh-CN' ? '自定义角色、导入知识库、选择 AI 模型' : 'Custom persona, knowledge base, AI model selection'}
                   </p>
+                  <button onClick={() => { dispatch(closeModal('settings')); window.location.href = '/login'; }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+                    {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
+                  </button>
                 </div>
               )}
               {!isGuest && <>

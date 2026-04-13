@@ -59,6 +59,9 @@ export default function MemoryPanel() {
         <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
           {language === 'zh-CN' ? 'AI 会记住你们的对话，建立长期记忆' : 'AI will remember your conversations and build long-term memory'}
         </p>
+        <button onClick={() => { window.location.href = '/login'; }} style={{ marginTop: 12, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+          {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
+        </button>
       </div>
     );
   }

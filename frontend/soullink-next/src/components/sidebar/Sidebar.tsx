@@ -98,14 +98,22 @@ export default function Sidebar({
     dispatch(setSidebarOpen(false));
   }, [dispatch]);
 
+  const isGuest = useAppSelector((s) => s.guest.isGuest);
+
   const handleOpenPersonalityTest = useCallback(() => {
+    if (isGuest) {
+      // Guest can't take personality test — redirect to login
+      dispatch(setSidebarOpen(false));
+      import('@/store/guestSlice').then(({ openUpgradeModal }) => {
+        dispatch(openUpgradeModal('feature_locked'));
+      });
+      return;
+    }
     dispatch(setSidebarOpen(false));
-    // Reset personality state and mark as retake so onboarding stops after results
-    // (questions → tarot → results → back to chat)
     dispatch(resetTest());
     dispatch(setRetake(true));
     router.push('/onboarding');
-  }, [dispatch, router]);
+  }, [dispatch, router, isGuest]);
 
   const handleOpenSettings = useCallback(() => {
     dispatch(openModal({ modal: 'settings' }));

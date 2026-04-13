@@ -26,13 +26,14 @@ export default function GuestBanner() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 12,
-        padding: '6px 16px',
-        background: 'rgba(107, 163, 214, 0.1)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(107, 163, 214, 0.15)',
+        padding: '8px 16px',
+        background: 'linear-gradient(90deg, rgba(107,163,214,0.15), rgba(147,130,209,0.15))',
+        borderBottom: '1px solid rgba(107, 163, 214, 0.2)',
         fontSize: '0.75rem',
-        color: '#4a5568',
+        color: '#1a202c',
         flexWrap: 'wrap',
+        flexShrink: 0,
+        zIndex: 10,
       }}
     >
       <span>
