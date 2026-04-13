@@ -22,6 +22,7 @@ import { setPresets, setCurrentPresetId } from '@/store/voiceSlice';
 import type { SettingsTab, VoicePreset, LoreDocument, PersonaPreview } from '@/types';
 import MemoryPanel from './MemoryPanel';
 import PersonalityResultCard from '@/components/personality/PersonalityResultCard';
+import GuestLockOverlay from '@/components/guest/GuestLockOverlay';
 
 // ==================== Inline Style Constants ====================
 
@@ -874,21 +875,7 @@ export default function SettingsModal() {
 
           {/* ===================== COMPANION TAB ===================== */}
           <div style={{ display: activeTab === 'companion' ? 'block' : 'none', maxWidth: '100%', overflow: 'hidden' }}>
-              {isGuest && (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0' }}>
-                  <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
-                  <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
-                    {language === 'zh-CN' ? '注册后可自定义 AI 伴侣' : 'Sign up to customize your companion'}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: '#a0aec0', margin: '0 0 12px 0' }}>
-                    {language === 'zh-CN' ? '选择性别、性格、声音，打造专属 AI' : 'Choose gender, personality, voice — make it yours'}
-                  </p>
-                  <button onClick={() => { dispatch(closeModal('settings')); window.location.href = '/login'; }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
-                    {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
-                  </button>
-                </div>
-              )}
-              {!isGuest && <>
+            <GuestLockOverlay>
               {/* Companion Avatar + Name */}
               <div style={{ ...formGroupStyle, display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div
@@ -1346,26 +1333,12 @@ export default function SettingsModal() {
                     )}
                   </div>
                 </div>
-              </>}
+            </GuestLockOverlay>
           </div>
 
           {/* ===================== ADVANCED TAB ===================== */}
           <div style={{ display: activeTab === 'advanced' ? 'block' : 'none', maxWidth: '100%', overflow: 'hidden' }}>
-              {isGuest && (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0' }}>
-                  <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔒</div>
-                  <p style={{ fontSize: '0.85rem', color: '#4a5568', margin: '0 0 8px 0' }}>
-                    {language === 'zh-CN' ? '注册后可使用高级设置' : 'Sign up to access advanced settings'}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: '#a0aec0', margin: '0 0 12px 0' }}>
-                    {language === 'zh-CN' ? '自定义角色、导入知识库、选择 AI 模型' : 'Custom persona, knowledge base, AI model selection'}
-                  </p>
-                  <button onClick={() => { dispatch(closeModal('settings')); window.location.href = '/login'; }} style={{ padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
-                    {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
-                  </button>
-                </div>
-              )}
-              {!isGuest && <>
+            <GuestLockOverlay>
               {/* AI Model Selector — uses .model-selector, .model-option CSS */}
               <div style={formGroupStyle}>
                 <label style={formLabelStyle}>{t('settings.model')}</label>
@@ -1843,7 +1816,7 @@ export default function SettingsModal() {
                   style={{ display: 'none' }}
                 />
               </div>
-              </>}
+            </GuestLockOverlay>
           </div>
 
           {/* ===================== MEMORY TAB ===================== */}
