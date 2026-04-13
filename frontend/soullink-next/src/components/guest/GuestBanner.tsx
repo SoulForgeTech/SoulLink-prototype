@@ -45,19 +45,18 @@ export default function GuestBanner() {
           borderTop: 'none',
           boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
           fontSize: '0.68rem',
-          color: 'rgba(255,255,255,0.85)',
-          textShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          color: 'rgba(0,0,0,0.65)',
           flexWrap: 'wrap',
         }}
       >
-        <span style={{ fontWeight: 600 }}>{isZh ? '🎁 体验中' : '🎁 Trial'}</span>
-        <span style={{ opacity: 0.8 }}>
+        <span style={{ fontWeight: 600, color: 'rgba(0,0,0,0.75)' }}>{isZh ? '🎁 体验中' : '🎁 Trial'}</span>
+        <span>
           {isZh
             ? `消息 ${limits.text - usage.text} · 语音 ${limits.voice - usage.voice} · 图片 ${limits.image - usage.image}`
             : `Text ${limits.text - usage.text} · Voice ${limits.voice - usage.voice} · Image ${limits.image - usage.image}`}
         </span>
-        <span style={{ opacity: 0.5, fontSize: '0.6rem' }}>
-          {isZh ? '自动重置 · 注册解锁无限使用' : 'Auto-reset · Sign up for unlimited'}
+        <span style={{ opacity: 0.5, fontSize: '0.58rem' }}>
+          {isZh ? '5小时重置 · 注册解锁无限使用' : '5h reset · Sign up for unlimited'}
         </span>
         <button onClick={() => { window.location.href = '/login'; }} style={{
           padding: '2px 10px', borderRadius: 5, border: 'none',

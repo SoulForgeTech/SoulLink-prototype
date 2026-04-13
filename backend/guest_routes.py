@@ -140,7 +140,7 @@ def guest_chat_stream():
                     if allowed:
                         try:
                             from image_gen import generate_image
-                            result = generate_image(prompt=prompt.strip()[:500], user_id=None)
+                            result = generate_image(prompt=prompt.strip()[:500])
                             if result and result.get("url"):
                                 image_urls.append(result["url"])
                                 yield f"event: image_generating\ndata: {json.dumps({'status': 'generating'})}\n\n"
