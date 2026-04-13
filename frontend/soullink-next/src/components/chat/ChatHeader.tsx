@@ -381,18 +381,20 @@ function GuestBannerInline() {
       textShadow: '0 1px 3px rgba(0,0,0,0.3)',
       flexWrap: 'wrap',
     }}>
-      <span style={{ fontWeight: 600 }}>{isZh ? '🎁 试用模式' : '🎁 Trial'}</span>
-      <span style={{ opacity: 0.8 }}>
-        {isZh ? '文字' : 'Text'} {usage.text}/{limits.text}
-        <span style={{ opacity: 0.5, marginLeft: 2 }}>({isZh ? '2h重置' : '2h reset'})</span>
+      <span style={{ fontWeight: 600 }}>{isZh ? '🎁 体验中' : '🎁 Trial'}</span>
+      <span style={{ opacity: 0.7 }}>
+        {isZh
+          ? `剩余 ${limits.text - usage.text} 条消息`
+          : `${limits.text - usage.text} messages left`}
       </span>
-      <span style={{ opacity: 0.8 }}>{isZh ? '语音' : 'Voice'} {usage.voice}/{limits.voice}</span>
-      <span style={{ opacity: 0.8 }}>{isZh ? '图片' : 'Image'} {usage.image}/{limits.image}</span>
+      <span style={{ opacity: 0.5, fontSize: '0.62rem' }}>
+        {isZh ? '注册免费解锁无限对话 + 记忆 + 自定义角色' : 'Sign up for unlimited chat + memory + custom characters'}
+      </span>
       <button onClick={() => { window.location.href = '/login'; }} style={{
-        padding: '2px 10px', borderRadius: 6, border: 'none',
+        padding: '3px 12px', borderRadius: 6, border: 'none',
         background: '#6BA3D6', color: 'white', fontSize: '0.66rem',
         fontWeight: 600, cursor: 'pointer',
-      }}>{isZh ? '注册解锁' : 'Sign Up'}</button>
+      }}>{isZh ? '免费注册' : 'Free Sign Up'}</button>
     </div>
   );
 }
