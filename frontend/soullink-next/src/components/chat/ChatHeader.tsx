@@ -30,9 +30,9 @@ const headerStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   zIndex: 20,
+  overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',
-  flexWrap: 'wrap',
   /* Glassmorphism — duplicated inline to bypass Turbopack CSS transform issues */
   border: '1px solid transparent',
   background: `linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.04) 65%, rgba(255,255,255,0.10) 85%, rgba(255,255,255,0.18) 100%) border-box`,
@@ -346,53 +346,7 @@ export default function ChatHeader() {
           </svg>
         </ActionButton>
       </div>
-      {/* Guest banner — inside header, seamless */}
-      <GuestBannerRow />
     </header>
-  );
-}
-
-// ==================== Guest Banner Row (inside header) ====================
-
-function GuestBannerRow() {
-  const isGuest = useAppSelector((s) => s.guest.isGuest);
-  const usage = useAppSelector((s) => s.guest.usage);
-  const limits = useAppSelector((s) => s.guest.limits);
-  const language = useAppSelector((s) => s.settings.language);
-
-  if (!isGuest) return null;
-  const isZh = language === 'zh-CN';
-
-  return (
-    <div style={{
-      ...aboveOverlay,
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-      padding: '4px 12px',
-      borderTop: '1px solid rgba(255,255,255,0.08)',
-      fontSize: '0.68rem',
-      color: 'rgba(255,255,255,0.75)',
-      textShadow: '0 1px 3px rgba(0,0,0,0.25)',
-      flexWrap: 'wrap',
-    }}>
-      <span style={{ fontWeight: 600 }}>{isZh ? '🎁 体验中' : '🎁 Trial'}</span>
-      <span style={{ opacity: 0.8 }}>
-        {isZh
-          ? `消息 ${limits.text - usage.text} · 语音 ${limits.voice - usage.voice} · 图片 ${limits.image - usage.image}`
-          : `Text ${limits.text - usage.text} · Voice ${limits.voice - usage.voice} · Image ${limits.image - usage.image}`}
-      </span>
-      <span style={{ opacity: 0.5, fontSize: '0.6rem' }}>
-        {isZh ? '注册免费解锁全部功能' : 'Sign up to unlock all'}
-      </span>
-      <button onClick={() => { window.location.href = '/login'; }} style={{
-        padding: '2px 10px', borderRadius: 5, border: 'none',
-        background: 'rgba(107,163,214,0.9)', color: 'white', fontSize: '0.62rem',
-        fontWeight: 600, cursor: 'pointer',
-      }}>{isZh ? '免费注册' : 'Sign Up'}</button>
-    </div>
   );
 }
 
