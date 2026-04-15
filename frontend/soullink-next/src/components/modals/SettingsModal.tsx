@@ -1689,9 +1689,9 @@ export default function SettingsModal() {
                 )}
               </div>
 
-              {/* Knowledge Base Section — matches original: textarea + Upload + Submit */}
+              {/* Knowledge Base Section — instant actions, no save button needed */}
               <div style={formGroupStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <span style={{ fontSize: '1rem' }}>📚</span>
                   <label style={{ ...formLabelStyle, marginBottom: 0, flex: 1 }}>
                     {t('settings.custom.lore.title')}
@@ -1701,115 +1701,54 @@ export default function SettingsModal() {
                   </span>
                 </div>
 
-                {/* Text input area for pasting lore content */}
-                <textarea
-                  id="lore-text-input"
-                  placeholder={language === 'zh-CN'
-                    ? '粘贴背景资料、世界观设定、专业知识等...'
-                    : 'Paste background materials, world settings, specialized knowledge, etc.'}
-                  rows={3}
-                  style={{
-                    ...formInputStyle,
-                    minHeight: 80,
-                    maxHeight: 200,
-                    resize: 'vertical',
-                    fontFamily: 'inherit',
-                    lineHeight: 1.5,
-                    border: '2px solid rgba(0,0,0,0.08)',
-                    borderRadius: '12px',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#6BA3D6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                />
-
-                {/* Action buttons: Upload File + Submit to KB */}
-                <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                {/* Action buttons row */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <button
                     onClick={() => loreFileRef.current?.click()}
                     disabled={loreDocs.length >= maxLoreDocs || loreSubmitting}
                     style={{
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: '#4a5568',
-                      background: 'rgba(255,255,255,0.5)',
-                      border: '2px solid rgba(0,0,0,0.06)',
+                      flex: 1, padding: '10px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                      color: '#4a5568', background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(0,0,0,0.06)',
                       cursor: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 'not-allowed' : 'pointer',
                       opacity: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 0.4 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                     }}
                   >
-                    {loreSubmitting ? '⏳' : '📁'} {loreSubmitting ? (language === 'zh-CN' ? '上传中...' : 'Uploading...') : t('settings.custom.lore.upload')}
+                    {loreSubmitting ? '⏳' : '📁'} {loreSubmitting
+                      ? (language === 'zh-CN' ? '上传中...' : 'Uploading...')
+                      : (language === 'zh-CN' ? '上传文件' : 'Upload File')}
                   </button>
                   <button
-                    onClick={async () => {
-                      if (loreSubmitting) return;
-                      const textArea = document.getElementById('lore-text-input') as HTMLTextAreaElement;
-                      const text = textArea?.value?.trim();
-                      if (!text) {
-                        alert(language === 'zh-CN' ? '请输入文本内容' : 'Please enter text content');
-                        return;
-                      }
+                    onClick={() => {
+                      const text = prompt(language === 'zh-CN'
+                        ? '粘贴背景资料、世界观设定、专业知识等：'
+                        : 'Paste background materials, world settings, etc.:');
+                      if (!text?.trim()) return;
                       setLoreSubmitting(true);
-                      try {
-                        await importLore(authFetch, text);
-                        textArea.value = '';
-                        // Reload lore docs
-                        const status = await getCustomStatus(authFetch);
-                        setLoreDocs(status.lore?.docs || []);
-                      } catch (err) {
-                        console.error('Lore text submit failed:', err);
-                        alert(language === 'zh-CN' ? '提交失败，请重试' : 'Submit failed. Please try again.');
-                      } finally {
-                        setLoreSubmitting(false);
-                      }
+                      importLore(authFetch, text.trim())
+                        .then(() => getCustomStatus(authFetch))
+                        .then((status) => setLoreDocs(status.lore?.docs || []))
+                        .catch((err) => {
+                          console.error('Lore text submit failed:', err);
+                          alert(language === 'zh-CN' ? '提交失败，请重试' : 'Submit failed.');
+                        })
+                        .finally(() => setLoreSubmitting(false));
                     }}
-                    disabled={loreSubmitting}
+                    disabled={loreDocs.length >= maxLoreDocs || loreSubmitting}
                     style={{
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: '#6BA3D6',
-                      background: 'rgba(107,163,214,0.08)',
-                      border: '2px solid #6BA3D6',
-                      cursor: loreSubmitting ? 'not-allowed' : 'pointer',
-                      opacity: loreSubmitting ? 0.6 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      marginLeft: 'auto',
+                      flex: 1, padding: '10px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                      color: '#4a5568', background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(0,0,0,0.06)',
+                      cursor: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 'not-allowed' : 'pointer',
+                      opacity: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 0.4 : 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                     }}
                   >
-                    {loreSubmitting ? (
-                      <>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            width: 14,
-                            height: 14,
-                            border: '2px solid rgba(107,163,214,0.3)',
-                            borderTopColor: '#6BA3D6',
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                          }}
-                        />
-                        {language === 'zh-CN' ? '提交中...' : 'Submitting...'}
-                      </>
-                    ) : (
-                      <>📤 {language === 'zh-CN' ? '提交到知识库' : 'Submit to KB'}</>
-                    )}
+                    📝 {language === 'zh-CN' ? '粘贴文本' : 'Paste Text'}
                   </button>
                 </div>
+                <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: -4, marginBottom: 8 }}>
+                  {language === 'zh-CN' ? '支持 txt, pdf, docx 格式' : 'Supports txt, pdf, docx'}
+                </p>
                 <input
                   ref={loreFileRef}
                   type="file"
@@ -1820,16 +1759,12 @@ export default function SettingsModal() {
 
                 {/* Doc List */}
                 {loreDocs.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12, maxHeight: 180, overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
                     {loreDocs.map((doc) => (
                       <div
                         key={doc.id}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '8px 12px',
-                          borderRadius: '8px',
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: '8px',
                           background: doc.status === 'ready' ? '#F0FFF4' : doc.status === 'processing' ? '#FFFFF0' : '#FFF5F5',
                           border: doc.status === 'ready' ? '1px solid #C6F6D5' : doc.status === 'processing' ? '1px solid #FEFCBF' : '1px solid #FED7D7',
                         }}
@@ -1846,18 +1781,9 @@ export default function SettingsModal() {
                         <button
                           onClick={() => handleDeleteLoreDoc(doc.id)}
                           style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#E53E3E',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            fontSize: '14px',
+                            width: 24, height: 24, borderRadius: '50%', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', color: '#E53E3E',
+                            background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, fontSize: '14px',
                           }}
                         >
                           🗑️
@@ -1872,11 +1798,6 @@ export default function SettingsModal() {
                   💡 {language === 'zh-CN'
                     ? '导入的背景资料越多，AI越能准确地演绎角色'
                     : 'The more background info you import, the more accurately the AI embodies the character'}
-                </p>
-                <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: 2 }}>
-                  {language === 'zh-CN'
-                    ? '自定义性格和导入知识可以互相独立使用'
-                    : 'Customize personality and import knowledge independently'}
                 </p>
               </div>
 
