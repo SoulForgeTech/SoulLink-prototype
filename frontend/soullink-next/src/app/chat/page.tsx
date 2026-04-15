@@ -10,9 +10,11 @@
  * Chat send is wired to useSSEStream for real-time streaming.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { addMessage, replaceLastMessage } from '@/store/chatSlice';
+import { setCharacterDisplayMode } from '@/store/settingsSlice';
+// Full panel removed — micro character only for now
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { useSSEStream } from '@/hooks/useSSEStream';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -22,6 +24,8 @@ import { editImage } from '@/lib/api/image';
 
 import ChatHeader from '@/components/chat/ChatHeader';
 import GuestBanner from '@/components/guest/GuestBanner';
+import MicroCharacter from '@/components/chat/MicroCharacter';
+import ExpressionSetupModal from '@/components/modals/ExpressionSetupModal';
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/input/ChatInput';
 import VoiceRecordingBar from '@/components/input/VoiceRecordingBar';
@@ -147,11 +151,37 @@ export default function ChatPage() {
     startVoiceCall();
   }, [startVoiceCall]);
 
+  const characterDisplayMode = useAppSelector((s) => s.settings.characterDisplayMode);
+
+  const handleHideCharacter = useCallback(() => {
+    dispatch(setCharacterDisplayMode('hidden'));
+  }, [dispatch]);
+
+  const handleShowCharacter = useCallback(() => {
+    dispatch(setCharacterDisplayMode('micro'));
+  }, [dispatch]);
+
+  // Expression setup modal — can be triggered from Settings → 角色设置
+  const [showExpressionSetup, setShowExpressionSetup] = useState(false);
+
+  // Listen for open-expression-setup event from SettingsModal
+  useEffect(() => {
+    const handler = () => setShowExpressionSetup(true);
+    window.addEventListener('open-expression-setup', handler);
+    return () => window.removeEventListener('open-expression-setup', handler);
+  }, []);
+
   return (
     <div className="main-content">
       {/* Chat header + guest banner (flush below, shared border-radius) */}
       <ChatHeader />
       <GuestBanner />
+
+      {/* Expression generation modal */}
+      <ExpressionSetupModal
+        isOpen={showExpressionSetup}
+        onClose={() => setShowExpressionSetup(false)}
+      />
 
       {/* Panels (always rendered, CSS controls slide animation via .open class) */}
       <BackgroundPicker />
@@ -169,6 +199,16 @@ export default function ChatPage() {
         cancelRecording={voiceRecording.cancelRecording}
         stopRecording={voiceRecording.stopRecording}
       />
+
+      {/* Micro character (chibi sitting on input bar) */}
+      <MicroCharacter onHide={handleHideCharacter} />
+
+      {/* Show character button (when hidden) */}
+      {characterDisplayMode === 'hidden' && (
+        <button className="show-character-btn" onClick={handleShowCharacter} title="Show character">
+          🧍
+        </button>
+      )}
 
       {/* Input area — disabled while AI is streaming or editing images */}
       <ChatInput

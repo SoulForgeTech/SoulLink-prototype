@@ -26,6 +26,8 @@ interface ChatState {
     core_persona: string;
     appearance?: string;
   } | null;
+  /** Current emotion detected from latest AI response (for character expression) */
+  currentEmotion: string | null;
 }
 
 const initialState: ChatState = {
@@ -38,6 +40,7 @@ const initialState: ChatState = {
   imageEditingCount: 0,
   error: null,
   detectedPersona: null,
+  currentEmotion: null,
 };
 
 // ==================== Slice ====================
@@ -100,6 +103,11 @@ const chatSlice = createSlice({
     /** Clear detected persona (after confirm or dismiss) */
     clearDetectedPersona(state) {
       state.detectedPersona = null;
+    },
+
+    /** Set current emotion from AI response */
+    setCurrentEmotion(state, action: PayloadAction<string | null>) {
+      state.currentEmotion = action.payload;
     },
 
     /** Mark the start of an SSE stream */
@@ -167,6 +175,7 @@ const chatSlice = createSlice({
       state.isLoading = false;
       state.isStreaming = false;
       state.detectedPersona = null;
+      state.currentEmotion = null;
     },
   },
 });
@@ -177,6 +186,7 @@ export const {
   replaceLastMessage,
   setDetectedPersona,
   clearDetectedPersona,
+  setCurrentEmotion,
   startStreaming,
   appendStreamText,
   appendThinkingContent,

@@ -2434,11 +2434,21 @@ def chat_stream():
         except Exception as e:
             logger.warning(f"[CHAT-STREAM] DB save error: {e}")
 
+        # Extract emotion tag from reply before sending done event
+        import re as _re
+        _emotion_match = _re.search(r'\[EMOTION:(\w+)\]', reply)
+        _detected_emotion = None
+        if _emotion_match:
+            _detected_emotion = _emotion_match.group(1).strip().lower()
+            reply = _re.sub(r'\s*\[EMOTION:\w+\]', '', reply).strip()
+
         # Emit done event
         done_data = {
             "reply": reply,
             "conversation_id": conv_id_str,
         }
+        if _detected_emotion:
+            done_data["emotion"] = _detected_emotion
         if thinking_content and show_thinking:
             done_data["thinking"] = thinking_content
         if companion_name_changed:
@@ -4032,6 +4042,92 @@ def clear_persona():
     except Exception as e:
         logger.error(f"[PERSONA] Error clearing persona: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ==================== Expression Generation ====================
+
+@app.route("/api/characters/generate-expressions", methods=["POST"])
+@login_required
+def generate_expressions():
+    """
+    Generate character expression sprite sheets using Seedance video interpolation.
+    Returns SSE stream with progress updates.
+    """
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+
+    appearance = data.get("appearance", "")
+    style = data.get("style", "anime")
+    generate_chibi = data.get("generate_chibi", True)
+    generate_full = data.get("generate_full", True)
+
+    # If no appearance provided, try to get from user settings
+    if not appearance:
+        user = db.db["users"].find_one({"_id": user_id})
+        if user and user.get("settings"):
+            appearance = user["settings"].get("image_appearance", "")
+        if not appearance:
+            from image_gen import get_appearance_prefix
+            appearance = get_appearance_prefix(user_id, db.db)
+
+    if not appearance:
+        return jsonify({"error": "No appearance description available"}), 400
+
+    def generate():
+        import json as _json
+        from expression_gen import generate_expression_set
+
+        def on_progress(phase, completed, total, status):
+            event = _json.dumps({
+                "phase": phase,
+                "completed": completed,
+                "total": total,
+                "status": status,
+            })
+            return f"data: {event}\n\n"
+
+        progress_events = []
+
+        def collect_progress(phase, completed, total, status):
+            progress_events.append((phase, completed, total, status))
+
+        # Send initial event
+        yield f"data: {_json.dumps({'phase': 'starting', 'status': 'Initializing expression generation...'})}\n\n"
+
+        try:
+            # Run the pipeline with progress collection
+            # We can't yield from the callback directly, so we run synchronously
+            # and yield progress at key checkpoints
+            result = generate_expression_set(
+                appearance=appearance,
+                user_id=user_id,
+                style=style,
+                generate_chibi=generate_chibi,
+                generate_full=generate_full,
+                on_progress=collect_progress,
+            )
+
+            # Save to user settings
+            if result:
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {
+                        "settings.character_expressions": result,
+                        "settings.expression_style": style,
+                        "settings.character_display_mode": "micro",
+                    }},
+                )
+
+            yield f"data: {_json.dumps({'phase': 'done', 'result': result})}\n\n"
+
+        except Exception as e:
+            logger.error(f"[EXPR_GEN] Pipeline error: {e}")
+            yield f"data: {_json.dumps({'phase': 'error', 'error': str(e)})}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream; charset=utf-8",
+    )
 
 
 @app.route("/api/user/clear-lore", methods=["POST"])

@@ -3,6 +3,28 @@ import type { Language } from '@/types';
 
 // ==================== Types ====================
 
+export interface SpriteSheetMeta {
+  frameWidth: number;
+  frameHeight: number;
+  columns: number;
+  emotions: string[];
+  framesPerEmotion: number;
+}
+
+export interface CharacterExpressions {
+  /** Video URLs per emotion: { happy: "url.mp4", sad: "url.mp4", ... } */
+  videos?: Record<string, string>;
+  /** Idle loop video URLs per emotion (seamless loop, first=last frame) */
+  idleVideos?: Record<string, string>;
+  /** Neutral static image URL (shown when idle) */
+  neutralImage?: string;
+  /** Legacy sprite sheet fields (kept for backward compat) */
+  fullSpriteSheet?: string;
+  fullMeta?: SpriteSheetMeta;
+  chibiSpriteSheet?: string;
+  chibiMeta?: SpriteSheetMeta;
+}
+
 interface SettingsState {
   /** UI language: 'en' or 'zh-CN' */
   language: Language;
@@ -26,6 +48,12 @@ interface SettingsState {
   kbEnabled: boolean;
   /** Whether a custom persona is active (disables subtype selector) */
   customPersonaActive: boolean;
+  /** Character expression sprite sheet data */
+  characterExpressions: CharacterExpressions | null;
+  /** Character display mode: micro (chibi on input bar), full (side panel), hidden */
+  characterDisplayMode: 'micro' | 'full' | 'hidden';
+  /** Expression visual style */
+  expressionStyle: 'anime' | 'realistic' | '3d' | 'illustration';
 }
 
 // ==================== localStorage helpers ====================
@@ -66,6 +94,9 @@ function readUserSettings(): Partial<SettingsState> {
       ttsEnabled: s.tts_enabled ?? false,
       kbEnabled: s.kb_enabled ?? false,
       customPersonaActive: s.custom_persona_active ?? false,
+      characterExpressions: s.character_expressions ?? null,
+      characterDisplayMode: s.character_display_mode ?? 'micro',
+      expressionStyle: s.expression_style ?? 'anime',
     };
   } catch {
     return {};
@@ -88,6 +119,9 @@ const initialState: SettingsState = {
   ttsEnabled: persisted.ttsEnabled ?? false,
   kbEnabled: persisted.kbEnabled ?? false,
   customPersonaActive: persisted.customPersonaActive ?? false,
+  characterExpressions: persisted.characterExpressions ?? null,
+  characterDisplayMode: persisted.characterDisplayMode ?? 'micro',
+  expressionStyle: persisted.expressionStyle ?? 'anime',
 };
 
 // ==================== Helpers ====================
@@ -182,6 +216,21 @@ const settingsSlice = createSlice({
       persistUserSetting('custom_persona_active', action.payload);
     },
 
+    setCharacterExpressions(state, action: PayloadAction<CharacterExpressions | null>) {
+      state.characterExpressions = action.payload;
+      persistUserSetting('character_expressions', action.payload);
+    },
+
+    setCharacterDisplayMode(state, action: PayloadAction<'micro' | 'full' | 'hidden'>) {
+      state.characterDisplayMode = action.payload;
+      persistUserSetting('character_display_mode', action.payload);
+    },
+
+    setExpressionStyle(state, action: PayloadAction<'anime' | 'realistic' | '3d' | 'illustration'>) {
+      state.expressionStyle = action.payload;
+      persistUserSetting('expression_style', action.payload);
+    },
+
     /** Bulk-update multiple settings at once (e.g. after fetching user profile) */
     updateSettings(state, action: PayloadAction<Partial<SettingsState>>) {
       const p = action.payload;
@@ -196,6 +245,9 @@ const settingsSlice = createSlice({
       if (p.ttsEnabled != null) persistUserSetting('tts_enabled', p.ttsEnabled);
       if (p.kbEnabled != null) persistUserSetting('kb_enabled', p.kbEnabled);
       if (p.customPersonaActive != null) persistUserSetting('custom_persona_active', p.customPersonaActive);
+      if (p.characterExpressions !== undefined) persistUserSetting('character_expressions', p.characterExpressions);
+      if (p.characterDisplayMode != null) persistUserSetting('character_display_mode', p.characterDisplayMode);
+      if (p.expressionStyle != null) persistUserSetting('expression_style', p.expressionStyle);
       return { ...state, ...p };
     },
   },
@@ -213,6 +265,9 @@ export const {
   setTtsEnabled,
   setKbEnabled,
   setCustomPersonaActive,
+  setCharacterExpressions,
+  setCharacterDisplayMode,
+  setExpressionStyle,
   updateSettings,
 } = settingsSlice.actions;
 

@@ -138,6 +138,8 @@ export interface StreamDoneData {
   };
   /** Guest mode: updated usage counters from server */
   usage?: { text: number; voice: number; image: number };
+  /** Detected emotion from LLM response */
+  emotion?: string;
 }
 
 // ==================== Voice ====================

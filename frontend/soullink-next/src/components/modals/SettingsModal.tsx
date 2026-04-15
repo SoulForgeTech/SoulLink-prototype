@@ -976,6 +976,45 @@ export default function SettingsModal() {
                 </div>
               </div>
 
+              {/* Expression / animated character creation (beta: gated by email) */}
+              {(() => {
+                try {
+                  const raw = typeof window !== 'undefined' ? localStorage.getItem('soullink_user') : null;
+                  const u = raw ? JSON.parse(raw) : null;
+                  const email = (u?.email || '').toLowerCase();
+                  const BETA = ['s229178291@gmail.com'];
+                  if (!BETA.includes(email)) return null;
+                } catch { return null; }
+                return (
+                  <button
+                    onClick={() => {
+                      dispatch(closeModal('settings'));
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('open-expression-setup'));
+                      }, 300);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: 12,
+                      border: '1px solid rgba(124,77,255,0.3)',
+                      background: 'linear-gradient(135deg, rgba(124,77,255,0.08), rgba(68,138,255,0.05))',
+                      color: '#7c4dff',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <span>✨</span>
+                    <span>{language === 'zh-CN' ? '创建动态立绘' : 'Create Animated Character'}</span>
+                  </button>
+                );
+              })()}
+
               {/* Gender Selector — always editable (auto-filled from custom persona if set) */}
               <div style={formGroupStyle}>
                 <label style={formLabelStyle}>{t('settings.companion.style')}</label>

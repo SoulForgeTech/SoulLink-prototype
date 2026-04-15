@@ -26,6 +26,7 @@ import {
   setImageGenerating,
   setImageEditing,
   setDetectedPersona,
+  setCurrentEmotion,
   streamCompleted,
   setError,
 } from '@/store/chatSlice';
@@ -240,6 +241,8 @@ function cleanReplyText(text: string): string {
     .replace(/##\s*思考[\s\S]*?(?=\n##\s|$)/g, '')
     // Strip [IMAGE:...] and [IMAGE_EDIT:...] tags
     .replace(/\[IMAGE(?:_EDIT)?:[^\]]*\]/g, '')
+    // Strip [EMOTION:xxx] tags (should be removed by backend, but just in case)
+    .replace(/\s*\[EMOTION:\w+\]/g, '')
     .trim();
 }
 
@@ -474,6 +477,11 @@ export function useSSEStream(authFetch: AuthFetchFn): UseSSEStreamReturn {
                     };
 
                     dispatch(streamCompleted(assistantMsg));
+
+                    // Dispatch emotion for character expression animation
+                    if (doneData.emotion) {
+                      dispatch(setCurrentEmotion(doneData.emotion));
+                    }
 
                     // Guest mode: save assistant reply to localStorage + update usage
                     if (isGuest) {

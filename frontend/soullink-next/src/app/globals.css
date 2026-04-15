@@ -5628,3 +5628,298 @@
 .glass-panel {
   /* Used by panels — mostly styled via inline */
 }
+
+/* ==================== Character Expression System ==================== */
+
+/* Micro Character — Q版 chibi sitting on input bar */
+.micro-character-container {
+  position: absolute;
+  bottom: -25px; /* deep overlap — input bar covers character's lower body */
+  left: 8px;
+  z-index: 15;
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.micro-character-container > * {
+  pointer-events: auto;
+}
+
+.micro-character-inner {
+  /* Gentle breathing only — no left-right drift, stays locked to input bar */
+  animation: micro-char-breathe 4s ease-in-out infinite;
+}
+
+.micro-character-inner:hover {
+  animation-play-state: paused;
+  transform: scale(1.06);
+}
+
+.micro-character-inner:active {
+  transform: scale(0.95);
+}
+
+.micro-character-canvas {
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.micro-character-inner {
+  overflow: visible;
+}
+
+.micro-character-neutral {
+  display: block;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+}
+
+.micro-character-video {
+  display: block;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  transition: opacity 0.3s ease;
+  /* Mask: hide white corners at top/sides, keep bottom fully visible for input bar overlap */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 100%),
+                      linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-composite: destination-in;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 100%),
+              linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.full-character-video,
+.full-character-neutral {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.full-character-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.micro-character-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.micro-character-shimmer {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Micro character context menu */
+.micro-character-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 120px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease;
+}
+
+.micro-character-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(30, 30, 40, 0.95);
+  border-radius: 16px;
+  padding: 6px;
+  min-width: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.micro-character-menu button {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.micro-character-menu button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.micro-character-menu button:last-child {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Show character button (when hidden) */
+.show-character-btn {
+  position: absolute;
+  bottom: 78px;
+  right: 16px;
+  z-index: 15;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(30, 30, 40, 0.8);
+  backdrop-filter: blur(10px);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.show-character-btn:hover {
+  transform: scale(1.1);
+  background: rgba(50, 50, 65, 0.9);
+}
+
+/* Full Character Panel — side panel (desktop) */
+.full-character-panel {
+  position: absolute;
+  top: 0;
+  left: 220px; /* after sidebar */
+  width: 300px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 15, 25, 0.6);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 10;
+  animation: slide-in-left 0.3s ease;
+  overflow: hidden;
+}
+
+.full-character-canvas-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px;
+  min-height: 0;
+  position: relative;
+}
+
+.full-character-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: opacity 0.3s ease;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4));
+}
+
+.full-character-placeholder {
+  width: 240px;
+  height: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.full-character-info {
+  width: 100%;
+  padding: 12px 20px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.full-character-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.full-character-emotion {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.full-character-collapse-btn {
+  width: 100%;
+  padding: 14px;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.full-character-collapse-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Layout adjustment when character panel is open */
+.main-content.with-character-panel {
+  margin-left: 300px;
+}
+
+/* Animations */
+/* Idle breathing — up-down + subtle scale to simulate inhale/exhale */
+@keyframes micro-char-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Responsive: mobile */
+@media (max-width: 768px) {
+  .full-character-panel {
+    left: 0;
+    width: 100%;
+    height: auto;
+    max-height: 40%;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    animation: slide-down 0.4s ease;
+  }
+
+  .main-content.with-character-panel {
+    margin-left: 0;
+  }
+
+  .micro-character-container {
+    bottom: 48px;
+  }
+}
+
+@keyframes slide-down {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 40%; opacity: 1; }
+}
