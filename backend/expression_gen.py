@@ -305,46 +305,35 @@ def extract_frames_from_video(video_bytes: bytes, num_frames: int = 8) -> list[n
 
 # ==================== Server-side Chroma Key ====================
 
-def chroma_key_frame(frame_rgb: np.ndarray) -> np.ndarray:
+def _remove_bg_frame(frame_rgb: np.ndarray, frame_size: int = 480) -> Image.Image | None:
     """
-    Remove green screen from a single frame using HSV color space.
-    Handles Venice bright greens AND Wan's darkened/shifted greens.
-    Returns RGBA numpy array with green replaced by transparency.
+    Remove background from a single video frame using BiRefNet.
+    Returns RGBA PIL Image or None.
     """
-    hsv = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2HSV)
+    try:
+        # Encode frame as PNG → base64 → upload to fal.ai
+        img = Image.fromarray(frame_rgb)
+        img = img.resize((frame_size, frame_size), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        img_url = upload_to_fal(b64)
 
-    # Layer 1: Standard green range (Venice bright green #00FF00)
-    mask1 = cv2.inRange(hsv, np.array([35, 40, 40]), np.array([85, 255, 255]))
+        # BiRefNet background removal
+        result = fal_client.subscribe(
+            "fal-ai/birefnet/v2",
+            arguments={"image_url": img_url, "operating_resolution": "512x512"},
+        )
+        out_url = result.get("image", {}).get("url")
+        if not out_url:
+            return None
 
-    # Layer 2: Dark greens (Wan darkens the green screen)
-    mask2 = cv2.inRange(hsv, np.array([25, 20, 10]), np.array([95, 255, 120]))
+        resp = _http.get(out_url, timeout=30)
+        return Image.open(io.BytesIO(resp.content)).convert("RGBA")
 
-    # Layer 3: Teal/cyan-greens (Wan shifts green toward blue)
-    mask3 = cv2.inRange(hsv, np.array([80, 30, 20]), np.array([100, 255, 255]))
-
-    # Combine all green masks
-    green_mask = cv2.bitwise_or(mask1, cv2.bitwise_or(mask2, mask3))
-
-    # Also use RGB-based detection for remaining green-dominant pixels
-    r, g, b = frame_rgb[:, :, 0], frame_rgb[:, :, 1], frame_rgb[:, :, 2]
-    max_rb = np.maximum(r.astype(int), b.astype(int))
-    rgb_green = ((g.astype(int) > max_rb + 15) & (g > 30)).astype(np.uint8) * 255
-    green_mask = cv2.bitwise_or(green_mask, rgb_green)
-
-    # Edge feathering: blur the mask to soften edges
-    green_mask = cv2.GaussianBlur(green_mask, (7, 7), 0)
-
-    # Morphological cleanup: fill small holes inside character, remove noise
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_CLOSE, kernel)
-    green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
-
-    # Create alpha channel: 255 where NOT green, 0 where green
-    alpha = 255 - green_mask
-
-    # Combine RGB + alpha → RGBA
-    rgba = np.dstack([frame_rgb, alpha])
-    return rgba
+    except Exception as e:
+        logger.warning(f"[EXPR_GEN] BiRefNet frame removal failed: {e}")
+        return None
 
 
 def video_to_animated_webp(
@@ -355,31 +344,31 @@ def video_to_animated_webp(
 ) -> bytes | None:
     """
     Convert video to animated WebP with transparent background.
-    Extracts frames, applies chroma key, assembles into animated WebP.
-
-    Args:
-        video_bytes: raw video file bytes
-        num_frames: number of frames to extract
-        frame_size: output frame dimension (square)
-        duration_ms: milliseconds per frame (~16fps at 60ms)
-
-    Returns:
-        animated WebP bytes with transparency, or None on failure
+    Extracts frames, removes background via BiRefNet (parallel), assembles animated WebP.
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     frames_rgb = extract_frames_from_video(video_bytes, num_frames)
     if not frames_rgb:
         logger.warning("[EXPR_GEN] No frames extracted from video")
         return None
 
-    pil_frames = []
-    for frame in frames_rgb:
-        # Apply chroma key (RGB → RGBA)
-        rgba = chroma_key_frame(frame)
-        img = Image.fromarray(rgba, "RGBA")
-        img = img.resize((frame_size, frame_size), Image.LANCZOS)
-        pil_frames.append(img)
+    logger.info(f"[EXPR_GEN] Removing backgrounds from {len(frames_rgb)} frames via BiRefNet...")
 
-    if not pil_frames:
+    # Parallel BiRefNet calls (much faster than sequential)
+    pil_frames = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [
+            executor.submit(_remove_bg_frame, frame, frame_size)
+            for frame in frames_rgb
+        ]
+        for future in futures:  # maintain frame order
+            result = future.result()
+            if result:
+                pil_frames.append(result)
+
+    if len(pil_frames) < 2:
+        logger.warning(f"[EXPR_GEN] Only {len(pil_frames)} frames after bg removal, need at least 2")
         return None
 
     # Assemble animated WebP
@@ -509,7 +498,7 @@ def remove_background(b64_data: str) -> str | None:
 
 # ==================== Prompt Optimization ====================
 
-GREEN_SUFFIX = ", solid bright green screen background #00FF00"
+BG_SUFFIX = ", simple clean solid white background"
 
 
 def _optimize_appearance_for_expression(appearance: str) -> str:
@@ -565,7 +554,7 @@ def _generate_emotion_img2img(
     prompt = (
         f"{style_prefix}{appearance}, {emo_desc}, "
         f"upper body portrait, same character same outfit same pose"
-        f"{GREEN_SUFFIX}"
+        f"{BG_SUFFIX}"
     )
 
     for attempt in range(retries + 1):
@@ -640,7 +629,7 @@ def generate_expression_set(
     if on_progress:
         on_progress("keyframes", 0, 8, "Generating neutral keyframe...")
 
-    neutral_prompt = f"{face_desc}, calm neutral expression, face portrait, looking at viewer{GREEN_SUFFIX}"
+    neutral_prompt = f"{face_desc}, calm neutral expression, face portrait, looking at viewer{BG_SUFFIX}"
     neutral_b64 = _generate_keyframe_venice(neutral_prompt, config["venice_model"])
     if not neutral_b64:
         logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
@@ -666,7 +655,7 @@ def generate_expression_set(
             # Fallback: Venice text-to-image (inconsistent but better than nothing)
             logger.warning(f"[EXPR_GEN] img2img failed for {emo}, falling back to Venice")
             emo_desc = EMOTION_PROMPTS[emo]
-            fallback_prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{GREEN_SUFFIX}"
+            fallback_prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
             b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
             if b64:
                 keyframes_b64[emo] = b64
