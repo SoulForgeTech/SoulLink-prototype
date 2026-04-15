@@ -3979,7 +3979,10 @@ def import_lore():
 
         if result.get("status_code") == 200 and result.get("data", {}).get("success"):
             # 成功 — 追加文档到数组
-            doc_location = result.get("data", {}).get("document_location", doc_name)
+            # Extract full docpath from upload_info.documents[0].location
+            upload_info = result.get("data", {}).get("upload_info", {})
+            documents = upload_info.get("documents", [])
+            doc_location = documents[0].get("location", doc_name) if documents else doc_name
             new_doc_entry = {
                 "id": doc_id,
                 "doc_name": doc_name,
