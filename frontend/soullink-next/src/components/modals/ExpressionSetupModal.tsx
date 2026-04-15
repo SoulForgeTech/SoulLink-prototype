@@ -40,7 +40,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
-  const previewVideoRef = useRef<HTMLImageElement>(null);
+  const previewImgRef = useRef<HTMLImageElement>(null);
+  const previewVidRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -125,17 +126,28 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     }
   }, [authFetch, isGuest, translateIfNeeded]);
 
-  // Preview image update (animated WebP with fallback to video URLs)
-  useEffect(() => {
-    if (phase !== 'preview' || !previewData || !previewVideoRef.current) return;
+  // Resolve preview URL and detect format
+  const previewUrl = (() => {
+    if (!previewData) return '';
     const webps = previewData.webpUrls as Record<string, string> | undefined;
     const idle = previewData.idleVideos as Record<string, string> | undefined;
     const vids = previewData.videos as Record<string, string> | undefined;
-    const url = webps?.[previewEmotion] || idle?.[previewEmotion] || vids?.[previewEmotion];
-    if (url) {
-      previewVideoRef.current.src = url;
+    return webps?.[previewEmotion] || idle?.[previewEmotion] || vids?.[previewEmotion] || '';
+  })();
+  const isVideoPreview = previewUrl.includes('.mp4') || previewUrl.includes('/video/');
+
+  // Preview: update src for img or video element
+  useEffect(() => {
+    if (phase !== 'preview' || !previewUrl) return;
+    if (isVideoPreview && previewVidRef.current) {
+      previewVidRef.current.src = previewUrl;
+      previewVidRef.current.loop = true;
+      previewVidRef.current.load();
+      previewVidRef.current.play().catch(() => {});
+    } else if (!isVideoPreview && previewImgRef.current) {
+      previewImgRef.current.src = previewUrl;
     }
-  }, [phase, previewData, previewEmotion]);
+  }, [phase, previewUrl, isVideoPreview]);
 
   // Polling
   const startPolling = useCallback((jobId: string) => {
@@ -323,7 +335,11 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
           <div style={{ width: 160, height: 160, margin: '0 auto 12px', borderRadius: 16, overflow: 'hidden',
             background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(124,77,255,0.3)' }}>
-            <img ref={previewVideoRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
+            {isVideoPreview ? (
+              <video ref={previewVidRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+            ) : (
+              <img ref={previewImgRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
+            )}
           </div>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
             {t(`expr.emotion.${previewEmotion}`)}

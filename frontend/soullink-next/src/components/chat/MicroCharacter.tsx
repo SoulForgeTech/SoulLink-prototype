@@ -32,11 +32,7 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
     return () => window.removeEventListener('test-emotion-change', handler);
   }, [dispatch]);
 
-  // Resolve WebP URLs: prefer webpUrls, fallback to idleVideos for backward compat
-  const webpUrls = expressions?.webpUrls
-    || expressions?.idleVideos
-    || expressions?.videos
-    || null;
+  const webpUrls = expressions?.webpUrls || null;
 
   useExpressionWebP(imgRef, webpUrls, currentEmotion);
 
@@ -69,7 +65,6 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
           onPointerLeave={handlePointerUp}
           style={{ width: CHIBI_RENDER_SIZE, height: CHIBI_RENDER_SIZE, position: 'relative' }}
         >
-          {/* Animated WebP with native transparency — no canvas needed */}
           <img
             ref={imgRef}
             style={{

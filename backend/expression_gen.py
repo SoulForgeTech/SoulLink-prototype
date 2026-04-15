@@ -502,9 +502,42 @@ def remove_background(b64_data: str) -> str | None:
     return None
 
 
-# ==================== Main Pipeline ====================
+# ==================== Prompt Optimization ====================
 
-GREEN_SUFFIX = ", solid bright green background, #00FF00 chroma key background"
+GREEN_SUFFIX = ", solid bright green screen background #00FF00"
+
+
+def _optimize_appearance_for_expression(appearance: str) -> str:
+    """
+    Extract only face/hair/eye details from a full appearance description.
+    Removes outfit, weapon, accessories that don't matter for expression keyframes.
+    Uses Gemini for smart extraction, falls back to truncation.
+    """
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        resp = model.generate_content(
+            "Extract ONLY the character name, hair, eyes, and face features from this description. "
+            "Remove all outfit, clothing, weapon, accessory details. "
+            "Output a short English prompt (under 60 words) suitable for AI image generation. "
+            "Keep the character name if it's a known IP. Output ONLY the description, nothing else.\n\n"
+            f"{appearance}"
+        )
+        optimized = resp.text.strip()
+        if optimized and len(optimized) > 10:
+            logger.info(f"[EXPR_GEN] Optimized appearance: {optimized[:100]}...")
+            return optimized
+    except Exception as e:
+        logger.warning(f"[EXPR_GEN] Failed to optimize appearance: {e}")
+
+    # Fallback: truncate to first 150 chars (usually covers face/hair)
+    if len(appearance) > 150:
+        return appearance[:150].rsplit(",", 1)[0]
+    return appearance
+
+
+# ==================== Main Pipeline ====================
 
 # FLUX img2img for consistent emotion variants
 FLUX_IMG2IMG_MODEL = "fal-ai/flux/dev/image-to-image"
@@ -595,11 +628,14 @@ def generate_expression_set(
 
     config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
 
+    # Optimize appearance: extract face/hair/eyes only, remove outfit/weapon clutter
+    face_desc = _optimize_appearance_for_expression(appearance)
+
     # Step 1a: Generate neutral keyframe via Venice (text-to-image)
     if on_progress:
         on_progress("keyframes", 0, 8, "Generating neutral keyframe...")
 
-    neutral_prompt = f"{config['prefix']}{appearance}, calm relaxed expression, gentle slight smile, upper body portrait{GREEN_SUFFIX}"
+    neutral_prompt = f"{face_desc}, calm neutral expression, face portrait, looking at viewer{GREEN_SUFFIX}"
     neutral_b64 = _generate_keyframe_venice(neutral_prompt, config["venice_model"])
     if not neutral_b64:
         logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
@@ -657,7 +693,7 @@ def generate_expression_set(
         video_bytes = interpolate_expression(url, url, f"{emo}_idle")
         if video_bytes:
             logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
-            webp_bytes = video_to_animated_webp(video_bytes, num_frames=20, frame_size=480)
+            webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=80)
             if webp_bytes:
                 webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
                 if webp_url:
