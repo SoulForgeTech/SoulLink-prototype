@@ -189,19 +189,64 @@ def upload_to_fal(b64_data: str) -> str:
 
 # ==================== Seedance Video Interpolation ====================
 
+IDLE_MOTION_PROMPTS = {
+    "neutral": (
+        "Anime character gentle idle animation, soft breathing motion, "
+        "hair swaying slightly in breeze, gentle head tilt, blinking naturally, "
+        "calm peaceful atmosphere, subtle body sway"
+    ),
+    "happy": (
+        "Anime character happy bouncy idle animation, cheerful head bobbing, "
+        "bright eyes sparkling, hair bouncing with movement, slight giggle motion, "
+        "energetic cute swaying, joyful body language"
+    ),
+    "sad": (
+        "Anime character sad idle animation, slow melancholy breathing, "
+        "eyes looking down then up slowly, hair falling over face slightly, "
+        "subtle shoulder drop, gentle sighing motion"
+    ),
+    "angry": (
+        "Anime character annoyed idle animation, sharp eyebrow twitching, "
+        "huffing breathing motion, crossed arms shifting, intense stare, "
+        "slight head turn with attitude"
+    ),
+    "surprised": (
+        "Anime character surprised idle animation, wide eyes blinking in shock, "
+        "slight backward lean, hair bouncing from sudden movement, "
+        "mouth opening and closing, startled body jolt"
+    ),
+    "shy": (
+        "Anime character shy idle animation, fidgeting nervously, "
+        "eyes darting left and right, blushing cheeks, hair tucking behind ear, "
+        "slight body swaying side to side, cute embarrassed movement"
+    ),
+    "thinking": (
+        "Anime character thinking idle animation, head tilting curiously, "
+        "eyes looking up in thought, finger on chin gesture, "
+        "slight nodding motion, contemplative expression shifting"
+    ),
+    "loving": (
+        "Anime character loving idle animation, warm gentle swaying, "
+        "eyes softening with affection, hand near heart, "
+        "dreamy head tilt, hair flowing softly, adoring smile deepening"
+    ),
+}
+
+
 def interpolate_expression(
     start_url: str,
     end_url: str,
     label: str,
+    motion_prompt: str | None = None,
 ) -> bytes | None:
     """
     Use Wan-2.1 FLF2V to interpolate between two keyframes.
     Open-source model — no IP/copyright restrictions.
     Returns video bytes or None.
     """
-    prompt = (
-        "Smooth facial expression transition, anime character gradually changes expression, "
-        "subtle natural movement, same character same pose same angle same background"
+    prompt = motion_prompt or (
+        "Anime character gentle idle animation, natural breathing, "
+        "hair swaying, subtle movement, same character same background"
     )
 
     try:
@@ -685,8 +730,9 @@ def generate_expression_set(
 
     def _generate_one_webp(emo: str, url: str) -> tuple[str, str | None]:
         """Generate video + convert to WebP for one emotion. Returns (emo, webp_url)."""
+        motion = IDLE_MOTION_PROMPTS.get(emo)
         logger.info(f"[EXPR_GEN] Generating idle video for {emo}...")
-        video_bytes = interpolate_expression(url, url, f"{emo}_idle")
+        video_bytes = interpolate_expression(url, url, f"{emo}_idle", motion_prompt=motion)
         if not video_bytes:
             return (emo, None)
         logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
