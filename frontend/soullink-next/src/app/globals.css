@@ -5634,7 +5634,7 @@
 /* Micro Character — Q版 chibi sitting on input bar */
 .micro-character-container {
   position: absolute;
-  bottom: -25px; /* deep overlap — input bar covers character's lower body */
+  bottom: 55px; /* desktop: above input bar */
   left: 8px;
   z-index: 15;
   cursor: pointer;
@@ -5915,7 +5915,7 @@
   }
 
   .micro-character-container {
-    bottom: 48px;
+    bottom: 38px;
   }
 }
 

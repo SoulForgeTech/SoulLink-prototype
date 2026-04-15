@@ -4105,12 +4105,13 @@ def generate_expressions():
             ]
 
             def on_progress(phase, completed, total, status):
-                step_map = {"keyframes": 1, "upload_keyframes": 2, "video": 3, "frames": 4, "upload_sheet": 5, "sprite_sheet": 5}
+                step_map = {"keyframes": 1, "upload_keyframes": 2, "video": 3, "upload_sheet": 5}
                 step = step_map.get(phase, 1)
-                step_label = next((s[1] for s in steps if s[0] == step), status)
+                if phase == "video" and "Transition" in status:
+                    step = 4
                 db.db["expression_jobs"].update_one(
                     {"_id": job_id},
-                    {"$set": {"progress": f"{step_label} ({completed}/{total})", "step": step}},
+                    {"$set": {"progress": status, "step": step, "completed": completed, "phase_total": total}},
                 )
 
             result = generate_expression_set(
@@ -4168,7 +4169,7 @@ def translate_appearance():
 
     try:
         import google.generativeai as genai
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+        genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
         model = genai.GenerativeModel("gemini-2.0-flash")
 
         lang_name = "Chinese" if "zh" in target else "English"
@@ -4207,6 +4208,8 @@ def expression_status():
         "progress": job.get("progress", ""),
         "step": job.get("step", 0),
         "total_steps": job.get("total_steps", 5),
+        "completed": job.get("completed", 0),
+        "phase_total": job.get("phase_total", 0),
     }
     if job.get("status") == "done" and job.get("result"):
         resp["result"] = job["result"]

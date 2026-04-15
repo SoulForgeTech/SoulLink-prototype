@@ -35,6 +35,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [progress, setProgress] = useState('');
   const [step, setStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(5);
+  const [phaseCompleted, setPhaseCompleted] = useState(0);
+  const [phaseTotal, setPhaseTotal] = useState(0);
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
@@ -145,6 +147,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         setProgress(data.progress || '');
         setStep(data.step || 0);
         setTotalSteps(data.total_steps || 5);
+        setPhaseCompleted(data.completed || 0);
+        setPhaseTotal(data.phase_total || 0);
         if (data.status === 'done' && data.result) {
           if (pollRef.current) clearInterval(pollRef.current);
           setPreviewData(data.result);
@@ -277,9 +281,14 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#7c4dff',
               animation: 'spin 0.8s linear infinite' }} />
             <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4 }}>
               {t(`expr.step.${step}`) !== `expr.step.${step}` ? t(`expr.step.${step}`) : progress}
             </p>
+            {phaseTotal > 0 && (
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginBottom: 8 }}>
+                ({phaseCompleted}/{phaseTotal})
+              </p>
+            )}
             <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)' }}>
               <div style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 3,
                 background: 'linear-gradient(90deg, #7c4dff, #448aff)', transition: 'width 0.5s ease' }} />
