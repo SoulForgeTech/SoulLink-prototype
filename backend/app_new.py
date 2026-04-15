@@ -4267,7 +4267,7 @@ def regenerate_emotion():
     data = request.get_json() or {}
     emotion = data.get("emotion", "")
 
-    VALID_EMOTIONS = ["happy", "sad", "angry", "surprised", "shy", "thinking", "loving"]
+    VALID_EMOTIONS = ["neutral", "happy", "sad", "angry", "surprised", "shy", "thinking", "loving"]
     if emotion not in VALID_EMOTIONS:
         return jsonify({"error": f"Invalid emotion. Must be one of: {', '.join(VALID_EMOTIONS)}"}), 400
 

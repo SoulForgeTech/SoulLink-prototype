@@ -830,12 +830,10 @@ def regenerate_single_emotion(
     on_progress: Callable | None = None,
 ) -> str | None:
     """
-    Regenerate a single emotion's animated WebP while keeping the same neutral keyframe
-    for character consistency.
+    Regenerate a single emotion's animated WebP.
 
-    Args:
-        neutral_image_url: Cloudinary URL of the neutralImage (bg-removed PNG).
-        emotion: One of EMOTIONS (not 'neutral').
+    For neutral: keeps the same keyframe image, only regenerates the idle video/WebP.
+    For others: uses FLUX img2img from the existing neutral for character consistency.
 
     Returns:
         New Cloudinary WebP URL, or None on failure.
@@ -859,22 +857,27 @@ def regenerate_single_emotion(
         logger.error(f"[EXPR_GEN] Failed to fetch/upload neutral for single regen: {e}")
         return None
 
-    # Step 2: Generate emotion keyframe via FLUX img2img
-    if on_progress:
-        on_progress("keyframes", 1, 3, f"Generating {emotion} keyframe...")
+    # Step 2: Generate emotion keyframe
+    if emotion == "neutral":
+        # Neutral: reuse existing neutral image directly (only regenerate video)
+        emo_b64 = neutral_b64
+    else:
+        # Other emotions: FLUX img2img from neutral
+        if on_progress:
+            on_progress("keyframes", 1, 3, f"Generating {emotion} keyframe...")
 
-    emo_b64 = _generate_emotion_img2img(
-        neutral_fal_url, emotion, upper_appearance, config["prefix"]
-    )
-    if not emo_b64:
-        # Fallback to Venice text-to-image
-        logger.warning(f"[EXPR_GEN] img2img failed for {emotion}, falling back to Venice")
-        emo_desc = EMOTION_PROMPTS.get(emotion, "")
-        fallback_prompt = f"{config['prefix']}{upper_appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
-        emo_b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
-    if not emo_b64:
-        logger.error(f"[EXPR_GEN] All keyframe generation failed for {emotion}")
-        return None
+        emo_b64 = _generate_emotion_img2img(
+            neutral_fal_url, emotion, upper_appearance, config["prefix"]
+        )
+        if not emo_b64:
+            # Fallback to Venice text-to-image
+            logger.warning(f"[EXPR_GEN] img2img failed for {emotion}, falling back to Venice")
+            emo_desc = EMOTION_PROMPTS.get(emotion, "")
+            fallback_prompt = f"{config['prefix']}{upper_appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
+            emo_b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
+        if not emo_b64:
+            logger.error(f"[EXPR_GEN] All keyframe generation failed for {emotion}")
+            return None
 
     # Step 3: Upload emotion keyframe to fal.ai, generate idle video, convert to WebP
     if on_progress:

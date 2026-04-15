@@ -157,7 +157,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     };
     // Delay to next frame so DOM has rendered the img/video element
     requestAnimationFrame(() => requestAnimationFrame(apply));
-  }, [phase, previewUrl, isVideoPreview]);
+  }, [phase, previewUrl, isVideoPreview, isOpen]);
 
   // Polling
   const startPolling = useCallback((jobId: string) => {
@@ -433,8 +433,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                     }} />
                   </div>
                 )}
-                {/* Refresh icon (only for non-neutral emotions, hidden during any regen) */}
-                {emo !== 'neutral' && !regeneratingEmotion && (
+                {/* Refresh icon (hidden during any regen) */}
+                {!regeneratingEmotion && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleRegenerateEmotion(emo); }}
                     title={language === 'zh-CN' ? '重新生成此表情' : 'Regenerate this emotion'}
