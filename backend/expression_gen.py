@@ -233,22 +233,42 @@ IDLE_MOTION_PROMPTS = {
 }
 
 
-def interpolate_expression(
-    start_url: str,
-    end_url: str,
-    label: str,
-    motion_prompt: str | None = None,
-) -> bytes | None:
-    """
-    Use Wan-2.1 FLF2V to interpolate between two keyframes.
-    Open-source model — no IP/copyright restrictions.
-    Returns video bytes or None.
-    """
-    prompt = motion_prompt or (
-        "Anime character gentle idle animation, natural breathing, "
-        "hair swaying, subtle movement, same character same background"
-    )
+SEEDANCE_MODEL = "fal-ai/seedance/video/flf2v"
 
+
+def _try_seedance(
+    start_url: str, end_url: str, label: str, prompt: str,
+) -> bytes | None:
+    """Try Seedance (smoother). Returns video bytes or None on IP rejection."""
+    try:
+        result = fal_client.subscribe(
+            SEEDANCE_MODEL,
+            arguments={
+                "prompt": prompt,
+                "start_image_url": start_url,
+                "end_image_url": end_url,
+                "num_frames": 81,
+                "frames_per_second": 16,
+                "resolution": "480p",
+                "aspect_ratio": "1:1",
+                "enable_safety_checker": False,
+            },
+        )
+        video_url = result.get("video", {}).get("url")
+        if not video_url:
+            return None
+        logger.info(f"[EXPR_GEN] Seedance OK for {label}: {video_url}")
+        resp = _http.get(video_url, timeout=120)
+        return resp.content
+    except Exception as e:
+        logger.warning(f"[EXPR_GEN] Seedance failed for {label}: {e}")
+        return None
+
+
+def _try_wan(
+    start_url: str, end_url: str, label: str, prompt: str,
+) -> bytes | None:
+    """Wan fallback — no IP restrictions."""
     try:
         result = fal_client.subscribe(
             VIDEO_MODEL,
@@ -263,19 +283,40 @@ def interpolate_expression(
                 "enable_safety_checker": False,
             },
         )
-
         video_url = result.get("video", {}).get("url")
         if not video_url:
-            logger.error(f"[EXPR_GEN] Wan no video URL for {label}: {result}")
             return None
-
-        logger.info(f"[EXPR_GEN] Wan video for {label}: {video_url}")
+        logger.info(f"[EXPR_GEN] Wan OK for {label}: {video_url}")
         resp = _http.get(video_url, timeout=120)
         return resp.content
-
     except Exception as e:
         logger.error(f"[EXPR_GEN] Wan error for {label}: {e}")
         return None
+
+
+def interpolate_expression(
+    start_url: str,
+    end_url: str,
+    label: str,
+    motion_prompt: str | None = None,
+) -> bytes | None:
+    """
+    Seedance first (smooth quality), Wan fallback (no IP limits).
+    Returns video bytes or None.
+    """
+    prompt = motion_prompt or (
+        "Anime character gentle idle animation, natural breathing, "
+        "hair swaying, subtle movement, same character same background"
+    )
+
+    # Try Seedance first
+    video = _try_seedance(start_url, end_url, label, prompt)
+    if video:
+        return video
+
+    # Fallback to Wan
+    logger.info(f"[EXPR_GEN] Falling back to Wan for {label}")
+    return _try_wan(start_url, end_url, label, prompt)
 
 
 def interpolate_all_expressions(
