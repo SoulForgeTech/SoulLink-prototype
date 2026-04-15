@@ -3906,10 +3906,33 @@ def import_lore():
             file = request.files["file"]
             if file.filename:
                 original_filename = file.filename
-                try:
-                    text_content = file.read().decode("utf-8")
-                except UnicodeDecodeError:
-                    return jsonify({"error": "File must be UTF-8 text"}), 400
+                ext = os.path.splitext(file.filename)[1].lower()
+                file_bytes = file.read()
+
+                if ext == ".pdf":
+                    try:
+                        from pypdf import PdfReader
+                        import io
+                        reader = PdfReader(io.BytesIO(file_bytes))
+                        text_content = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+                    except Exception as e:
+                        logger.error(f"[LORE] PDF extraction failed: {e}")
+                        return jsonify({"error": f"Failed to read PDF: {e}"}), 400
+                elif ext == ".docx":
+                    try:
+                        from docx import Document
+                        import io
+                        doc = Document(io.BytesIO(file_bytes))
+                        text_content = "\n".join(p.text for p in doc.paragraphs).strip()
+                    except Exception as e:
+                        logger.error(f"[LORE] DOCX extraction failed: {e}")
+                        return jsonify({"error": f"Failed to read DOCX: {e}"}), 400
+                else:
+                    # Plain text (txt, md, etc.)
+                    try:
+                        text_content = file_bytes.decode("utf-8")
+                    except UnicodeDecodeError:
+                        return jsonify({"error": "File must be UTF-8 text, PDF, or DOCX"}), 400
         # 也可能同时有 text 字段
         if not text_content:
             text_content = request.form.get("text", "").strip()
