@@ -48,7 +48,7 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
   }, []);
 
   const handleClick = useCallback(() => {
-    // Reserved for future expand functionality
+    window.dispatchEvent(new CustomEvent('open-expression-setup'));
   }, []);
 
   if (!canAccessExpressions(userEmail)) return null;

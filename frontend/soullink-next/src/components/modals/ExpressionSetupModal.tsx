@@ -314,7 +314,15 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         {/* ===== EDIT: generate new expressions ===== */}
         {phase === 'edit' && (<>
           <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 4, textAlign: 'center' }}>{t('expr.title')}</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>{t('expr.subtitle')}</p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>{t('expr.subtitle')}</p>
+          <div style={{
+            padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+            background: 'rgba(124,77,255,0.08)', border: '1px solid rgba(124,77,255,0.15)',
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+              {t('expr.intro')}
+            </p>
+          </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
             <textarea value={appearance} onChange={(e) => setAppearance(e.target.value)}

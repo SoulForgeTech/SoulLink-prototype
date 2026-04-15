@@ -1014,8 +1014,7 @@ export default function SettingsModal() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span>✨</span>
-                      <span>{t('expr.create_btn')}</span>
+                      {t('expr.create_btn')}
                     </button>
                   );
                 })()}
