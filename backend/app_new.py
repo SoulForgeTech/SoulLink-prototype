@@ -4050,18 +4050,15 @@ def clear_persona():
 @login_required
 def generate_expressions():
     """
-    Generate character expression sprite sheets using Seedance video interpolation.
-    Returns SSE stream with progress updates.
+    Start async expression generation. Returns job_id immediately.
+    Progress is tracked in MongoDB — poll /api/characters/expression-status.
     """
     user_id = get_current_user_id()
     data = request.get_json() or {}
 
     appearance = data.get("appearance", "")
     style = data.get("style", "anime")
-    generate_chibi = data.get("generate_chibi", True)
-    generate_full = data.get("generate_full", True)
 
-    # If no appearance provided, try to get from user settings
     if not appearance:
         user = db.db["users"].find_one({"_id": user_id})
         if user and user.get("settings"):
@@ -4073,42 +4070,60 @@ def generate_expressions():
     if not appearance:
         return jsonify({"error": "No appearance description available"}), 400
 
-    def generate():
-        import json as _json
-        from expression_gen import generate_expression_set
+    # Check if already generating
+    existing = db.db["expression_jobs"].find_one({"user_id": user_id, "status": "generating"})
+    if existing:
+        return jsonify({"job_id": str(existing["_id"]), "status": "already_generating"})
 
-        def on_progress(phase, completed, total, status):
-            event = _json.dumps({
-                "phase": phase,
-                "completed": completed,
-                "total": total,
-                "status": status,
-            })
-            return f"data: {event}\n\n"
+    # Create job record
+    from bson import ObjectId
+    job_id = ObjectId()
+    db.db["expression_jobs"].insert_one({
+        "_id": job_id,
+        "user_id": user_id,
+        "status": "generating",
+        "style": style,
+        "appearance": appearance,
+        "progress": "Starting...",
+        "step": 0,
+        "total_steps": 5,
+        "created_at": __import__("datetime").datetime.utcnow(),
+    })
 
-        progress_events = []
-
-        def collect_progress(phase, completed, total, status):
-            progress_events.append((phase, completed, total, status))
-
-        # Send initial event
-        yield f"data: {_json.dumps({'phase': 'starting', 'status': 'Initializing expression generation...'})}\n\n"
-
+    # Run in background thread
+    import threading
+    def _run_generation():
         try:
-            # Run the pipeline with progress collection
-            # We can't yield from the callback directly, so we run synchronously
-            # and yield progress at key checkpoints
+            from expression_gen import generate_expression_set
+
+            steps = [
+                (1, "Generating keyframes..."),
+                (2, "Uploading to cloud..."),
+                (3, "Creating transition videos..."),
+                (4, "Creating idle animations..."),
+                (5, "Finalizing..."),
+            ]
+
+            def on_progress(phase, completed, total, status):
+                step_map = {"keyframes": 1, "upload_keyframes": 2, "video": 3, "frames": 4, "upload_sheet": 5, "sprite_sheet": 5}
+                step = step_map.get(phase, 1)
+                step_label = next((s[1] for s in steps if s[0] == step), status)
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {"progress": f"{step_label} ({completed}/{total})", "step": step}},
+                )
+
             result = generate_expression_set(
                 appearance=appearance,
                 user_id=user_id,
                 style=style,
-                generate_chibi=generate_chibi,
-                generate_full=generate_full,
-                on_progress=collect_progress,
+                generate_chibi=False,
+                generate_full=True,
+                on_progress=on_progress,
             )
 
-            # Save to user settings
             if result:
+                # Save to user settings
                 db.db["users"].update_one(
                     {"_id": user_id},
                     {"$set": {
@@ -4117,17 +4132,60 @@ def generate_expressions():
                         "settings.character_display_mode": "micro",
                     }},
                 )
-
-            yield f"data: {_json.dumps({'phase': 'done', 'result': result})}\n\n"
-
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {"status": "done", "result": result, "step": 5, "progress": "Complete!"}},
+                )
+                logger.info(f"[EXPR_GEN] Job {job_id} completed for user {user_id}")
+            else:
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {"status": "error", "progress": "Generation returned no result"}},
+                )
         except Exception as e:
-            logger.error(f"[EXPR_GEN] Pipeline error: {e}")
-            yield f"data: {_json.dumps({'phase': 'error', 'error': str(e)})}\n\n"
+            logger.error(f"[EXPR_GEN] Job {job_id} failed: {e}")
+            db.db["expression_jobs"].update_one(
+                {"_id": job_id},
+                {"$set": {"status": "error", "progress": str(e)}},
+            )
 
-    return Response(
-        stream_with_context(generate()),
-        content_type="text/event-stream; charset=utf-8",
-    )
+    t = threading.Thread(target=_run_generation, daemon=True)
+    t.start()
+
+    return jsonify({"job_id": str(job_id), "status": "started"})
+
+
+@app.route("/api/characters/expression-status", methods=["GET"])
+@login_required
+def expression_status():
+    """Poll for expression generation progress."""
+    user_id = get_current_user_id()
+    job_id = request.args.get("job_id")
+
+    if job_id:
+        from bson import ObjectId
+        job = db.db["expression_jobs"].find_one({"_id": ObjectId(job_id), "user_id": user_id})
+    else:
+        # Get latest job for this user
+        job = db.db["expression_jobs"].find_one(
+            {"user_id": user_id},
+            sort=[("created_at", -1)],
+        )
+
+    if not job:
+        return jsonify({"status": "none"})
+
+    resp = {
+        "job_id": str(job["_id"]),
+        "status": job.get("status", "unknown"),
+        "progress": job.get("progress", ""),
+        "step": job.get("step", 0),
+        "total_steps": job.get("total_steps", 5),
+    }
+    if job.get("status") == "done" and job.get("result"):
+        resp["result"] = job["result"]
+
+    return jsonify(resp)
 
 
 @app.route("/api/user/clear-lore", methods=["POST"])

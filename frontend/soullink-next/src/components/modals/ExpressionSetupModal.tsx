@@ -13,8 +13,12 @@ interface ExpressionSetupModalProps {
 
 type Phase = 'loading' | 'edit' | 'generating' | 'preview' | 'done' | 'error';
 
-const GEN_STATE_KEY = 'soullink_expr_gen_state';
+const JOB_KEY = 'soullink_expr_job_id';
 const EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking', 'loving'];
+const EMOJI: Record<string, string> = {
+  neutral: '😐', happy: '😊', sad: '😢', angry: '😠',
+  surprised: '😲', shy: '😳', thinking: '🤔', loving: '🥰',
+};
 
 export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetupModalProps) {
   const dispatch = useAppDispatch();
@@ -26,37 +30,31 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [appearance, setAppearance] = useState('');
   const [phase, setPhase] = useState<Phase>('loading');
   const [progress, setProgress] = useState('');
+  const [step, setStep] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(5);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
   const previewVideoRef = useRef<HTMLVideoElement>(null);
-  const fetchAbortRef = useRef<AbortController | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // On open: check for saved generation state or load appearance
+  // Stop polling on unmount
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  // On open: check for existing job or load appearance
   useEffect(() => {
     if (!isOpen) return;
 
-    // Check for completed result waiting for preview
-    try {
-      const saved = localStorage.getItem(GEN_STATE_KEY);
-      if (saved) {
-        const state = JSON.parse(saved);
-        if (state.phase === 'preview' && state.result) {
-          setResult(state.result);
-          setPhase('preview');
-          return;
-        }
-        if (state.phase === 'generating') {
-          const elapsed = Date.now() - (state.startedAt || 0);
-          if (elapsed < 15 * 60 * 1000) {
-            setPhase('generating');
-            setProgress(state.lastProgress || t('expr.generating'));
-            return;
-          }
-          localStorage.removeItem(GEN_STATE_KEY);
-        }
-      }
-    } catch { /* ignore */ }
+    const savedJobId = localStorage.getItem(JOB_KEY);
+    if (savedJobId) {
+      // Resume polling for existing job
+      setPhase('generating');
+      setProgress('Checking status...');
+      startPolling(savedJobId);
+      return;
+    }
 
     // Load appearance
     setPhase('loading');
@@ -81,7 +79,39 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
       setAppearance('');
       setPhase('edit');
     }
-  }, [isOpen, authFetch, isGuest, t]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Poll backend for job status
+  const startPolling = useCallback((jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    const poll = async () => {
+      try {
+        const resp = await authFetch(`/api/characters/expression-status?job_id=${jobId}`);
+        const data = await resp.json();
+
+        setProgress(data.progress || '');
+        setStep(data.step || 0);
+        setTotalSteps(data.total_steps || 5);
+
+        if (data.status === 'done' && data.result) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setResult(data.result);
+          setPhase('preview');
+          localStorage.removeItem(JOB_KEY);
+        } else if (data.status === 'error') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setError(data.progress || 'Generation failed');
+          setPhase('error');
+          localStorage.removeItem(JOB_KEY);
+        }
+      } catch { /* network error, keep polling */ }
+    };
+
+    poll(); // immediate first check
+    pollRef.current = setInterval(poll, 3000); // every 3s
+  }, [authFetch]);
 
   // Preview video playback
   useEffect(() => {
@@ -102,68 +132,33 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     if (!appearance.trim()) { setError(t('expr.no_appearance')); return; }
 
     setPhase('generating');
-    setProgress(t('expr.generating'));
+    setProgress('Starting...');
+    setStep(0);
     setError('');
 
-    // Save state so user can close and come back
-    localStorage.setItem(GEN_STATE_KEY, JSON.stringify({
-      phase: 'generating', startedAt: Date.now(),
-      lastProgress: t('expr.generating'), style, appearance: appearance.trim(),
-    }));
-
-    const abort = new AbortController();
-    fetchAbortRef.current = abort;
-
     try {
-      const response = await authFetch('/api/characters/generate-expressions', {
+      const resp = await authFetch('/api/characters/generate-expressions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ style, appearance: appearance.trim(), generate_chibi: false, generate_full: true }),
-        signal: abort.signal,
+        body: JSON.stringify({ style, appearance: appearance.trim() }),
       });
+      const data = await resp.json();
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) throw new Error('No response body');
-
-      let genResult = null;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.status) {
-              setProgress(data.status);
-              const gs = JSON.parse(localStorage.getItem(GEN_STATE_KEY) || '{}');
-              gs.lastProgress = data.status;
-              localStorage.setItem(GEN_STATE_KEY, JSON.stringify(gs));
-            }
-            if (data.phase === 'done' && data.result) genResult = data.result;
-            if (data.phase === 'error') throw new Error(data.error || 'Failed');
-          } catch (e) { if (e instanceof SyntaxError) continue; throw e; }
-        }
+      if (data.job_id) {
+        localStorage.setItem(JOB_KEY, data.job_id);
+        startPolling(data.job_id);
+      } else {
+        throw new Error(data.error || 'Failed to start generation');
       }
-
-      if (genResult) {
-        setResult(genResult);
-        setPhase('preview');
-        localStorage.setItem(GEN_STATE_KEY, JSON.stringify({ phase: 'preview', result: genResult }));
-      } else { throw new Error('No result'); }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return; // modal closed, fetch continues in bg
-      localStorage.removeItem(GEN_STATE_KEY);
       setPhase('error');
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
-  }, [authFetch, style, appearance, isGuest, t]);
+  }, [authFetch, style, appearance, isGuest, t, startPolling]);
 
   const handleApply = useCallback(() => {
     if (result) {
       dispatch(setCharacterExpressions(result as never));
-      localStorage.removeItem(GEN_STATE_KEY);
       setPhase('done');
     }
   }, [result, dispatch]);
@@ -176,6 +171,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     { value: '3d', icon: '🎮', label: t('expr.style.3d'), desc: t('expr.style.3d_desc') },
     { value: 'illustration', icon: '✏️', label: t('expr.style.illustration'), desc: t('expr.style.illustration_desc') },
   ];
+
+  const progressPercent = totalSteps > 0 ? Math.round((step / totalSteps) * 100) : 0;
 
   return (
     <div style={{
@@ -244,8 +241,22 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#7c4dff',
               animation: 'spin 0.8s linear infinite' }} />
             <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>{progress}</p>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 16 }}>{t('expr.generating_wait')}</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>{progress}</p>
+
+            {/* Progress bar */}
+            <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3,
+              background: 'rgba(255,255,255,0.1)' }}>
+              <div style={{
+                width: `${progressPercent}%`, height: '100%', borderRadius: 3,
+                background: 'linear-gradient(90deg, #7c4dff, #448aff)',
+                transition: 'width 0.5s ease',
+              }} />
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>
+              {step}/{totalSteps}
+            </p>
+
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 12 }}>{t('expr.generating_wait')}</p>
           </div>
         )}
 
@@ -266,13 +277,13 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                 color: '#fff', cursor: 'pointer', fontSize: 18, textAlign: 'center',
                 outline: previewEmotion === emo ? '2px solid rgba(124,77,255,0.5)' : 'none',
               }}>
-                {{'neutral':'😐','happy':'😊','sad':'😢','angry':'😠','surprised':'😲','shy':'😳','thinking':'🤔','loving':'🥰'}[emo]}
+                {EMOJI[emo]}
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{t(`expr.emotion.${emo}`)}</div>
               </button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setPhase('edit'); localStorage.removeItem(GEN_STATE_KEY); }} style={{
+            <button onClick={() => { setPhase('edit'); localStorage.removeItem(JOB_KEY); }} style={{
               flex: 1, padding: '12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)',
               background: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer',
             }}>{t('expr.preview_redo')}</button>
@@ -289,10 +300,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
             <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.done_title')}</p>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20 }}>{t('expr.done_desc')}</p>
-            <button onClick={onClose} style={{
-              padding: '12px 32px', borderRadius: 12, border: 'none',
-              background: '#7c4dff', color: '#fff', fontSize: 14, cursor: 'pointer',
-            }}>{t('expr.done_btn')}</button>
+            <button onClick={onClose} style={{ padding: '12px 32px', borderRadius: 12, border: 'none',
+              background: '#7c4dff', color: '#fff', fontSize: 14, cursor: 'pointer' }}>{t('expr.done_btn')}</button>
           </div>
         )}
 
@@ -301,12 +310,11 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             <div style={{ fontSize: 48, marginBottom: 12 }}>😵</div>
             <p style={{ color: '#ff5252', fontSize: 15, marginBottom: 8 }}>{error}</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button onClick={() => setPhase('edit')} style={{
+              <button onClick={() => { setPhase('edit'); localStorage.removeItem(JOB_KEY); }} style={{
                 padding: '10px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
                 background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer',
               }}>{t('expr.error_retry')}</button>
-              <button onClick={onClose} style={{
-                padding: '10px 20px', borderRadius: 12, border: 'none',
+              <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 12, border: 'none',
                 background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer',
               }}>{t('expr.error_close')}</button>
             </div>
