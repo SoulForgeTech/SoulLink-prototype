@@ -137,16 +137,21 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const isVideoPreview = previewUrl.includes('.mp4') || previewUrl.includes('/video/');
 
   // Preview: update src for img or video element
+  // Use requestAnimationFrame to ensure refs are mounted after phase change render
   useEffect(() => {
     if (phase !== 'preview' || !previewUrl) return;
-    if (isVideoPreview && previewVidRef.current) {
-      previewVidRef.current.src = previewUrl;
-      previewVidRef.current.loop = true;
-      previewVidRef.current.load();
-      previewVidRef.current.play().catch(() => {});
-    } else if (!isVideoPreview && previewImgRef.current) {
-      previewImgRef.current.src = previewUrl;
-    }
+    const apply = () => {
+      if (isVideoPreview && previewVidRef.current) {
+        previewVidRef.current.src = previewUrl;
+        previewVidRef.current.loop = true;
+        previewVidRef.current.load();
+        previewVidRef.current.play().catch(() => {});
+      } else if (!isVideoPreview && previewImgRef.current) {
+        previewImgRef.current.src = previewUrl;
+      }
+    };
+    // Delay to next frame so DOM has rendered the img/video element
+    requestAnimationFrame(() => requestAnimationFrame(apply));
   }, [phase, previewUrl, isVideoPreview]);
 
   // Polling
