@@ -233,35 +233,29 @@ IDLE_MOTION_PROMPTS = {
 }
 
 
-SEEDANCE_MODEL = "fal-ai/seedance-2/flf2v"
+KLING_MODEL = "fal-ai/kling-video/v2.1/master/image-to-video"
 
 
-def _try_seedance(
-    start_url: str, end_url: str, label: str, prompt: str,
+def _try_kling(
+    image_url: str, label: str, prompt: str,
 ) -> bytes | None:
-    """Try Seedance (smoother). Returns video bytes or None on IP rejection."""
+    """Try Kling 2.1 (good quality, lenient IP policy). Returns video bytes or None."""
     try:
         result = fal_client.subscribe(
-            SEEDANCE_MODEL,
+            KLING_MODEL,
             arguments={
                 "prompt": prompt,
-                "start_image_url": start_url,
-                "end_image_url": end_url,
-                "num_frames": 81,
-                "frames_per_second": 16,
-                "resolution": "480p",
-                "aspect_ratio": "1:1",
-                "enable_safety_checker": False,
+                "image_url": image_url,
             },
         )
         video_url = result.get("video", {}).get("url")
         if not video_url:
             return None
-        logger.info(f"[EXPR_GEN] Seedance OK for {label}: {video_url}")
+        logger.info(f"[EXPR_GEN] Kling OK for {label}: {video_url}")
         resp = _http.get(video_url, timeout=120)
         return resp.content
     except Exception as e:
-        logger.warning(f"[EXPR_GEN] Seedance failed for {label}: {e}")
+        logger.warning(f"[EXPR_GEN] Kling failed for {label}: {e}")
         return None
 
 
@@ -301,7 +295,7 @@ def interpolate_expression(
     motion_prompt: str | None = None,
 ) -> bytes | None:
     """
-    Seedance first (smooth quality), Wan fallback (no IP limits).
+    Kling first (good quality + lenient IP), Wan fallback (no IP limits).
     Returns video bytes or None.
     """
     prompt = motion_prompt or (
@@ -309,12 +303,12 @@ def interpolate_expression(
         "hair swaying, subtle movement, same character same background"
     )
 
-    # Try Seedance first
-    video = _try_seedance(start_url, end_url, label, prompt)
+    # Try Kling first (image-to-video, uses start_url only)
+    video = _try_kling(start_url, label, prompt)
     if video:
         return video
 
-    # Fallback to Wan
+    # Fallback to Wan (FLF2V, uses both start+end)
     logger.info(f"[EXPR_GEN] Falling back to Wan for {label}")
     return _try_wan(start_url, end_url, label, prompt)
 
