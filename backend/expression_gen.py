@@ -233,7 +233,7 @@ IDLE_MOTION_PROMPTS = {
 }
 
 
-SEEDANCE_MODEL = "fal-ai/seedance/video/flf2v"
+SEEDANCE_MODEL = "fal-ai/seedance-2/flf2v"
 
 
 def _try_seedance(
