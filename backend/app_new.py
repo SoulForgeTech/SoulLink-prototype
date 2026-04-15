@@ -4070,6 +4070,23 @@ def generate_expressions():
     if not appearance:
         return jsonify({"error": "No appearance description available"}), 400
 
+    # Venice/FLUX require English prompts — translate if Chinese
+    import re
+    if re.search(r'[\u4e00-\u9fff]', appearance):
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            resp = model.generate_content(
+                f"Translate this character appearance description to English. Only output the translation, nothing else:\n\n{appearance}"
+            )
+            translated = resp.text.strip()
+            if translated:
+                logger.info(f"[EXPR_GEN] Translated appearance: {appearance[:50]}... → {translated[:50]}...")
+                appearance = translated
+        except Exception as e:
+            logger.warning(f"[EXPR_GEN] Failed to translate appearance to English: {e}")
+
     # Clear any old/stuck jobs for this user
     db.db["expression_jobs"].delete_many({"user_id": user_id})
 
