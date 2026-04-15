@@ -14,6 +14,7 @@ interface ExpressionSetupModalProps {
 type Phase = 'loading' | 'edit' | 'generating' | 'preview' | 'error';
 
 const JOB_KEY = 'soullink_expr_job_id';
+const SINGLE_JOB_KEY = 'soullink_expr_single_job';
 const EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking', 'loving'];
 const EMOJI: Record<string, string> = {
   neutral: '😐', happy: '😊', sad: '😢', angry: '😠',
@@ -63,6 +64,35 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
       setPhase('generating');
       setProgress('Checking...');
       startPolling(savedJobId);
+      return;
+    }
+
+    // Priority 1.5: ongoing single-emotion regen → show preview + restore spinner
+    const savedSingle = (() => { try { const s = localStorage.getItem(SINGLE_JOB_KEY); return s ? JSON.parse(s) : null; } catch { return null; } })();
+    if (savedSingle?.jobId && savedSingle?.emotion && (existingExpressions?.webpUrls || existingExpressions?.videos)) {
+      setPreviewData(existingExpressions as Record<string, unknown>);
+      setPhase('preview');
+      setRegeneratingEmotion(savedSingle.emotion);
+      // Inline polling — will be replaced by startSinglePolling once it's defined
+      const pollSingle = async () => {
+        try {
+          const r = await authFetch(`/api/characters/expression-status?job_id=${savedSingle.jobId}`);
+          const d = await r.json();
+          if (d.status === 'done' && d.result) {
+            if (singlePollRef.current) clearInterval(singlePollRef.current);
+            setPreviewData(d.result);
+            dispatch(setCharacterExpressions(d.result as never));
+            setRegeneratingEmotion(null);
+            localStorage.removeItem(SINGLE_JOB_KEY);
+          } else if (d.status === 'error' || d.status === 'none') {
+            if (singlePollRef.current) clearInterval(singlePollRef.current);
+            setRegeneratingEmotion(null);
+            localStorage.removeItem(SINGLE_JOB_KEY);
+          }
+        } catch { /* keep polling */ }
+      };
+      pollSingle();
+      singlePollRef.current = setInterval(pollSingle, 3000);
       return;
     }
 
@@ -237,6 +267,35 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     loadAppearance();
   }, [loadAppearance]);
 
+  const startSinglePolling = useCallback((jobId: string, emotion: string) => {
+    if (singlePollRef.current) clearInterval(singlePollRef.current);
+    setRegeneratingEmotion(emotion);
+    const poll = async () => {
+      try {
+        const r = await authFetch(`/api/characters/expression-status?job_id=${jobId}`);
+        const d = await r.json();
+        if (d.status === 'done' && d.result) {
+          if (singlePollRef.current) clearInterval(singlePollRef.current);
+          setPreviewData(d.result);
+          dispatch(setCharacterExpressions(d.result as never));
+          setRegeneratingEmotion(null);
+          localStorage.removeItem(SINGLE_JOB_KEY);
+        } else if (d.status === 'error') {
+          if (singlePollRef.current) clearInterval(singlePollRef.current);
+          alert(d.progress || `Failed to regenerate ${emotion}`);
+          setRegeneratingEmotion(null);
+          localStorage.removeItem(SINGLE_JOB_KEY);
+        } else if (d.status === 'none') {
+          if (singlePollRef.current) clearInterval(singlePollRef.current);
+          setRegeneratingEmotion(null);
+          localStorage.removeItem(SINGLE_JOB_KEY);
+        }
+      } catch { /* keep polling */ }
+    };
+    poll();
+    singlePollRef.current = setInterval(poll, 3000);
+  }, [authFetch, dispatch]);
+
   const handleRegenerateEmotion = useCallback(async (emotion: string) => {
     if (isGuest || regeneratingEmotion) return;
     setRegeneratingEmotion(emotion);
@@ -253,26 +312,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         return;
       }
       if (data.job_id) {
-        // Poll for single-emotion completion (stay on preview phase)
-        if (singlePollRef.current) clearInterval(singlePollRef.current);
-        const poll = async () => {
-          try {
-            const r = await authFetch(`/api/characters/expression-status?job_id=${data.job_id}`);
-            const d = await r.json();
-            if (d.status === 'done' && d.result) {
-              if (singlePollRef.current) clearInterval(singlePollRef.current);
-              setPreviewData(d.result);
-              dispatch(setCharacterExpressions(d.result as never));
-              setRegeneratingEmotion(null);
-            } else if (d.status === 'error') {
-              if (singlePollRef.current) clearInterval(singlePollRef.current);
-              alert(d.progress || `Failed to regenerate ${emotion}`);
-              setRegeneratingEmotion(null);
-            }
-          } catch { /* keep polling */ }
-        };
-        poll();
-        singlePollRef.current = setInterval(poll, 3000);
+        localStorage.setItem(SINGLE_JOB_KEY, JSON.stringify({ jobId: data.job_id, emotion }));
+        startSinglePolling(data.job_id, emotion);
       }
     } catch (err) {
       setRegeneratingEmotion(null);
@@ -439,15 +480,13 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                     onClick={(e) => { e.stopPropagation(); handleRegenerateEmotion(emo); }}
                     title={language === 'zh-CN' ? '重新生成此表情' : 'Regenerate this emotion'}
                     style={{
-                      position: 'absolute', top: 2, right: 2,
-                      width: 18, height: 18, borderRadius: '50%', border: 'none',
-                      background: 'rgba(124,77,255,0.6)', color: '#fff',
-                      fontSize: 10, cursor: 'pointer', padding: 0,
+                      position: 'absolute', top: -2, right: -2, zIndex: 2,
+                      width: 20, height: 20, borderRadius: '50%',
+                      border: '1.5px solid rgba(255,255,255,0.3)',
+                      background: 'rgba(124,77,255,0.8)', color: '#fff',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      opacity: 0.7, transition: 'opacity 0.15s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
                   >↻</button>
                 )}
               </div>
