@@ -74,8 +74,10 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
   const translateIfNeeded = useCallback(async (text: string): Promise<string> => {
     if (!text || language !== 'zh-CN') return text;
-    // Check if already Chinese (has CJK characters)
-    if (/[\u4e00-\u9fff]/.test(text)) return text;
+    // Check if predominantly Chinese (>50% CJK chars among all letter chars)
+    const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+    const latin = (text.match(/[a-zA-Z]/g) || []).length;
+    if (cjk > latin) return text;
     try {
       const resp = await authFetch('/api/characters/translate-appearance', {
         method: 'POST',
