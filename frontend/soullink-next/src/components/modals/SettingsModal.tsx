@@ -661,15 +661,18 @@ export default function SettingsModal() {
       setLoreSubmitting(true);
       try {
         await importLore(authFetch, file);
-        // Reload custom status to refresh lore docs
-        const status = await getCustomStatus(authFetch);
-        setLoreDocs(status.lore?.docs || []);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Lore upload failed:', err);
-        alert(language === 'zh-CN' ? '上传失败，请重试' : 'Upload failed. Please try again.');
+        const detail = err?.message || String(err);
+        alert(language === 'zh-CN' ? `上传失败: ${detail}` : `Upload failed: ${detail}`);
       } finally {
         setLoreSubmitting(false);
         if (e.target) e.target.value = '';
+        // Always reload doc list to stay in sync (even after failure)
+        try {
+          const status = await getCustomStatus(authFetch);
+          setLoreDocs(status.lore?.docs || []);
+        } catch { /* ignore */ }
       }
     },
     [authFetch, language],
@@ -1747,12 +1750,12 @@ export default function SettingsModal() {
                   </button>
                 </div>
                 <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: -4, marginBottom: 8 }}>
-                  {language === 'zh-CN' ? '支持 txt, md, json, pdf, docx 格式' : 'Supports txt, md, json, pdf, docx'}
+                  {language === 'zh-CN' ? '支持 txt, md, json, docx 格式' : 'Supports txt, md, json, docx'}
                 </p>
                 <input
                   ref={loreFileRef}
                   type="file"
-                  accept=".txt,.md,.json,.pdf,.docx"
+                  accept=".txt,.md,.json,.docx"
                   onChange={handleLoreFileChange}
                   style={{ display: 'none' }}
                 />
