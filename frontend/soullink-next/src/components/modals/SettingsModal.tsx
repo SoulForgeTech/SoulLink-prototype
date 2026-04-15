@@ -1010,7 +1010,7 @@ export default function SettingsModal() {
                     }}
                   >
                     <span>✨</span>
-                    <span>{language === 'zh-CN' ? '创建动态立绘' : 'Create Animated Character'}</span>
+                    <span>{t('expr.create_btn')}</span>
                   </button>
                 );
               })()}
