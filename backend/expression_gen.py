@@ -819,3 +819,83 @@ def generate_expression_set(
         "webpUrls": webp_urls,
         "neutralImage": neutral_image_url,
     }
+
+
+def regenerate_single_emotion(
+    user_id: str,
+    emotion: str,
+    neutral_image_url: str,
+    appearance: str,
+    style: str = "anime",
+    on_progress: Callable | None = None,
+) -> str | None:
+    """
+    Regenerate a single emotion's animated WebP while keeping the same neutral keyframe
+    for character consistency.
+
+    Args:
+        neutral_image_url: Cloudinary URL of the neutralImage (bg-removed PNG).
+        emotion: One of EMOTIONS (not 'neutral').
+
+    Returns:
+        New Cloudinary WebP URL, or None on failure.
+    """
+    if FAL_KEY:
+        os.environ["FAL_KEY"] = FAL_KEY
+
+    config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
+    upper_appearance = _strip_lower_body(appearance)
+
+    if on_progress:
+        on_progress("keyframes", 0, 3, f"Regenerating {emotion} keyframe...")
+
+    # Step 1: Download neutral image and upload to fal.ai for img2img reference
+    try:
+        resp = _http.get(neutral_image_url, timeout=30)
+        resp.raise_for_status()
+        neutral_b64 = base64.b64encode(resp.content).decode()
+        neutral_fal_url = upload_to_fal(neutral_b64)
+    except Exception as e:
+        logger.error(f"[EXPR_GEN] Failed to fetch/upload neutral for single regen: {e}")
+        return None
+
+    # Step 2: Generate emotion keyframe via FLUX img2img
+    if on_progress:
+        on_progress("keyframes", 1, 3, f"Generating {emotion} keyframe...")
+
+    emo_b64 = _generate_emotion_img2img(
+        neutral_fal_url, emotion, upper_appearance, config["prefix"]
+    )
+    if not emo_b64:
+        # Fallback to Venice text-to-image
+        logger.warning(f"[EXPR_GEN] img2img failed for {emotion}, falling back to Venice")
+        emo_desc = EMOTION_PROMPTS.get(emotion, "")
+        fallback_prompt = f"{config['prefix']}{upper_appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
+        emo_b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
+    if not emo_b64:
+        logger.error(f"[EXPR_GEN] All keyframe generation failed for {emotion}")
+        return None
+
+    # Step 3: Upload emotion keyframe to fal.ai, generate idle video, convert to WebP
+    if on_progress:
+        on_progress("video", 2, 3, f"Creating {emotion} animation...")
+
+    emo_fal_url = upload_to_fal(emo_b64)
+    motion = IDLE_MOTION_PROMPTS.get(emotion)
+    video_bytes = interpolate_expression(emo_fal_url, emo_fal_url, f"{emotion}_idle", motion_prompt=motion)
+    if not video_bytes:
+        logger.error(f"[EXPR_GEN] Video generation failed for {emotion}")
+        return None
+
+    webp_bytes = video_to_animated_webp(video_bytes, num_frames=16, frame_size=480, duration_ms=180)
+    if not webp_bytes:
+        logger.error(f"[EXPR_GEN] WebP conversion failed for {emotion}")
+        return None
+
+    webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emotion}_anim")
+
+    if on_progress:
+        on_progress("finalize", 3, 3, "Complete!")
+
+    logger.info(f"[EXPR_GEN] Single emotion regen complete: {emotion} → {webp_url}")
+    return webp_url

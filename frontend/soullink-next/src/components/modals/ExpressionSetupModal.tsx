@@ -40,12 +40,17 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
+  const [regeneratingEmotion, setRegeneratingEmotion] = useState<string | null>(null);
   const previewImgRef = useRef<HTMLImageElement>(null);
   const previewVidRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const singlePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (singlePollRef.current) clearInterval(singlePollRef.current);
+    };
   }, []);
 
   // On open: decide what to show
@@ -232,6 +237,49 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     loadAppearance();
   }, [loadAppearance]);
 
+  const handleRegenerateEmotion = useCallback(async (emotion: string) => {
+    if (isGuest || regeneratingEmotion) return;
+    setRegeneratingEmotion(emotion);
+    try {
+      const resp = await authFetch('/api/characters/regenerate-emotion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emotion }),
+      });
+      const data = await resp.json();
+      if (data.error) {
+        alert(data.error);
+        setRegeneratingEmotion(null);
+        return;
+      }
+      if (data.job_id) {
+        // Poll for single-emotion completion (stay on preview phase)
+        if (singlePollRef.current) clearInterval(singlePollRef.current);
+        const poll = async () => {
+          try {
+            const r = await authFetch(`/api/characters/expression-status?job_id=${data.job_id}`);
+            const d = await r.json();
+            if (d.status === 'done' && d.result) {
+              if (singlePollRef.current) clearInterval(singlePollRef.current);
+              setPreviewData(d.result);
+              dispatch(setCharacterExpressions(d.result as never));
+              setRegeneratingEmotion(null);
+            } else if (d.status === 'error') {
+              if (singlePollRef.current) clearInterval(singlePollRef.current);
+              alert(d.progress || `Failed to regenerate ${emotion}`);
+              setRegeneratingEmotion(null);
+            }
+          } catch { /* keep polling */ }
+        };
+        poll();
+        singlePollRef.current = setInterval(poll, 3000);
+      }
+    } catch (err) {
+      setRegeneratingEmotion(null);
+      alert(err instanceof Error ? err.message : 'Error');
+    }
+  }, [authFetch, isGuest, regeneratingEmotion, dispatch]);
+
   if (!isOpen) return null;
 
   const isActive = displayMode === 'micro' && !!(existingExpressions?.webpUrls || existingExpressions?.videos || existingExpressions?.idleVideos);
@@ -352,15 +400,49 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 20 }}>
             {EMOTIONS.map((emo) => (
-              <button key={emo} onClick={() => setPreviewEmotion(emo)} style={{
-                padding: '8px 4px', borderRadius: 10, border: 'none',
-                background: previewEmotion === emo ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
-                color: '#fff', cursor: 'pointer', fontSize: 18, textAlign: 'center',
-                outline: previewEmotion === emo ? '2px solid rgba(124,77,255,0.5)' : 'none',
-              }}>
-                {EMOJI[emo]}
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{t(`expr.emotion.${emo}`)}</div>
-              </button>
+              <div key={emo} style={{ position: 'relative' }}>
+                <button onClick={() => setPreviewEmotion(emo)} style={{
+                  width: '100%', padding: '8px 4px', borderRadius: 10, border: 'none',
+                  background: previewEmotion === emo ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
+                  color: '#fff', cursor: 'pointer', fontSize: 18, textAlign: 'center',
+                  outline: previewEmotion === emo ? '2px solid rgba(124,77,255,0.5)' : 'none',
+                  opacity: regeneratingEmotion === emo ? 0.4 : 1,
+                }}>
+                  {EMOJI[emo]}
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{t(`expr.emotion.${emo}`)}</div>
+                </button>
+                {/* Spinner overlay while regenerating */}
+                {regeneratingEmotion === emo && (
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: 10,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.5)',
+                  }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#7c4dff',
+                      animation: 'spin 0.8s linear infinite',
+                    }} />
+                  </div>
+                )}
+                {/* Refresh icon (only for non-neutral emotions, hidden during any regen) */}
+                {emo !== 'neutral' && !regeneratingEmotion && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleRegenerateEmotion(emo); }}
+                    title={language === 'zh-CN' ? '重新生成此表情' : 'Regenerate this emotion'}
+                    style={{
+                      position: 'absolute', top: 2, right: 2,
+                      width: 18, height: 18, borderRadius: '50%', border: 'none',
+                      background: 'rgba(124,77,255,0.6)', color: '#fff',
+                      fontSize: 10, cursor: 'pointer', padding: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: 0.7, transition: 'opacity 0.15s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+                  >↻</button>
+                )}
+              </div>
             ))}
           </div>
 
@@ -383,9 +465,11 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             )}
           </div>
 
-          <button onClick={handleRedo} style={{
+          <button onClick={handleRedo} disabled={!!regeneratingEmotion} style={{
             width: '100%', padding: '10px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-            background: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer',
+            background: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13,
+            cursor: regeneratingEmotion ? 'not-allowed' : 'pointer',
+            opacity: regeneratingEmotion ? 0.4 : 1,
           }}>
             {t('expr.preview_redo')}
           </button>

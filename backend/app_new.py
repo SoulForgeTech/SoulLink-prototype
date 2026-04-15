@@ -4249,10 +4249,147 @@ def expression_status():
         "completed": job.get("completed", 0),
         "phase_total": job.get("phase_total", 0),
     }
+    if job.get("emotion"):
+        resp["emotion"] = job["emotion"]
+    if job.get("type"):
+        resp["type"] = job["type"]
     if job.get("status") == "done" and job.get("result"):
         resp["result"] = job["result"]
 
     return jsonify(resp)
+
+
+@app.route("/api/characters/regenerate-emotion", methods=["POST"])
+@login_required
+def regenerate_emotion():
+    """Regenerate a single emotion's animated WebP while keeping character consistency."""
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+    emotion = data.get("emotion", "")
+
+    VALID_EMOTIONS = ["happy", "sad", "angry", "surprised", "shy", "thinking", "loving"]
+    if emotion not in VALID_EMOTIONS:
+        return jsonify({"error": f"Invalid emotion. Must be one of: {', '.join(VALID_EMOTIONS)}"}), 400
+
+    # Check for existing running job
+    running = db.db["expression_jobs"].find_one({
+        "user_id": user_id,
+        "status": "generating",
+    })
+    if running:
+        return jsonify({"error": "已有生成任务进行中，请稍候"}), 409
+
+    # Get existing expression data
+    user = db.db["users"].find_one({"_id": user_id})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    settings = user.get("settings", {})
+    expressions = settings.get("character_expressions", {})
+    neutral_image_url = expressions.get("neutralImage", "")
+
+    if not neutral_image_url:
+        return jsonify({"error": "请先生成完整立绘"}), 400
+
+    # Get appearance
+    appearance = settings.get("image_appearance", "")
+    if not appearance:
+        from image_gen import get_appearance_prefix
+        appearance = get_appearance_prefix(user_id, db.db)
+    if not appearance:
+        return jsonify({"error": "No appearance description available"}), 400
+
+    # Translate Chinese to English if needed
+    import re
+    if re.search(r'[\u4e00-\u9fff]', appearance):
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            resp = model.generate_content(
+                f"Translate this character appearance description to English. Only output the translation, nothing else:\n\n{appearance}"
+            )
+            translated = resp.text.strip()
+            if translated:
+                appearance = translated
+        except Exception as e:
+            logger.warning(f"[EXPR_GEN] Failed to translate appearance: {e}")
+
+    style = settings.get("expression_style", "anime")
+
+    # Create job record
+    from bson import ObjectId
+    job_id = ObjectId()
+    db.db["expression_jobs"].insert_one({
+        "_id": job_id,
+        "user_id": user_id,
+        "status": "generating",
+        "emotion": emotion,
+        "type": "single_emotion",
+        "progress": f"Regenerating {emotion}...",
+        "step": 0,
+        "total_steps": 3,
+        "created_at": __import__("datetime").datetime.utcnow(),
+    })
+
+    # Run in background thread
+    import threading
+    def _run_single_regen():
+        try:
+            from expression_gen import regenerate_single_emotion
+
+            def on_progress(phase, completed, total, status):
+                step_map = {"keyframes": 1, "video": 2, "finalize": 3}
+                step = step_map.get(phase, 1)
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {"progress": status, "step": step, "completed": completed, "phase_total": total}},
+                )
+
+            new_url = regenerate_single_emotion(
+                user_id=user_id,
+                emotion=emotion,
+                neutral_image_url=neutral_image_url,
+                appearance=appearance,
+                style=style,
+                on_progress=on_progress,
+            )
+
+            if new_url:
+                # Update only this emotion's webpUrl
+                db.db["users"].update_one(
+                    {"_id": user_id},
+                    {"$set": {f"settings.character_expressions.webpUrls.{emotion}": new_url}},
+                )
+                # Return the full updated expressions in the job result
+                updated_user = db.db["users"].find_one({"_id": user_id})
+                updated_expressions = updated_user.get("settings", {}).get("character_expressions", {})
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {
+                        "status": "done",
+                        "result": updated_expressions,
+                        "step": 3,
+                        "progress": "Complete!",
+                    }},
+                )
+                logger.info(f"[EXPR_GEN] Single emotion regen complete: {emotion} for user {user_id}")
+            else:
+                db.db["expression_jobs"].update_one(
+                    {"_id": job_id},
+                    {"$set": {"status": "error", "progress": f"Failed to regenerate {emotion}"}},
+                )
+        except Exception as e:
+            logger.error(f"[EXPR_GEN] Single emotion regen failed: {e}")
+            db.db["expression_jobs"].update_one(
+                {"_id": job_id},
+                {"$set": {"status": "error", "progress": str(e)}},
+            )
+
+    t = threading.Thread(target=_run_single_regen, daemon=True)
+    t.start()
+
+    return jsonify({"job_id": str(job_id), "status": "started", "emotion": emotion})
 
 
 @app.route("/api/user/clear-lore", methods=["POST"])

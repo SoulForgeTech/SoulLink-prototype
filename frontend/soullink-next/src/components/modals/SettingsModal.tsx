@@ -981,46 +981,45 @@ export default function SettingsModal() {
                     {t('settings.companion.reset_avatar')}
                   </p>
                 </div>
+                {/* Expression / animated character creation (beta: gated by email) */}
+                {(() => {
+                  try {
+                    const raw = typeof window !== 'undefined' ? localStorage.getItem('soullink_user') : null;
+                    const u = raw ? JSON.parse(raw) : null;
+                    const email = (u?.email || '').toLowerCase();
+                    const BETA = ['s229178291@gmail.com'];
+                    if (!BETA.includes(email)) return null;
+                  } catch { return null; }
+                  return (
+                    <button
+                      onClick={() => {
+                        dispatch(closeModal('settings'));
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('open-expression-setup'));
+                        }, 300);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(124,77,255,0.3)',
+                        background: 'linear-gradient(135deg, rgba(124,77,255,0.08), rgba(68,138,255,0.05))',
+                        color: '#7c4dff',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span>✨</span>
+                      <span>{t('expr.create_btn')}</span>
+                    </button>
+                  );
+                })()}
               </div>
-
-              {/* Expression / animated character creation (beta: gated by email) */}
-              {(() => {
-                try {
-                  const raw = typeof window !== 'undefined' ? localStorage.getItem('soullink_user') : null;
-                  const u = raw ? JSON.parse(raw) : null;
-                  const email = (u?.email || '').toLowerCase();
-                  const BETA = ['s229178291@gmail.com'];
-                  if (!BETA.includes(email)) return null;
-                } catch { return null; }
-                return (
-                  <button
-                    onClick={() => {
-                      dispatch(closeModal('settings'));
-                      setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent('open-expression-setup'));
-                      }, 300);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      border: '1px solid rgba(124,77,255,0.3)',
-                      background: 'linear-gradient(135deg, rgba(124,77,255,0.08), rgba(68,138,255,0.05))',
-                      color: '#7c4dff',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 16,
-                    }}
-                  >
-                    <span>✨</span>
-                    <span>{t('expr.create_btn')}</span>
-                  </button>
-                );
-              })()}
 
               {/* Gender Selector — always editable (auto-filled from custom persona if set) */}
               <div style={formGroupStyle}>
