@@ -211,7 +211,7 @@ def interpolate_expression(
                 "prompt": prompt,
                 "start_image_url": start_url,
                 "end_image_url": end_url,
-                "num_frames": 41,
+                "num_frames": 81,
                 "frames_per_second": 16,
                 "resolution": "480p",
                 "aspect_ratio": "1:1",
@@ -695,7 +695,7 @@ def generate_expression_set(
         if not video_bytes:
             return (emo, None)
         logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
-        webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=80)
+        webp_bytes = video_to_animated_webp(video_bytes, num_frames=24, frame_size=480, duration_ms=100)
         if not webp_bytes:
             return (emo, None)
         webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
