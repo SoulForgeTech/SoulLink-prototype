@@ -25,6 +25,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const authFetch = useAuthFetch();
   const t = useT();
   const isGuest = useAppSelector((s) => s.guest.isGuest);
+  const language = useAppSelector((s) => s.settings.language);
   const existingExpressions = useAppSelector((s) => s.settings.characterExpressions);
   const displayMode = useAppSelector((s) => s.settings.characterDisplayMode);
 
@@ -69,29 +70,56 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, existingExpressions]);
 
+  const translateIfNeeded = useCallback(async (text: string): Promise<string> => {
+    if (!text || language !== 'zh-CN') return text;
+    // Check if already Chinese (has CJK characters)
+    if (/[\u4e00-\u9fff]/.test(text)) return text;
+    try {
+      const resp = await authFetch('/api/characters/translate-appearance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target: language }),
+      });
+      const data = await resp.json();
+      return data.translated || text;
+    } catch { return text; }
+  }, [authFetch, language]);
+
   const loadAppearance = useCallback(() => {
     setPhase('loading');
+    let rawAppearance = '';
+
     try {
       const raw = localStorage.getItem('soullink_user');
       if (raw) {
         const user = JSON.parse(raw);
-        const saved = user?.settings?.image_appearance;
-        if (saved) { setAppearance(saved); setPhase('edit'); return; }
+        rawAppearance = user?.settings?.image_appearance || '';
       }
     } catch { /* */ }
+
+    const finalize = async (text: string) => {
+      const translated = await translateIfNeeded(text);
+      setAppearance(translated);
+      setPhase('edit');
+    };
+
+    if (rawAppearance) {
+      finalize(rawAppearance);
+      return;
+    }
 
     if (!isGuest) {
       authFetch('/api/user/custom-status')
         .then((r) => r.json())
         .then((data) => {
-          setAppearance(data?.appearance || data?.persona?.appearance || '');
-          setPhase('edit');
+          const desc = data?.appearance || data?.persona?.appearance || '';
+          finalize(desc);
         })
-        .catch(() => { setAppearance(''); setPhase('edit'); });
+        .catch(() => finalize(''));
     } else {
-      setAppearance(''); setPhase('edit');
+      finalize('');
     }
-  }, [authFetch, isGuest]);
+  }, [authFetch, isGuest, translateIfNeeded]);
 
   // Preview video playback
   useEffect(() => {

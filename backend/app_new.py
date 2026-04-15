@@ -4155,6 +4155,32 @@ def generate_expressions():
     return jsonify({"job_id": str(job_id), "status": "started"})
 
 
+@app.route("/api/characters/translate-appearance", methods=["POST"])
+@login_required
+def translate_appearance():
+    """Translate appearance description to target language using Gemini."""
+    data = request.get_json() or {}
+    text = data.get("text", "")
+    target = data.get("target", "zh-CN")
+
+    if not text:
+        return jsonify({"translated": ""})
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        lang_name = "Chinese" if "zh" in target else "English"
+        prompt = f"Translate this character appearance description to {lang_name}. Only output the translation, nothing else:\n\n{text}"
+        response = model.generate_content(prompt)
+        translated = response.text.strip()
+        return jsonify({"translated": translated})
+    except Exception as e:
+        logger.error(f"[TRANSLATE] Error: {e}")
+        return jsonify({"translated": text})  # fallback to original
+
+
 @app.route("/api/characters/expression-status", methods=["GET"])
 @login_required
 def expression_status():
