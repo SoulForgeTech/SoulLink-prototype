@@ -304,44 +304,110 @@ def extract_frames_from_video(video_bytes: bytes, num_frames: int = 8) -> list[n
             pass
 
 
-# ==================== Sprite Sheet Assembly ====================
+# ==================== Server-side Chroma Key ====================
 
-def assemble_sprite_sheet(
-    neutral_frame: np.ndarray,
-    emotion_frames: dict[str, list[np.ndarray]],
-    frame_width: int = 480,
-    frame_height: int = 480,
-) -> bytes:
+def chroma_key_frame(frame_rgb: np.ndarray) -> np.ndarray:
     """
-    Assemble a sprite sheet from extracted frames.
-    Layout: 8 columns (frames) x 8 rows (7 emotions + 1 neutral)
-    Returns WebP image bytes.
+    Remove green screen from a single frame using HSV color space.
+    Returns RGBA numpy array with green replaced by transparency.
     """
-    cols = FRAMES_PER_EMOTION
-    rows = len(EMOTIONS) + 1  # 7 emotions + neutral
+    # Convert RGB to HSV for better green detection
+    hsv = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2HSV)
 
-    sheet = Image.new("RGB", (cols * frame_width, rows * frame_height), (0, 0, 0))
+    # Green range in HSV (broad to catch Venice's impure greens)
+    # H: 35-85 (green hues), S: 40-255 (saturated), V: 40-255 (not too dark)
+    lower_green = np.array([35, 40, 40])
+    upper_green = np.array([85, 255, 255])
+    green_mask = cv2.inRange(hsv, lower_green, upper_green)
 
-    # Emotion rows (0-6)
-    for row_idx, emotion in enumerate(EMOTIONS):
-        frames = emotion_frames.get(emotion, [])
-        for col_idx in range(cols):
-            if col_idx < len(frames):
-                frame = frames[col_idx]
-                img = Image.fromarray(frame)
-                img = img.resize((frame_width, frame_height), Image.LANCZOS)
-                sheet.paste(img, (col_idx * frame_width, row_idx * frame_height))
+    # Also catch bright/neon greens that might be outside normal range
+    lower_neon = np.array([30, 80, 80])
+    upper_neon = np.array([90, 255, 255])
+    neon_mask = cv2.inRange(hsv, lower_neon, upper_neon)
+    green_mask = cv2.bitwise_or(green_mask, neon_mask)
 
-    # Neutral row (last row) — single frame repeated
-    neutral_img = Image.fromarray(neutral_frame)
-    neutral_img = neutral_img.resize((frame_width, frame_height), Image.LANCZOS)
-    for col_idx in range(cols):
-        sheet.paste(neutral_img, (col_idx * frame_width, (rows - 1) * frame_height))
+    # Edge feathering: blur the mask to soften edges
+    green_mask = cv2.GaussianBlur(green_mask, (5, 5), 0)
 
-    # Encode as WebP
+    # Morphological cleanup: remove noise inside character
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_CLOSE, kernel)
+    green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
+
+    # Create alpha channel: 255 where NOT green, 0 where green
+    alpha = 255 - green_mask
+
+    # Combine RGB + alpha → RGBA
+    rgba = np.dstack([frame_rgb, alpha])
+    return rgba
+
+
+def video_to_animated_webp(
+    video_bytes: bytes,
+    num_frames: int = 20,
+    frame_size: int = 480,
+    duration_ms: int = 60,
+) -> bytes | None:
+    """
+    Convert video to animated WebP with transparent background.
+    Extracts frames, applies chroma key, assembles into animated WebP.
+
+    Args:
+        video_bytes: raw video file bytes
+        num_frames: number of frames to extract
+        frame_size: output frame dimension (square)
+        duration_ms: milliseconds per frame (~16fps at 60ms)
+
+    Returns:
+        animated WebP bytes with transparency, or None on failure
+    """
+    frames_rgb = extract_frames_from_video(video_bytes, num_frames)
+    if not frames_rgb:
+        logger.warning("[EXPR_GEN] No frames extracted from video")
+        return None
+
+    pil_frames = []
+    for frame in frames_rgb:
+        # Apply chroma key (RGB → RGBA)
+        rgba = chroma_key_frame(frame)
+        img = Image.fromarray(rgba, "RGBA")
+        img = img.resize((frame_size, frame_size), Image.LANCZOS)
+        pil_frames.append(img)
+
+    if not pil_frames:
+        return None
+
+    # Assemble animated WebP
     buf = io.BytesIO()
-    sheet.save(buf, format="WEBP", quality=85)
+    pil_frames[0].save(
+        buf,
+        format="WEBP",
+        save_all=True,
+        append_images=pil_frames[1:],
+        duration=duration_ms,
+        loop=0,  # infinite loop
+        quality=85,
+        allow_mixed=True,
+    )
     return buf.getvalue()
+
+
+def upload_webp_to_cloudinary(webp_bytes: bytes, user_id: str, name: str) -> str:
+    """Upload animated WebP to Cloudinary. Returns URL or empty string."""
+    _ensure_cloudinary()
+    try:
+        b64 = base64.b64encode(webp_bytes).decode()
+        data_uri = f"data:image/webp;base64,{b64}"
+        result = cloudinary.uploader.upload(
+            data_uri,
+            public_id=f"soullink/expressions/{user_id}/{name}",
+            resource_type="image",
+            overwrite=True,
+        )
+        return result.get("secure_url", "")
+    except Exception as e:
+        logger.error(f"[EXPR_GEN] WebP upload failed: {e}")
+        return ""
 
 
 # ==================== Cloudinary Upload ====================
@@ -440,6 +506,73 @@ def remove_background(b64_data: str) -> str | None:
 
 GREEN_SUFFIX = ", solid bright green background, #00FF00 chroma key background"
 
+# FLUX img2img for consistent emotion variants
+FLUX_IMG2IMG_MODEL = "fal-ai/flux/dev/image-to-image"
+FLUX_EMOTION_STRENGTH = 0.75  # enough to change expression, preserve character identity
+
+
+def _generate_emotion_img2img(
+    neutral_url: str,
+    emotion: str,
+    appearance: str,
+    style_prefix: str,
+    retries: int = 1,
+) -> str | None:
+    """
+    Generate emotion keyframe via FLUX img2img using neutral as base.
+    Preserves character identity while changing facial expression.
+    Returns base64 or None.
+    """
+    emo_desc = EMOTION_PROMPTS.get(emotion, "")
+    prompt = (
+        f"{style_prefix}{appearance}, {emo_desc}, "
+        f"upper body portrait, same character same outfit same pose"
+        f"{GREEN_SUFFIX}"
+    )
+
+    for attempt in range(retries + 1):
+        try:
+            result = fal_client.subscribe(
+                FLUX_IMG2IMG_MODEL,
+                arguments={
+                    "image_url": neutral_url,
+                    "prompt": prompt,
+                    "strength": FLUX_EMOTION_STRENGTH,
+                    "num_inference_steps": 28,
+                    "guidance_scale": 3.5,
+                    "num_images": 1,
+                    "output_format": "png",
+                    "enable_safety_checker": False,
+                    "image_size": {"width": 768, "height": 768},
+                },
+            )
+
+            images = result.get("images", [])
+            if not images:
+                logger.warning(f"[EXPR_GEN] FLUX img2img no images for {emotion} (attempt {attempt+1})")
+                continue
+
+            img_url = images[0].get("url") if isinstance(images[0], dict) else images[0]
+            if not img_url:
+                continue
+
+            # Download and convert to base64
+            resp = _http.get(img_url, timeout=30)
+            resp.raise_for_status()
+            b64 = base64.b64encode(resp.content).decode()
+
+            if _is_black_image(b64):
+                logger.warning(f"[EXPR_GEN] FLUX black image for {emotion} (attempt {attempt+1})")
+                continue
+
+            return b64
+
+        except Exception as e:
+            logger.error(f"[EXPR_GEN] FLUX img2img error for {emotion} (attempt {attempt+1}): {e}")
+
+    return None
+
+
 def generate_expression_set(
     appearance: str,
     user_id: str,
@@ -449,12 +582,11 @@ def generate_expression_set(
     on_progress: Callable | None = None,
 ) -> dict:
     """
-    Full pipeline: generate character expression videos.
+    Full pipeline: generate character expression animated WebPs.
 
     Returns:
         {
-            "videos": { "happy": "url.mp4", ... },
-            "idleVideos": { "neutral": "url.mp4", "happy": "url.mp4", ... },
+            "webpUrls": { "neutral": "url.webp", "happy": "url.webp", ... },
             "neutralImage": "url.png",
         }
     """
@@ -463,76 +595,81 @@ def generate_expression_set(
 
     config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
 
-    # Step 1: Generate green screen keyframes (neutral + 7 emotions)
+    # Step 1a: Generate neutral keyframe via Venice (text-to-image)
     if on_progress:
-        on_progress("keyframes", 0, 8, "Generating keyframes...")
+        on_progress("keyframes", 0, 8, "Generating neutral keyframe...")
 
-    keyframes_b64 = {}
-    all_emotions = ["neutral"] + EMOTIONS
-    for i, emo in enumerate(all_emotions):
-        emo_desc = "calm relaxed expression, gentle slight smile" if emo == "neutral" else EMOTION_PROMPTS[emo]
-        prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{GREEN_SUFFIX}"
-        b64 = _generate_keyframe_venice(prompt, config["venice_model"])
-        if b64:
-            keyframes_b64[emo] = b64
-        if on_progress:
-            on_progress("keyframes", i + 1, 8, f"Generated {emo}")
-
-    if "neutral" not in keyframes_b64:
+    neutral_prompt = f"{config['prefix']}{appearance}, calm relaxed expression, gentle slight smile, upper body portrait{GREEN_SUFFIX}"
+    neutral_b64 = _generate_keyframe_venice(neutral_prompt, config["venice_model"])
+    if not neutral_b64:
         logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
         return {}
 
-    # Step 2: Upload keyframes to fal.ai
+    keyframes_b64 = {"neutral": neutral_b64}
+    if on_progress:
+        on_progress("keyframes", 1, 8, "Generated neutral")
+
+    # Step 1b: Upload neutral to fal.ai for img2img reference
+    neutral_fal_url = upload_to_fal(neutral_b64)
+    logger.info(f"[EXPR_GEN] Neutral uploaded for img2img reference: {neutral_fal_url}")
+
+    # Step 1c: Generate emotion keyframes via FLUX img2img (character-consistent)
+    for i, emo in enumerate(EMOTIONS):
+        logger.info(f"[EXPR_GEN] Generating {emo} via img2img from neutral...")
+        b64 = _generate_emotion_img2img(
+            neutral_fal_url, emo, appearance, config["prefix"]
+        )
+        if b64:
+            keyframes_b64[emo] = b64
+        else:
+            # Fallback: Venice text-to-image (inconsistent but better than nothing)
+            logger.warning(f"[EXPR_GEN] img2img failed for {emo}, falling back to Venice")
+            emo_desc = EMOTION_PROMPTS[emo]
+            fallback_prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{GREEN_SUFFIX}"
+            b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
+            if b64:
+                keyframes_b64[emo] = b64
+        if on_progress:
+            on_progress("keyframes", i + 2, 8, f"Generated {emo}")
+
+    # Step 2: Upload keyframes to fal.ai (neutral already uploaded)
     if on_progress:
         on_progress("upload_keyframes", 0, 1, "Uploading keyframes...")
 
-    fal_urls = {}
+    fal_urls = {"neutral": neutral_fal_url}
     for emo, b64 in keyframes_b64.items():
+        if emo == "neutral":
+            continue  # already uploaded
         fal_urls[emo] = upload_to_fal(b64)
 
     if on_progress:
         on_progress("upload_keyframes", 1, 1, "Keyframes uploaded")
 
-    # Step 3: Generate idle loop videos (same start+end frame) for each emotion
+    # Step 3: Generate idle videos → convert to animated WebP with transparency
+    total_webps = len(fal_urls)
     if on_progress:
-        on_progress("video", 0, len(fal_urls), "Creating idle animations...")
+        on_progress("video", 0, total_webps, "Creating animations...")
 
-    idle_videos = {}
+    webp_urls = {}
     done = 0
     for emo, url in fal_urls.items():
-        logger.info(f"[EXPR_GEN] Generating idle video: {emo}...")
+        logger.info(f"[EXPR_GEN] Generating idle video for {emo}...")
         video_bytes = interpolate_expression(url, url, f"{emo}_idle")
         if video_bytes:
-            # Upload to Cloudinary
-            video_url = upload_video_to_cloudinary(video_bytes, user_id, f"{emo}_idle")
-            if video_url:
-                idle_videos[emo] = video_url
+            logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
+            webp_bytes = video_to_animated_webp(video_bytes, num_frames=20, frame_size=480)
+            if webp_bytes:
+                webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
+                if webp_url:
+                    webp_urls[emo] = webp_url
+                    logger.info(f"[EXPR_GEN] {emo} WebP uploaded: {len(webp_bytes)} bytes")
         done += 1
         if on_progress:
-            on_progress("video", done, len(fal_urls), f"Idle: {emo}")
+            on_progress("video", done, total_webps, f"Animated: {emo}")
 
-    # Step 4: Generate transition videos (neutral → each emotion)
+    # Step 4: Upload neutral image (with background removed)
     if on_progress:
-        on_progress("video", 0, len(EMOTIONS), "Creating transition videos...")
-
-    transition_videos = {}
-    done = 0
-    for emo in EMOTIONS:
-        if emo not in fal_urls or "neutral" not in fal_urls:
-            continue
-        logger.info(f"[EXPR_GEN] Generating transition: neutral → {emo}...")
-        video_bytes = interpolate_expression(fal_urls["neutral"], fal_urls[emo], f"transition_{emo}")
-        if video_bytes:
-            video_url = upload_video_to_cloudinary(video_bytes, user_id, f"{emo}_transition")
-            if video_url:
-                transition_videos[emo] = video_url
-        done += 1
-        if on_progress:
-            on_progress("video", done, len(EMOTIONS), f"Transition: {emo}")
-
-    # Step 5: Upload neutral image (with background removed)
-    if on_progress:
-        on_progress("upload_sheet", 0, 1, "Processing neutral image...")
+        on_progress("finalize", 0, 1, "Processing neutral image...")
 
     neutral_image_url = ""
     nobg = remove_background(keyframes_b64["neutral"])
@@ -542,10 +679,9 @@ def generate_expression_set(
         neutral_image_url = upload_image_to_cloudinary(keyframes_b64["neutral"], user_id, "neutral")
 
     if on_progress:
-        on_progress("upload_sheet", 1, 1, "Complete!")
+        on_progress("finalize", 1, 1, "Complete!")
 
     return {
-        "videos": transition_videos,
-        "idleVideos": idle_videos,
+        "webpUrls": webp_urls,
         "neutralImage": neutral_image_url,
     }

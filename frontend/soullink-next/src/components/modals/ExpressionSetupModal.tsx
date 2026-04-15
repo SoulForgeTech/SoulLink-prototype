@@ -40,7 +40,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
-  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLImageElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -51,19 +51,19 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   useEffect(() => {
     if (!isOpen) return;
 
-    // Priority 1: existing expressions in Redux → show preview
-    if (existingExpressions?.videos || existingExpressions?.idleVideos) {
-      setPreviewData(existingExpressions as Record<string, unknown>);
-      setPhase('preview');
-      return;
-    }
-
-    // Priority 2: ongoing generation job → show progress
+    // Priority 1: ongoing generation job → show progress
     const savedJobId = localStorage.getItem(JOB_KEY);
     if (savedJobId) {
       setPhase('generating');
       setProgress('Checking...');
       startPolling(savedJobId);
+      return;
+    }
+
+    // Priority 2: existing expressions in Redux → show preview
+    if (existingExpressions?.webpUrls || existingExpressions?.videos || existingExpressions?.idleVideos) {
+      setPreviewData(existingExpressions as Record<string, unknown>);
+      setPhase('preview');
       return;
     }
 
@@ -123,17 +123,15 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     }
   }, [authFetch, isGuest, translateIfNeeded]);
 
-  // Preview video playback
+  // Preview image update (animated WebP with fallback to video URLs)
   useEffect(() => {
     if (phase !== 'preview' || !previewData || !previewVideoRef.current) return;
+    const webps = previewData.webpUrls as Record<string, string> | undefined;
     const idle = previewData.idleVideos as Record<string, string> | undefined;
     const vids = previewData.videos as Record<string, string> | undefined;
-    const url = idle?.[previewEmotion] || vids?.[previewEmotion];
+    const url = webps?.[previewEmotion] || idle?.[previewEmotion] || vids?.[previewEmotion];
     if (url) {
       previewVideoRef.current.src = url;
-      previewVideoRef.current.loop = true;
-      previewVideoRef.current.load();
-      previewVideoRef.current.play().catch(() => {});
     }
   }, [phase, previewData, previewEmotion]);
 
@@ -160,12 +158,22 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           setError(data.progress || 'Failed');
           setPhase('error');
           localStorage.removeItem(JOB_KEY);
+        } else if (data.status === 'none') {
+          // Job no longer exists (deleted/expired) — clear stale reference
+          if (pollRef.current) clearInterval(pollRef.current);
+          localStorage.removeItem(JOB_KEY);
+          if (existingExpressions?.webpUrls || existingExpressions?.videos || existingExpressions?.idleVideos) {
+            setPreviewData(existingExpressions as Record<string, unknown>);
+            setPhase('preview');
+          } else {
+            loadAppearance();
+          }
         }
       } catch { /* keep polling */ }
     };
     poll();
     pollRef.current = setInterval(poll, 3000);
-  }, [authFetch, dispatch]);
+  }, [authFetch, dispatch, existingExpressions, loadAppearance]);
 
   const handleGenerate = useCallback(async () => {
     if (isGuest) { setError(t('expr.guest_error')); setPhase('error'); return; }
@@ -207,7 +215,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
   if (!isOpen) return null;
 
-  const isActive = displayMode === 'micro' && !!(existingExpressions?.videos || existingExpressions?.idleVideos);
+  const isActive = displayMode === 'micro' && !!(existingExpressions?.webpUrls || existingExpressions?.videos || existingExpressions?.idleVideos);
   const styleOptions = [
     { value: 'anime', icon: '🎨', label: t('expr.style.anime'), desc: t('expr.style.anime_desc') },
     { value: 'realistic', icon: '📷', label: t('expr.style.realistic'), desc: t('expr.style.realistic_desc') },
@@ -313,7 +321,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
           <div style={{ width: 160, height: 160, margin: '0 auto 12px', borderRadius: 16, overflow: 'hidden',
             background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(124,77,255,0.3)' }}>
-            <video ref={previewVideoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+            <img ref={previewVideoRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
           </div>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
             {t(`expr.emotion.${previewEmotion}`)}

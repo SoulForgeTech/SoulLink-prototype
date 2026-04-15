@@ -12,9 +12,11 @@ export interface SpriteSheetMeta {
 }
 
 export interface CharacterExpressions {
-  /** Video URLs per emotion: { happy: "url.mp4", sad: "url.mp4", ... } */
+  /** Animated WebP URLs per emotion (transparent, looping): { happy: "url.webp", ... } */
+  webpUrls?: Record<string, string>;
+  /** Legacy: Video URLs per emotion (kept for backward compat) */
   videos?: Record<string, string>;
-  /** Idle loop video URLs per emotion (seamless loop, first=last frame) */
+  /** Legacy: Idle loop video URLs per emotion */
   idleVideos?: Record<string, string>;
   /** Neutral static image URL (shown when idle) */
   neutralImage?: string;

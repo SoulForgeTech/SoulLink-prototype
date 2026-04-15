@@ -4084,7 +4084,7 @@ def generate_expressions():
         "appearance": appearance,
         "progress": "Starting...",
         "step": 0,
-        "total_steps": 5,
+        "total_steps": 4,
         "created_at": __import__("datetime").datetime.utcnow(),
     })
 
@@ -4097,16 +4097,13 @@ def generate_expressions():
             steps = [
                 (1, "Generating keyframes..."),
                 (2, "Uploading to cloud..."),
-                (3, "Creating transition videos..."),
-                (4, "Creating idle animations..."),
-                (5, "Finalizing..."),
+                (3, "Creating animations..."),
+                (4, "Finalizing..."),
             ]
 
             def on_progress(phase, completed, total, status):
-                step_map = {"keyframes": 1, "upload_keyframes": 2, "video": 3, "upload_sheet": 5}
+                step_map = {"keyframes": 1, "upload_keyframes": 2, "video": 3, "finalize": 4}
                 step = step_map.get(phase, 1)
-                if phase == "video" and "Transition" in status:
-                    step = 4
                 db.db["expression_jobs"].update_one(
                     {"_id": job_id},
                     {"$set": {"progress": status, "step": step, "completed": completed, "phase_total": total}},
@@ -4133,7 +4130,7 @@ def generate_expressions():
                 )
                 db.db["expression_jobs"].update_one(
                     {"_id": job_id},
-                    {"$set": {"status": "done", "result": result, "step": 5, "progress": "Complete!"}},
+                    {"$set": {"status": "done", "result": result, "step": 4, "progress": "Complete!"}},
                 )
                 logger.info(f"[EXPR_GEN] Job {job_id} completed for user {user_id}")
             else:

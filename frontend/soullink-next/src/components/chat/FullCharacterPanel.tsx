@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { useAppSelector } from '@/store';
-import { useExpressionVideo, type ExpressionVideos } from '@/hooks/useExpressionVideo';
+import { useExpressionWebP } from '@/hooks/useExpressionWebP';
 
 interface FullCharacterPanelProps {
   onCollapse?: () => void;
@@ -20,23 +20,22 @@ const EMOTION_LABELS: Record<string, string> = {
 };
 
 export default function FullCharacterPanel({ onCollapse }: FullCharacterPanelProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const currentEmotion = useAppSelector((s) => s.chat.currentEmotion) || 'neutral';
   const expressions = useAppSelector((s) => s.settings.characterExpressions);
   const displayMode = useAppSelector((s) => s.settings.characterDisplayMode);
   const companionName = useAppSelector((s) => s.settings.companionName);
 
-  const videoConfig: ExpressionVideos | null = expressions?.videos
-    ? {
-        videos: expressions.videos as Record<string, string>,
-        neutralImage: expressions.neutralImage as string | undefined,
-      }
-    : null;
+  // Prefer webpUrls, fallback to legacy video URLs
+  const webpUrls = expressions?.webpUrls
+    || expressions?.idleVideos
+    || expressions?.videos
+    || null;
 
-  useExpressionVideo(videoRef, videoConfig, currentEmotion);
+  useExpressionWebP(imgRef, webpUrls, currentEmotion);
 
-  if (displayMode !== 'full' || !videoConfig) return null;
+  if (displayMode !== 'full' || !webpUrls) return null;
 
   return (
     <div className="full-character-panel">
@@ -48,12 +47,11 @@ export default function FullCharacterPanel({ onCollapse }: FullCharacterPanelPro
             className="full-character-neutral"
           />
         )}
-        <video
-          ref={videoRef}
+        <img
+          ref={imgRef}
           className="full-character-video"
-          muted
-          playsInline
-          preload="none"
+          alt=""
+          style={{ objectFit: 'contain' }}
         />
       </div>
 

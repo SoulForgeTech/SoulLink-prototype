@@ -3,8 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { setCurrentEmotion } from '@/store/chatSlice';
-import { useExpressionVideo, type ExpressionVideos } from '@/hooks/useExpressionVideo';
-import { useChromaKey } from '@/hooks/useChromaKey';
+import { useExpressionWebP } from '@/hooks/useExpressionWebP';
 import { canAccessExpressions } from '@/lib/featureFlags';
 
 interface MicroCharacterProps {
@@ -14,8 +13,7 @@ interface MicroCharacterProps {
 const CHIBI_RENDER_SIZE = 120;
 
 export default function MicroCharacter({ onHide }: MicroCharacterProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
 
@@ -34,18 +32,13 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
     return () => window.removeEventListener('test-emotion-change', handler);
   }, [dispatch]);
 
-  const videoConfig: ExpressionVideos | null = expressions?.videos
-    ? {
-        videos: expressions.videos as Record<string, string>,
-        idleVideos: expressions.idleVideos as Record<string, string> | undefined,
-        neutralImage: expressions.neutralImage as string | undefined,
-      }
-    : null;
+  // Resolve WebP URLs: prefer webpUrls, fallback to idleVideos for backward compat
+  const webpUrls = expressions?.webpUrls
+    || expressions?.idleVideos
+    || expressions?.videos
+    || null;
 
-  useExpressionVideo(videoRef, videoConfig, currentEmotion);
-
-  // Chroma key: render video onto canvas with green removed
-  useChromaKey(videoRef, canvasRef, true);
+  useExpressionWebP(imgRef, webpUrls, currentEmotion);
 
   const handlePointerDown = useCallback(() => {
     longPressTimerRef.current = window.setTimeout(() => setShowMenu(true), 500);
@@ -63,7 +56,7 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
   }, []);
 
   if (!canAccessExpressions(userEmail)) return null;
-  if (displayMode === 'hidden' || !videoConfig) return null;
+  if (displayMode === 'hidden' || !webpUrls) return null;
 
   return (
     <>
@@ -76,20 +69,16 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
           onPointerLeave={handlePointerUp}
           style={{ width: CHIBI_RENDER_SIZE, height: CHIBI_RENDER_SIZE, position: 'relative' }}
         >
-          {/* Hidden video — feeds chroma key canvas */}
-          <video
-            ref={videoRef}
-            style={{ display: 'none' }}
-            muted
-            playsInline
-            preload="none"
-            crossOrigin="anonymous"
-          />
-
-          {/* Canvas — chroma key output, transparent background */}
-          <canvas
-            ref={canvasRef}
-            style={{ width: CHIBI_RENDER_SIZE, height: CHIBI_RENDER_SIZE, display: 'block' }}
+          {/* Animated WebP with native transparency — no canvas needed */}
+          <img
+            ref={imgRef}
+            style={{
+              width: CHIBI_RENDER_SIZE,
+              height: CHIBI_RENDER_SIZE,
+              display: 'block',
+              objectFit: 'contain',
+            }}
+            alt=""
           />
         </div>
       </div>
