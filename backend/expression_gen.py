@@ -211,11 +211,10 @@ def interpolate_expression(
                 "prompt": prompt,
                 "start_image_url": start_url,
                 "end_image_url": end_url,
-                "num_frames": 81,
+                "num_frames": 41,
                 "frames_per_second": 16,
                 "resolution": "480p",
                 "aspect_ratio": "1:1",
-                "acceleration": "regular",
                 "enable_safety_checker": False,
             },
         )
@@ -682,26 +681,42 @@ def generate_expression_set(
         on_progress("upload_keyframes", 1, 1, "Keyframes uploaded")
 
     # Step 3: Generate idle videos → convert to animated WebP with transparency
+    # Parallel: submit all Wan jobs at once, then collect results
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     total_webps = len(fal_urls)
     if on_progress:
-        on_progress("video", 0, total_webps, "Creating animations...")
+        on_progress("video", 0, total_webps, "Creating animations (parallel)...")
+
+    def _generate_one_webp(emo: str, url: str) -> tuple[str, str | None]:
+        """Generate video + convert to WebP for one emotion. Returns (emo, webp_url)."""
+        logger.info(f"[EXPR_GEN] Generating idle video for {emo}...")
+        video_bytes = interpolate_expression(url, url, f"{emo}_idle")
+        if not video_bytes:
+            return (emo, None)
+        logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
+        webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=80)
+        if not webp_bytes:
+            return (emo, None)
+        webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
+        if webp_url:
+            logger.info(f"[EXPR_GEN] {emo} WebP uploaded: {len(webp_bytes)} bytes")
+        return (emo, webp_url)
 
     webp_urls = {}
     done = 0
-    for emo, url in fal_urls.items():
-        logger.info(f"[EXPR_GEN] Generating idle video for {emo}...")
-        video_bytes = interpolate_expression(url, url, f"{emo}_idle")
-        if video_bytes:
-            logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
-            webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=80)
-            if webp_bytes:
-                webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
-                if webp_url:
-                    webp_urls[emo] = webp_url
-                    logger.info(f"[EXPR_GEN] {emo} WebP uploaded: {len(webp_bytes)} bytes")
-        done += 1
-        if on_progress:
-            on_progress("video", done, total_webps, f"Animated: {emo}")
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_generate_one_webp, emo, url): emo
+            for emo, url in fal_urls.items()
+        }
+        for future in as_completed(futures):
+            emo, webp_url = future.result()
+            if webp_url:
+                webp_urls[emo] = webp_url
+            done += 1
+            if on_progress:
+                on_progress("video", done, total_webps, f"Animated: {emo}")
 
     # Step 4: Upload neutral image (with background removed)
     if on_progress:
