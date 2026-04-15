@@ -410,7 +410,17 @@ def _remove_bg_frame(frame_rgb: np.ndarray, frame_size: int = 480) -> Image.Imag
             return None
 
         resp = _http.get(out_url, timeout=30)
-        return Image.open(io.BytesIO(resp.content)).convert("RGBA")
+        rgba = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+
+        # Erode alpha channel by 2px to remove white fringe from bg removal
+        alpha = np.array(rgba.split()[3])
+        kernel = np.ones((5, 5), np.uint8)
+        alpha_eroded = cv2.erode(alpha, kernel, iterations=1)
+        # Slight blur on alpha edge for smooth transition
+        alpha_eroded = cv2.GaussianBlur(alpha_eroded, (3, 3), 0)
+        rgba.putalpha(Image.fromarray(alpha_eroded))
+
+        return rgba
 
     except Exception as e:
         logger.warning(f"[EXPR_GEN] BiRefNet frame removal failed: {e}")
@@ -571,7 +581,16 @@ def remove_background(b64_data: str) -> str | None:
         out_url = result.get("image", {}).get("url")
         if out_url:
             resp = _http.get(out_url, timeout=30)
-            return base64.b64encode(resp.content).decode()
+            rgba = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+            # Erode alpha 2px to remove white fringe
+            alpha = np.array(rgba.split()[3])
+            kernel = np.ones((5, 5), np.uint8)
+            alpha_eroded = cv2.erode(alpha, kernel, iterations=1)
+            alpha_eroded = cv2.GaussianBlur(alpha_eroded, (3, 3), 0)
+            rgba.putalpha(Image.fromarray(alpha_eroded))
+            buf = io.BytesIO()
+            rgba.save(buf, format="PNG")
+            return base64.b64encode(buf.getvalue()).decode()
     except Exception as e:
         logger.error(f"[EXPR_GEN] Background removal failed: {e}")
     return None
