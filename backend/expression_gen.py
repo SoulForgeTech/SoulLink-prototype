@@ -581,34 +581,39 @@ def remove_background(b64_data: str) -> str | None:
 BG_SUFFIX = ", simple clean solid white background"
 
 
-def _optimize_appearance_for_expression(appearance: str) -> str:
-    """
-    Extract only face/hair/eye details from a full appearance description.
-    Removes outfit, weapon, accessories that don't matter for expression keyframes.
-    Uses Gemini for smart extraction, falls back to truncation.
-    """
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        resp = model.generate_content(
-            "Extract ONLY the character name, hair, eyes, and face features from this description. "
-            "Remove all outfit, clothing, weapon, accessory details. "
-            "Output a short English prompt (under 60 words) suitable for AI image generation. "
-            "Keep the character name if it's a known IP. Output ONLY the description, nothing else.\n\n"
-            f"{appearance}"
-        )
-        optimized = resp.text.strip()
-        if optimized and len(optimized) > 10:
-            logger.info(f"[EXPR_GEN] Optimized appearance: {optimized[:100]}...")
-            return optimized
-    except Exception as e:
-        logger.warning(f"[EXPR_GEN] Failed to optimize appearance: {e}")
+import re as _re
 
-    # Fallback: truncate to first 150 chars (usually covers face/hair)
-    if len(appearance) > 150:
-        return appearance[:150].rsplit(",", 1)[0]
-    return appearance
+# Keywords that trigger full-body generation — remove for upper body portraits
+_LOWER_BODY_PATTERNS = _re.compile(
+    r',?\s*(?:She (?:is often seen|wears|carries)|He (?:is often seen|wears|carries))'
+    r'.*$',
+    _re.IGNORECASE | _re.DOTALL,
+)
+
+_LOWER_BODY_WORDS = _re.compile(
+    r'\b(?:shorts|pants|skirt|socks|stockings|shoes|boots|heels|sandals|'
+    r'leather shoes|white socks|leggings|trousers|weapon|scepter|sword|'
+    r'carries a|full body|standing|legs|thigh|feet)\b',
+    _re.IGNORECASE,
+)
+
+
+def _strip_lower_body(appearance: str) -> str:
+    """Remove lower-body clothing/weapon descriptions to keep Venice focused on upper body."""
+    # Cut from "She is often seen..." / "He wears..." onwards
+    result = _LOWER_BODY_PATTERNS.sub('', appearance).strip()
+
+    # Also remove individual lower-body keywords in remaining sentences
+    sentences = result.split('.')
+    filtered = []
+    for s in sentences:
+        if not _LOWER_BODY_WORDS.search(s):
+            filtered.append(s)
+    result = '.'.join(filtered).strip()
+
+    # Clean up trailing punctuation
+    result = result.rstrip('., ')
+    return result if len(result) > 20 else appearance
 
 
 # ==================== Main Pipeline ====================
@@ -702,11 +707,15 @@ def generate_expression_set(
 
     config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
 
+    # Strip lower-body descriptions so Venice focuses on upper body
+    upper_appearance = _strip_lower_body(appearance)
+    logger.info(f"[EXPR_GEN] Upper body appearance: {upper_appearance[:100]}...")
+
     # Step 1a: Generate neutral keyframe via Venice (text-to-image)
     if on_progress:
         on_progress("keyframes", 0, 8, "Generating neutral keyframe...")
 
-    neutral_prompt = f"{config['prefix']}{appearance}, calm relaxed expression, gentle slight smile, upper body portrait{BG_SUFFIX}"
+    neutral_prompt = f"{config['prefix']}{upper_appearance}, calm relaxed expression, gentle slight smile, upper body portrait{BG_SUFFIX}"
     neutral_b64 = _generate_keyframe_venice(neutral_prompt, config["venice_model"])
     if not neutral_b64:
         logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
@@ -724,7 +733,7 @@ def generate_expression_set(
     for i, emo in enumerate(EMOTIONS):
         logger.info(f"[EXPR_GEN] Generating {emo} via img2img from neutral...")
         b64 = _generate_emotion_img2img(
-            neutral_fal_url, emo, appearance, config["prefix"]
+            neutral_fal_url, emo, upper_appearance, config["prefix"]
         )
         if b64:
             keyframes_b64[emo] = b64
@@ -732,7 +741,7 @@ def generate_expression_set(
             # Fallback: Venice text-to-image (inconsistent but better than nothing)
             logger.warning(f"[EXPR_GEN] img2img failed for {emo}, falling back to Venice")
             emo_desc = EMOTION_PROMPTS[emo]
-            fallback_prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
+            fallback_prompt = f"{config['prefix']}{upper_appearance}, {emo_desc}, upper body portrait{BG_SUFFIX}"
             b64 = _generate_keyframe_venice(fallback_prompt, config["venice_model"])
             if b64:
                 keyframes_b64[emo] = b64
