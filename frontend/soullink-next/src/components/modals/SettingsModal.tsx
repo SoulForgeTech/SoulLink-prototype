@@ -1752,7 +1752,7 @@ export default function SettingsModal() {
                 <input
                   ref={loreFileRef}
                   type="file"
-                  accept=".txt,.md,.json,.pdf,.doc,.docx"
+                  accept=".txt,.pdf,.docx"
                   onChange={handleLoreFileChange}
                   style={{ display: 'none' }}
                 />
