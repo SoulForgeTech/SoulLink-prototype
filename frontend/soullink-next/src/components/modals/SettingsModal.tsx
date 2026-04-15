@@ -1747,12 +1747,12 @@ export default function SettingsModal() {
                   </button>
                 </div>
                 <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: -4, marginBottom: 8 }}>
-                  {language === 'zh-CN' ? '支持 txt, pdf, docx 格式' : 'Supports txt, pdf, docx'}
+                  {language === 'zh-CN' ? '支持 txt, md, json, pdf, docx 格式' : 'Supports txt, md, json, pdf, docx'}
                 </p>
                 <input
                   ref={loreFileRef}
                   type="file"
-                  accept=".txt,.pdf,.docx"
+                  accept=".txt,.md,.json,.pdf,.docx"
                   onChange={handleLoreFileChange}
                   style={{ display: 'none' }}
                 />
