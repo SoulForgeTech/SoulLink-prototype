@@ -4070,10 +4070,8 @@ def generate_expressions():
     if not appearance:
         return jsonify({"error": "No appearance description available"}), 400
 
-    # Check if already generating
-    existing = db.db["expression_jobs"].find_one({"user_id": user_id, "status": "generating"})
-    if existing:
-        return jsonify({"job_id": str(existing["_id"]), "status": "already_generating"})
+    # Clear any old/stuck jobs for this user
+    db.db["expression_jobs"].delete_many({"user_id": user_id})
 
     # Create job record
     from bson import ObjectId
