@@ -4220,6 +4220,40 @@ def translate_appearance():
         return jsonify({"translated": text})  # fallback to original
 
 
+@app.route("/api/characters/detect-style", methods=["POST"])
+@login_required
+def detect_style():
+    """Detect recommended art style from character appearance description."""
+    data = request.get_json() or {}
+    text = data.get("appearance", "").strip()
+
+    if not text or len(text) < 5:
+        return jsonify({"style": "anime"})
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
+        model = genai.GenerativeModel("gemini-2.5-flash")
+
+        prompt = (
+            "Based on this character appearance description, classify it into exactly ONE category:\n"
+            "- anime: anime/manga/game characters (e.g. Genshin Impact, Naruto, original anime OCs)\n"
+            "- realistic: real people, celebrities, photorealistic characters\n"
+            "- 3d: 3D game characters, Pixar/Disney style, VTuber 3D models\n"
+            "- illustration: painterly, watercolor, digital art, fantasy illustration style\n\n"
+            f"Description: {text}\n\n"
+            "Reply with ONLY the category name (anime/realistic/3d/illustration), nothing else."
+        )
+        response = model.generate_content(prompt)
+        result = response.text.strip().lower()
+        if result in ("anime", "realistic", "3d", "illustration"):
+            return jsonify({"style": result})
+        return jsonify({"style": "anime"})
+    except Exception as e:
+        logger.warning(f"[DETECT_STYLE] Error: {e}")
+        return jsonify({"style": "anime"})
+
+
 @app.route("/api/characters/expression-status", methods=["GET"])
 @login_required
 def expression_status():

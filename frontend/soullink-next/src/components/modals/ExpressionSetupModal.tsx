@@ -32,6 +32,9 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
 
   const [style, setStyle] = useState('anime');
   const [appearance, setAppearance] = useState('');
+  const [detectingStyle, setDetectingStyle] = useState(false);
+  const [recommendedStyle, setRecommendedStyle] = useState<string | null>(null);
+  const detectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [progress, setProgress] = useState('');
   const [step, setStep] = useState(0);
@@ -108,6 +111,34 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, existingExpressions]);
 
+  // Auto-detect style when appearance text changes (debounced)
+  const detectStyle = useCallback(async (text: string) => {
+    if (!text || text.trim().length < 10) return;
+    setDetectingStyle(true);
+    try {
+      const resp = await authFetch('/api/characters/detect-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appearance: text.trim() }),
+      });
+      const data = await resp.json();
+      if (data.style) {
+        setRecommendedStyle(data.style);
+        setStyle(data.style);
+      }
+    } catch { /* ignore */ }
+    finally { setDetectingStyle(false); }
+  }, [authFetch]);
+
+  const handleAppearanceChange = useCallback((text: string) => {
+    setAppearance(text);
+    setRecommendedStyle(null);
+    if (detectTimerRef.current) clearTimeout(detectTimerRef.current);
+    if (text.trim().length >= 10) {
+      detectTimerRef.current = setTimeout(() => detectStyle(text), 1000);
+    }
+  }, [detectStyle]);
+
   const translateIfNeeded = useCallback(async (text: string): Promise<string> => {
     if (!text || language !== 'zh-CN') return text;
     // Check if predominantly Chinese (>50% CJK chars among all letter chars)
@@ -141,6 +172,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
       const translated = await translateIfNeeded(text);
       setAppearance(translated);
       setPhase('edit');
+      // Auto-detect style from loaded appearance
+      if (translated.trim().length >= 10) detectStyle(translated);
     };
 
     if (rawAppearance) {
@@ -159,7 +192,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     } else {
       finalize('');
     }
-  }, [authFetch, isGuest, translateIfNeeded]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authFetch, isGuest, translateIfNeeded, detectStyle]);
 
   // Resolve preview URL and detect format
   const previewUrl = (() => {
@@ -366,7 +400,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
-            <textarea value={appearance} onChange={(e) => setAppearance(e.target.value)}
+            <textarea value={appearance} onChange={(e) => handleAppearanceChange(e.target.value)}
               placeholder={t('expr.appearance_placeholder')} rows={4}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
                 background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, resize: 'vertical',
@@ -375,18 +409,41 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           </div>
           <div style={{ marginBottom: 20 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.style_label')}</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {styleOptions.map((opt) => (
-                <button key={opt.value} onClick={() => setStyle(opt.value)} style={{
-                  padding: '10px 12px', borderRadius: 12, border: 'none',
-                  background: style === opt.value ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
-                  color: '#fff', cursor: 'pointer', textAlign: 'left',
-                  outline: style === opt.value ? '2px solid rgba(124,77,255,0.6)' : 'none',
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {styleOptions.map((opt) => (
+                  <button key={opt.value} onClick={() => { setStyle(opt.value); }} style={{
+                    padding: '10px 12px', borderRadius: 12, border: 'none', position: 'relative',
+                    background: style === opt.value ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
+                    color: '#fff', cursor: 'pointer', textAlign: 'left',
+                    outline: style === opt.value ? '2px solid rgba(124,77,255,0.6)' : 'none',
+                  }}>
+                    <div style={{ fontSize: 14 }}>{opt.icon} {opt.label}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{opt.desc}</div>
+                    {recommendedStyle === opt.value && (
+                      <span style={{
+                        position: 'absolute', top: 4, right: 6,
+                        fontSize: 9, padding: '1px 6px', borderRadius: 8,
+                        background: 'rgba(76,175,80,0.3)', color: '#81c784', fontWeight: 600,
+                      }}>{t('expr.style_recommended')}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {detectingStyle && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 12,
+                  background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
-                  <div style={{ fontSize: 14 }}>{opt.icon} {opt.label}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{opt.desc}</div>
-                </button>
-              ))}
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#7c4dff',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{t('expr.style_detecting')}</span>
+                </div>
+              )}
             </div>
           </div>
           {error && <p style={{ color: '#ff5252', fontSize: 12, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
