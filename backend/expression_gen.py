@@ -246,6 +246,7 @@ def _try_kling(
             arguments={
                 "prompt": prompt,
                 "image_url": image_url,
+                "aspect_ratio": "1:1",
             },
         )
         video_url = result.get("video", {}).get("url")
@@ -303,7 +304,7 @@ def interpolate_expression(
         "hair swaying, subtle movement, same character same background"
     )
 
-    # Try Kling first (image-to-video, uses start_url only)
+    # Try Kling first (image-to-video, 1:1 aspect ratio, no cropping)
     video = _try_kling(start_url, label, prompt)
     if video:
         return video
