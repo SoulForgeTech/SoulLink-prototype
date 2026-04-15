@@ -690,7 +690,7 @@ def generate_expression_set(
         if not video_bytes:
             return (emo, None)
         logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
-        webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=62)
+        webp_bytes = video_to_animated_webp(video_bytes, num_frames=16, frame_size=480, duration_ms=180)
         if not webp_bytes:
             return (emo, None)
         webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
