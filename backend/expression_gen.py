@@ -41,11 +41,11 @@ VENICE_MODEL_ANIME = "wai-Illustrious"
 VENICE_MODEL_PHOTO = "lustify-sdxl"
 
 FAL_KEY = os.getenv("FAL_KEY", "")
-SEEDANCE_MODEL = "bytedance/seedance-2.0/fast/image-to-video"
+
+# Video model: Wan-2.1 FLF2V (open-source, no IP copyright restrictions)
+VIDEO_MODEL = "fal-ai/wan-flf2v"
 
 FRAMES_PER_EMOTION = 8
-SEEDANCE_DURATION = "4"  # string required by API
-SEEDANCE_RESOLUTION = "480p"
 
 EMOTIONS = ["happy", "sad", "angry", "surprised", "shy", "thinking", "loving"]
 
@@ -190,43 +190,47 @@ def upload_to_fal(b64_data: str) -> str:
 # ==================== Seedance Video Interpolation ====================
 
 def interpolate_expression(
-    neutral_url: str,
-    emotion_url: str,
-    emotion: str,
+    start_url: str,
+    end_url: str,
+    label: str,
 ) -> bytes | None:
     """
-    Use Seedance 2.0 Fast to interpolate neutral→emotion.
+    Use Wan-2.1 FLF2V to interpolate between two keyframes.
+    Open-source model — no IP/copyright restrictions.
     Returns video bytes or None.
     """
     prompt = (
-        "Smooth facial expression transition, the character gradually changes expression, "
+        "Smooth facial expression transition, anime character gradually changes expression, "
         "subtle natural movement, same character same pose same angle same background"
     )
 
     try:
         result = fal_client.subscribe(
-            SEEDANCE_MODEL,
+            VIDEO_MODEL,
             arguments={
                 "prompt": prompt,
-                "image_url": neutral_url,
-                "end_image_url": emotion_url,
-                "resolution": SEEDANCE_RESOLUTION,
-                "duration": SEEDANCE_DURATION,
+                "start_image_url": start_url,
+                "end_image_url": end_url,
+                "num_frames": 81,
+                "frames_per_second": 16,
+                "resolution": "480p",
                 "aspect_ratio": "1:1",
-                "generate_audio": False,
+                "acceleration": "regular",
+                "enable_safety_checker": False,
             },
         )
 
         video_url = result.get("video", {}).get("url")
         if not video_url:
-            logger.error(f"[EXPR_GEN] Seedance no video URL for {emotion}: {result}")
+            logger.error(f"[EXPR_GEN] Wan no video URL for {label}: {result}")
             return None
 
+        logger.info(f"[EXPR_GEN] Wan video for {label}: {video_url}")
         resp = _http.get(video_url, timeout=120)
         return resp.content
 
     except Exception as e:
-        logger.error(f"[EXPR_GEN] Seedance error for {emotion}: {e}")
+        logger.error(f"[EXPR_GEN] Wan error for {label}: {e}")
         return None
 
 
