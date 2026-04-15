@@ -987,7 +987,7 @@ export default function SettingsModal() {
                     const raw = typeof window !== 'undefined' ? localStorage.getItem('soullink_user') : null;
                     const u = raw ? JSON.parse(raw) : null;
                     const email = (u?.email || '').toLowerCase();
-                    const BETA = ['s229178291@gmail.com'];
+                    const BETA = ['s229178291@gmail.com', 'alphonse@soulforgetech.com'];
                     if (!BETA.includes(email)) return null;
                   } catch { return null; }
                   return (
