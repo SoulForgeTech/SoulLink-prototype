@@ -658,6 +658,7 @@ export default function SettingsModal() {
     async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      setLoreSubmitting(true);
       try {
         await importLore(authFetch, file);
         // Reload custom status to refresh lore docs
@@ -666,6 +667,9 @@ export default function SettingsModal() {
       } catch (err) {
         console.error('Lore upload failed:', err);
         alert(language === 'zh-CN' ? '上传失败，请重试' : 'Upload failed. Please try again.');
+      } finally {
+        setLoreSubmitting(false);
+        if (e.target) e.target.value = '';
       }
     },
     [authFetch, language],
@@ -1728,7 +1732,7 @@ export default function SettingsModal() {
                 <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
                   <button
                     onClick={() => loreFileRef.current?.click()}
-                    disabled={loreDocs.length >= maxLoreDocs}
+                    disabled={loreDocs.length >= maxLoreDocs || loreSubmitting}
                     style={{
                       padding: '8px 12px',
                       borderRadius: '10px',
@@ -1737,14 +1741,14 @@ export default function SettingsModal() {
                       color: '#4a5568',
                       background: 'rgba(255,255,255,0.5)',
                       border: '2px solid rgba(0,0,0,0.06)',
-                      cursor: loreDocs.length >= maxLoreDocs ? 'not-allowed' : 'pointer',
-                      opacity: loreDocs.length >= maxLoreDocs ? 0.4 : 1,
+                      cursor: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 'not-allowed' : 'pointer',
+                      opacity: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 0.4 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
                     }}
                   >
-                    📁 {t('settings.custom.lore.upload')}
+                    {loreSubmitting ? '⏳' : '📁'} {loreSubmitting ? (language === 'zh-CN' ? '上传中...' : 'Uploading...') : t('settings.custom.lore.upload')}
                   </button>
                   <button
                     onClick={async () => {
