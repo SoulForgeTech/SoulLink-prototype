@@ -702,14 +702,11 @@ def generate_expression_set(
 
     config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
 
-    # Optimize appearance: extract face/hair/eyes only, remove outfit/weapon clutter
-    face_desc = _optimize_appearance_for_expression(appearance)
-
     # Step 1a: Generate neutral keyframe via Venice (text-to-image)
     if on_progress:
         on_progress("keyframes", 0, 8, "Generating neutral keyframe...")
 
-    neutral_prompt = f"{face_desc}, calm neutral expression, face portrait, looking at viewer{BG_SUFFIX}"
+    neutral_prompt = f"{config['prefix']}{appearance}, calm relaxed expression, gentle slight smile, upper body portrait{BG_SUFFIX}"
     neutral_b64 = _generate_keyframe_venice(neutral_prompt, config["venice_model"])
     if not neutral_b64:
         logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
