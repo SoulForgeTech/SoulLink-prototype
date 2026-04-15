@@ -432,16 +432,17 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               </div>
               {detectingStyle && (
                 <div style={{
-                  position: 'absolute', inset: 0, borderRadius: 12,
-                  background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  zIndex: 5, borderRadius: 12,
+                  background: 'rgba(15,15,30,0.7)', backdropFilter: 'blur(3px)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
                   <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.2)', borderTopColor: '#7c4dff',
+                    width: 28, height: 28, borderRadius: '50%',
+                    border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#7c4dff',
                     animation: 'spin 0.8s linear infinite',
                   }} />
-                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>{t('expr.style_detecting')}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>{t('expr.style_detecting')}</span>
                 </div>
               )}
             </div>
