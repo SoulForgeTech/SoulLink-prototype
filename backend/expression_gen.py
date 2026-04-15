@@ -373,129 +373,175 @@ def upload_sprite_sheet(sheet_bytes: bytes, user_id: str, sheet_type: str) -> st
         return ""
 
 
+# ==================== Video Upload ====================
+
+def upload_video_to_cloudinary(video_bytes: bytes, user_id: str, name: str) -> str:
+    """Upload video to Cloudinary. Returns URL or empty string."""
+    _ensure_cloudinary()
+    try:
+        # Write to temp file (Cloudinary needs file path for video)
+        tmp_path = os.path.join(os.environ.get("TEMP", "/tmp"), f"expr_{uuid.uuid4().hex[:8]}.mp4")
+        with open(tmp_path, "wb") as f:
+            f.write(video_bytes)
+
+        result = cloudinary.uploader.upload(
+            tmp_path,
+            resource_type="video",
+            public_id=f"soullink/expressions/{user_id}/{name}",
+            overwrite=True,
+        )
+        os.unlink(tmp_path)
+        return result.get("secure_url", "")
+    except Exception as e:
+        logger.error(f"[EXPR_GEN] Video upload failed: {e}")
+        return ""
+
+
+def upload_image_to_cloudinary(b64_data: str, user_id: str, name: str) -> str:
+    """Upload base64 image to Cloudinary. Returns URL or empty string."""
+    _ensure_cloudinary()
+    try:
+        data_uri = f"data:image/png;base64,{b64_data}"
+        result = cloudinary.uploader.upload(
+            data_uri,
+            public_id=f"soullink/expressions/{user_id}/{name}",
+            overwrite=True,
+        )
+        return result.get("secure_url", "")
+    except Exception as e:
+        logger.error(f"[EXPR_GEN] Image upload failed: {e}")
+        return ""
+
+
+# ==================== Neutral Image Background Removal ====================
+
+def remove_background(b64_data: str) -> str | None:
+    """Remove background from image using fal.ai BiRefNet. Returns b64 or None."""
+    try:
+        img_url = upload_to_fal(b64_data)
+        result = fal_client.subscribe(
+            "fal-ai/birefnet/v2",
+            arguments={"image_url": img_url, "operating_resolution": "1024x1024"},
+        )
+        out_url = result.get("image", {}).get("url")
+        if out_url:
+            resp = _http.get(out_url, timeout=30)
+            return base64.b64encode(resp.content).decode()
+    except Exception as e:
+        logger.error(f"[EXPR_GEN] Background removal failed: {e}")
+    return None
+
+
 # ==================== Main Pipeline ====================
+
+GREEN_SUFFIX = ", solid bright green background, #00FF00 chroma key background"
 
 def generate_expression_set(
     appearance: str,
     user_id: str,
     style: str = "anime",
-    generate_chibi: bool = True,
+    generate_chibi: bool = False,
     generate_full: bool = True,
     on_progress: Callable | None = None,
 ) -> dict:
     """
-    Full pipeline: generate character expression sprite sheets.
-
-    Args:
-        appearance: Character appearance description
-        user_id: User ID for storage
-        style: "anime" | "realistic" | "3d" | "illustration"
-        generate_chibi: Whether to generate Q版 micro character
-        generate_full: Whether to generate half-body panel
-        on_progress: Callback(phase, completed, total, status)
+    Full pipeline: generate character expression videos.
 
     Returns:
         {
-            "chibi_sprite_sheet": "https://cdn.cloudinary.com/...",
-            "chibi_meta": { ... },
-            "full_sprite_sheet": "https://cdn.cloudinary.com/...",
-            "full_meta": { ... },
+            "videos": { "happy": "url.mp4", ... },
+            "idleVideos": { "neutral": "url.mp4", "happy": "url.mp4", ... },
+            "neutralImage": "url.png",
         }
     """
     if FAL_KEY:
         os.environ["FAL_KEY"] = FAL_KEY
 
-    result = {}
-    types_to_generate = []
-    if generate_chibi:
-        types_to_generate.append(("chibi", True, 480, 480))
-    if generate_full:
-        types_to_generate.append(("full", False, 480, 720))
+    config = STYLE_CONFIGS.get(style, STYLE_CONFIGS["anime"])
 
-    for type_name, is_chibi, fw, fh in types_to_generate:
-        logger.info(f"[EXPR_GEN] === Generating {type_name} expression set ===")
+    # Step 1: Generate green screen keyframes (neutral + 7 emotions)
+    if on_progress:
+        on_progress("keyframes", 0, 8, "Generating keyframes...")
 
-        # Step 1: Generate keyframes
+    keyframes_b64 = {}
+    all_emotions = ["neutral"] + EMOTIONS
+    for i, emo in enumerate(all_emotions):
+        emo_desc = "calm relaxed expression, gentle slight smile" if emo == "neutral" else EMOTION_PROMPTS[emo]
+        prompt = f"{config['prefix']}{appearance}, {emo_desc}, upper body portrait{GREEN_SUFFIX}"
+        b64 = _generate_keyframe_venice(prompt, config["venice_model"])
+        if b64:
+            keyframes_b64[emo] = b64
         if on_progress:
-            on_progress("keyframes", 0, 8, f"Starting {type_name} keyframe generation...")
+            on_progress("keyframes", i + 1, 8, f"Generated {emo}")
 
-        keyframes_b64 = generate_keyframes(
-            appearance, style, is_chibi,
-            on_progress=on_progress,
-        )
+    if "neutral" not in keyframes_b64:
+        logger.error("[EXPR_GEN] Failed to generate neutral keyframe")
+        return {}
 
-        if "neutral" not in keyframes_b64:
-            logger.error(f"[EXPR_GEN] Failed to generate neutral keyframe for {type_name}")
+    # Step 2: Upload keyframes to fal.ai
+    if on_progress:
+        on_progress("upload_keyframes", 0, 1, "Uploading keyframes...")
+
+    fal_urls = {}
+    for emo, b64 in keyframes_b64.items():
+        fal_urls[emo] = upload_to_fal(b64)
+
+    if on_progress:
+        on_progress("upload_keyframes", 1, 1, "Keyframes uploaded")
+
+    # Step 3: Generate idle loop videos (same start+end frame) for each emotion
+    if on_progress:
+        on_progress("video", 0, len(fal_urls), "Creating idle animations...")
+
+    idle_videos = {}
+    done = 0
+    for emo, url in fal_urls.items():
+        logger.info(f"[EXPR_GEN] Generating idle video: {emo}...")
+        video_bytes = interpolate_expression(url, url, f"{emo}_idle")
+        if video_bytes:
+            # Upload to Cloudinary
+            video_url = upload_video_to_cloudinary(video_bytes, user_id, f"{emo}_idle")
+            if video_url:
+                idle_videos[emo] = video_url
+        done += 1
+        if on_progress:
+            on_progress("video", done, len(fal_urls), f"Idle: {emo}")
+
+    # Step 4: Generate transition videos (neutral → each emotion)
+    if on_progress:
+        on_progress("video", 0, len(EMOTIONS), "Creating transition videos...")
+
+    transition_videos = {}
+    done = 0
+    for emo in EMOTIONS:
+        if emo not in fal_urls or "neutral" not in fal_urls:
             continue
-
-        # Step 2: Upload keyframes to fal.ai
+        logger.info(f"[EXPR_GEN] Generating transition: neutral → {emo}...")
+        video_bytes = interpolate_expression(fal_urls["neutral"], fal_urls[emo], f"transition_{emo}")
+        if video_bytes:
+            video_url = upload_video_to_cloudinary(video_bytes, user_id, f"{emo}_transition")
+            if video_url:
+                transition_videos[emo] = video_url
+        done += 1
         if on_progress:
-            on_progress("upload_keyframes", 0, 1, "Uploading keyframes to fal.ai...")
+            on_progress("video", done, len(EMOTIONS), f"Transition: {emo}")
 
-        neutral_url = upload_to_fal(keyframes_b64["neutral"])
-        emotion_urls = {}
-        for emotion in EMOTIONS:
-            if emotion in keyframes_b64:
-                emotion_urls[emotion] = upload_to_fal(keyframes_b64[emotion])
+    # Step 5: Upload neutral image (with background removed)
+    if on_progress:
+        on_progress("upload_sheet", 0, 1, "Processing neutral image...")
 
-        if on_progress:
-            on_progress("upload_keyframes", 1, 1, "Keyframes uploaded")
+    neutral_image_url = ""
+    nobg = remove_background(keyframes_b64["neutral"])
+    if nobg:
+        neutral_image_url = upload_image_to_cloudinary(nobg, user_id, "neutral_nobg")
+    else:
+        neutral_image_url = upload_image_to_cloudinary(keyframes_b64["neutral"], user_id, "neutral")
 
-        # Step 3: Seedance video interpolation
-        videos = interpolate_all_expressions(
-            neutral_url, emotion_urls,
-            on_progress=on_progress,
-        )
+    if on_progress:
+        on_progress("upload_sheet", 1, 1, "Complete!")
 
-        # Step 4: Extract frames from videos
-        if on_progress:
-            on_progress("frames", 0, len(videos), "Extracting frames from videos...")
-
-        emotion_frames = {}
-        for emotion, video_bytes in videos.items():
-            frames = extract_frames_from_video(video_bytes, num_frames=FRAMES_PER_EMOTION)
-            if frames:
-                emotion_frames[emotion] = frames
-                logger.info(f"[EXPR_GEN] Extracted {len(frames)} frames for {emotion}")
-
-        if on_progress:
-            on_progress("frames", len(videos), len(videos), "All frames extracted")
-
-        # Get neutral frame from keyframe image
-        neutral_bytes = base64.b64decode(keyframes_b64["neutral"])
-        neutral_np = np.array(Image.open(io.BytesIO(neutral_bytes)).convert("RGB"))
-
-        # Step 5: Assemble sprite sheet
-        if on_progress:
-            on_progress("sprite_sheet", 0, 1, f"Assembling {type_name} sprite sheet...")
-
-        sheet_bytes = assemble_sprite_sheet(
-            neutral_frame=neutral_np,
-            emotion_frames=emotion_frames,
-            frame_width=fw,
-            frame_height=fh,
-        )
-        logger.info(f"[EXPR_GEN] {type_name} sprite sheet: {len(sheet_bytes)} bytes")
-
-        # Step 6: Upload to Cloudinary
-        if on_progress:
-            on_progress("upload_sheet", 0, 1, f"Uploading {type_name} sprite sheet...")
-
-        sheet_url = upload_sprite_sheet(sheet_bytes, user_id, type_name)
-
-        if sheet_url:
-            meta = {
-                "frameWidth": fw,
-                "frameHeight": fh,
-                "columns": FRAMES_PER_EMOTION,
-                "emotions": EMOTIONS + ["neutral"],
-                "framesPerEmotion": FRAMES_PER_EMOTION,
-            }
-            result[f"{type_name}SpriteSheet"] = sheet_url
-            result[f"{type_name}Meta"] = meta
-            logger.info(f"[EXPR_GEN] {type_name} sprite sheet uploaded: {sheet_url}")
-
-        if on_progress:
-            on_progress("upload_sheet", 1, 1, f"{type_name} complete!")
-
-    return result
+    return {
+        "videos": transition_videos,
+        "idleVideos": idle_videos,
+        "neutralImage": neutral_image_url,
+    }
