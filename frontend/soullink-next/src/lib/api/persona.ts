@@ -130,7 +130,11 @@ export async function importLore(
     });
   }
 
-  return response.json();
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || `Upload failed (${response.status})`);
+  }
+  return data;
 }
 
 /**
