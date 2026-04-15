@@ -83,6 +83,7 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
             muted
             playsInline
             preload="none"
+            crossOrigin="anonymous"
           />
 
           {/* Canvas — chroma key output, transparent background */}
