@@ -322,7 +322,7 @@ def _remove_bg_frame(frame_rgb: np.ndarray, frame_size: int = 480) -> Image.Imag
         # BiRefNet background removal
         result = fal_client.subscribe(
             "fal-ai/birefnet/v2",
-            arguments={"image_url": img_url, "operating_resolution": "512x512"},
+            arguments={"image_url": img_url, "operating_resolution": "1024x1024"},
         )
         out_url = result.get("image", {}).get("url")
         if not out_url:
