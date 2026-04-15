@@ -308,28 +308,34 @@ def extract_frames_from_video(video_bytes: bytes, num_frames: int = 8) -> list[n
 def chroma_key_frame(frame_rgb: np.ndarray) -> np.ndarray:
     """
     Remove green screen from a single frame using HSV color space.
+    Handles Venice bright greens AND Wan's darkened/shifted greens.
     Returns RGBA numpy array with green replaced by transparency.
     """
-    # Convert RGB to HSV for better green detection
     hsv = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2HSV)
 
-    # Green range in HSV (broad to catch Venice's impure greens)
-    # H: 35-85 (green hues), S: 40-255 (saturated), V: 40-255 (not too dark)
-    lower_green = np.array([35, 40, 40])
-    upper_green = np.array([85, 255, 255])
-    green_mask = cv2.inRange(hsv, lower_green, upper_green)
+    # Layer 1: Standard green range (Venice bright green #00FF00)
+    mask1 = cv2.inRange(hsv, np.array([35, 40, 40]), np.array([85, 255, 255]))
 
-    # Also catch bright/neon greens that might be outside normal range
-    lower_neon = np.array([30, 80, 80])
-    upper_neon = np.array([90, 255, 255])
-    neon_mask = cv2.inRange(hsv, lower_neon, upper_neon)
-    green_mask = cv2.bitwise_or(green_mask, neon_mask)
+    # Layer 2: Dark greens (Wan darkens the green screen)
+    mask2 = cv2.inRange(hsv, np.array([25, 20, 10]), np.array([95, 255, 120]))
+
+    # Layer 3: Teal/cyan-greens (Wan shifts green toward blue)
+    mask3 = cv2.inRange(hsv, np.array([80, 30, 20]), np.array([100, 255, 255]))
+
+    # Combine all green masks
+    green_mask = cv2.bitwise_or(mask1, cv2.bitwise_or(mask2, mask3))
+
+    # Also use RGB-based detection for remaining green-dominant pixels
+    r, g, b = frame_rgb[:, :, 0], frame_rgb[:, :, 1], frame_rgb[:, :, 2]
+    max_rb = np.maximum(r.astype(int), b.astype(int))
+    rgb_green = ((g.astype(int) > max_rb + 15) & (g > 30)).astype(np.uint8) * 255
+    green_mask = cv2.bitwise_or(green_mask, rgb_green)
 
     # Edge feathering: blur the mask to soften edges
-    green_mask = cv2.GaussianBlur(green_mask, (5, 5), 0)
+    green_mask = cv2.GaussianBlur(green_mask, (7, 7), 0)
 
-    # Morphological cleanup: remove noise inside character
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # Morphological cleanup: fill small holes inside character, remove noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_CLOSE, kernel)
     green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
 
@@ -695,7 +701,7 @@ def generate_expression_set(
         if not video_bytes:
             return (emo, None)
         logger.info(f"[EXPR_GEN] Converting {emo} video to animated WebP...")
-        webp_bytes = video_to_animated_webp(video_bytes, num_frames=24, frame_size=480, duration_ms=100)
+        webp_bytes = video_to_animated_webp(video_bytes, num_frames=40, frame_size=480, duration_ms=62)
         if not webp_bytes:
             return (emo, None)
         webp_url = upload_webp_to_cloudinary(webp_bytes, user_id, f"{emo}_anim")
