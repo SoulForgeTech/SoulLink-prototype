@@ -4170,7 +4170,7 @@ def translate_appearance():
     try:
         import google.generativeai as genai
         genai.configure(api_key=os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", ""))
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         lang_name = "Chinese" if "zh" in target else "English"
         prompt = f"Translate this character appearance description to {lang_name}. Only output the translation, nothing else:\n\n{text}"
