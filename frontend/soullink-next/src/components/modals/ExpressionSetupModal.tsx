@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
-import { setCharacterExpressions } from '@/store/settingsSlice';
+import { setCharacterExpressions, setCharacterDisplayMode } from '@/store/settingsSlice';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { useT } from '@/hooks/useT';
 
@@ -11,7 +11,7 @@ interface ExpressionSetupModalProps {
   onClose: () => void;
 }
 
-type Phase = 'loading' | 'edit' | 'generating' | 'preview' | 'done' | 'error';
+type Phase = 'loading' | 'edit' | 'generating' | 'preview' | 'error';
 
 const JOB_KEY = 'soullink_expr_job_id';
 const EMOTIONS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking', 'loving'];
@@ -25,6 +25,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const authFetch = useAuthFetch();
   const t = useT();
   const isGuest = useAppSelector((s) => s.guest.isGuest);
+  const existingExpressions = useAppSelector((s) => s.settings.characterExpressions);
+  const displayMode = useAppSelector((s) => s.settings.characterDisplayMode);
 
   const [style, setStyle] = useState('anime');
   const [appearance, setAppearance] = useState('');
@@ -33,30 +35,41 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [step, setStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(5);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Stop polling on unmount
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  // On open: check for existing job or load appearance
+  // On open: decide what to show
   useEffect(() => {
     if (!isOpen) return;
 
+    // Priority 1: existing expressions in Redux → show preview
+    if (existingExpressions?.videos || existingExpressions?.idleVideos) {
+      setPreviewData(existingExpressions as Record<string, unknown>);
+      setPhase('preview');
+      return;
+    }
+
+    // Priority 2: ongoing generation job → show progress
     const savedJobId = localStorage.getItem(JOB_KEY);
     if (savedJobId) {
-      // Resume polling for existing job
       setPhase('generating');
-      setProgress('Checking status...');
+      setProgress('Checking...');
       startPolling(savedJobId);
       return;
     }
 
-    // Load appearance
+    // Priority 3: no data → show edit
+    loadAppearance();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, existingExpressions]);
+
+  const loadAppearance = useCallback(() => {
     setPhase('loading');
     try {
       const raw = localStorage.getItem('soullink_user');
@@ -65,7 +78,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         const saved = user?.settings?.image_appearance;
         if (saved) { setAppearance(saved); setPhase('edit'); return; }
       }
-    } catch { /* ignore */ }
+    } catch { /* */ }
 
     if (!isGuest) {
       authFetch('/api/user/custom-status')
@@ -76,48 +89,15 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         })
         .catch(() => { setAppearance(''); setPhase('edit'); });
     } else {
-      setAppearance('');
-      setPhase('edit');
+      setAppearance(''); setPhase('edit');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  // Poll backend for job status
-  const startPolling = useCallback((jobId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    const poll = async () => {
-      try {
-        const resp = await authFetch(`/api/characters/expression-status?job_id=${jobId}`);
-        const data = await resp.json();
-
-        setProgress(data.progress || '');
-        setStep(data.step || 0);
-        setTotalSteps(data.total_steps || 5);
-
-        if (data.status === 'done' && data.result) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setResult(data.result);
-          setPhase('preview');
-          localStorage.removeItem(JOB_KEY);
-        } else if (data.status === 'error') {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setError(data.progress || 'Generation failed');
-          setPhase('error');
-          localStorage.removeItem(JOB_KEY);
-        }
-      } catch { /* network error, keep polling */ }
-    };
-
-    poll(); // immediate first check
-    pollRef.current = setInterval(poll, 3000); // every 3s
-  }, [authFetch]);
+  }, [authFetch, isGuest]);
 
   // Preview video playback
   useEffect(() => {
-    if (phase !== 'preview' || !result || !previewVideoRef.current) return;
-    const idle = result.idleVideos as Record<string, string> | undefined;
-    const vids = result.videos as Record<string, string> | undefined;
+    if (phase !== 'preview' || !previewData || !previewVideoRef.current) return;
+    const idle = previewData.idleVideos as Record<string, string> | undefined;
+    const vids = previewData.videos as Record<string, string> | undefined;
     const url = idle?.[previewEmotion] || vids?.[previewEmotion];
     if (url) {
       previewVideoRef.current.src = url;
@@ -125,17 +105,40 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
       previewVideoRef.current.load();
       previewVideoRef.current.play().catch(() => {});
     }
-  }, [phase, result, previewEmotion]);
+  }, [phase, previewData, previewEmotion]);
+
+  // Polling
+  const startPolling = useCallback((jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    const poll = async () => {
+      try {
+        const resp = await authFetch(`/api/characters/expression-status?job_id=${jobId}`);
+        const data = await resp.json();
+        setProgress(data.progress || '');
+        setStep(data.step || 0);
+        setTotalSteps(data.total_steps || 5);
+        if (data.status === 'done' && data.result) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPreviewData(data.result);
+          dispatch(setCharacterExpressions(data.result as never));
+          setPhase('preview');
+          localStorage.removeItem(JOB_KEY);
+        } else if (data.status === 'error') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setError(data.progress || 'Failed');
+          setPhase('error');
+          localStorage.removeItem(JOB_KEY);
+        }
+      } catch { /* keep polling */ }
+    };
+    poll();
+    pollRef.current = setInterval(poll, 3000);
+  }, [authFetch, dispatch]);
 
   const handleGenerate = useCallback(async () => {
     if (isGuest) { setError(t('expr.guest_error')); setPhase('error'); return; }
     if (!appearance.trim()) { setError(t('expr.no_appearance')); return; }
-
-    setPhase('generating');
-    setProgress('Starting...');
-    setStep(0);
-    setError('');
-
+    setPhase('generating'); setProgress('Starting...'); setStep(0); setError('');
     try {
       const resp = await authFetch('/api/characters/generate-expressions', {
         method: 'POST',
@@ -143,35 +146,42 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         body: JSON.stringify({ style, appearance: appearance.trim() }),
       });
       const data = await resp.json();
-
       if (data.job_id) {
         localStorage.setItem(JOB_KEY, data.job_id);
         startPolling(data.job_id);
-      } else {
-        throw new Error(data.error || 'Failed to start generation');
-      }
+      } else { throw new Error(data.error || 'Failed'); }
     } catch (err) {
       setPhase('error');
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'Error');
     }
   }, [authFetch, style, appearance, isGuest, t, startPolling]);
 
-  const handleApply = useCallback(() => {
-    if (result) {
-      dispatch(setCharacterExpressions(result as never));
-      setPhase('done');
+  const handleActivate = useCallback(() => {
+    if (previewData) {
+      dispatch(setCharacterExpressions(previewData as never));
+      dispatch(setCharacterDisplayMode('micro'));
     }
-  }, [result, dispatch]);
+    onClose();
+  }, [previewData, dispatch, onClose]);
+
+  const handleDeactivate = useCallback(() => {
+    dispatch(setCharacterDisplayMode('hidden'));
+  }, [dispatch]);
+
+  const handleRedo = useCallback(() => {
+    setPreviewData(null);
+    loadAppearance();
+  }, [loadAppearance]);
 
   if (!isOpen) return null;
 
+  const isActive = displayMode === 'micro' && !!(existingExpressions?.videos || existingExpressions?.idleVideos);
   const styleOptions = [
     { value: 'anime', icon: '🎨', label: t('expr.style.anime'), desc: t('expr.style.anime_desc') },
     { value: 'realistic', icon: '📷', label: t('expr.style.realistic'), desc: t('expr.style.realistic_desc') },
     { value: '3d', icon: '🎮', label: t('expr.style.3d'), desc: t('expr.style.3d_desc') },
     { value: 'illustration', icon: '✏️', label: t('expr.style.illustration'), desc: t('expr.style.illustration_desc') },
   ];
-
   const progressPercent = totalSteps > 0 ? Math.round((step / totalSteps) * 100) : 0;
 
   return (
@@ -194,10 +204,10 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           </div>
         )}
 
+        {/* ===== EDIT: generate new expressions ===== */}
         {phase === 'edit' && (<>
           <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 4, textAlign: 'center' }}>{t('expr.title')}</h3>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>{t('expr.subtitle')}</p>
-
           <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
             <textarea value={appearance} onChange={(e) => setAppearance(e.target.value)}
@@ -207,7 +217,6 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                 fontFamily: 'inherit', outline: 'none', lineHeight: 1.5 }} />
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>{t('expr.appearance_tip')}</p>
           </div>
-
           <div style={{ marginBottom: 20 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.style_label')}</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -224,9 +233,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               ))}
             </div>
           </div>
-
           {error && <p style={{ color: '#ff5252', fontSize: 12, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
-
           <button onClick={handleGenerate} style={{
             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
             background: 'linear-gradient(135deg, #7c4dff, #448aff)',
@@ -235,6 +242,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, textAlign: 'center', marginTop: 8 }}>{t('expr.generate_time')}</p>
         </>)}
 
+        {/* ===== GENERATING: progress ===== */}
         {phase === 'generating' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px',
@@ -242,33 +250,36 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               animation: 'spin 0.8s linear infinite' }} />
             <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>{progress}</p>
-
-            {/* Progress bar */}
-            <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3,
-              background: 'rgba(255,255,255,0.1)' }}>
-              <div style={{
-                width: `${progressPercent}%`, height: '100%', borderRadius: 3,
-                background: 'linear-gradient(90deg, #7c4dff, #448aff)',
-                transition: 'width 0.5s ease',
-              }} />
+            <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)' }}>
+              <div style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 3,
+                background: 'linear-gradient(90deg, #7c4dff, #448aff)', transition: 'width 0.5s ease' }} />
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>
-              {step}/{totalSteps}
-            </p>
-
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>{step}/{totalSteps}</p>
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 12 }}>{t('expr.generating_wait')}</p>
           </div>
         )}
 
-        {phase === 'preview' && result && (<>
+        {/* ===== PREVIEW: always show when data exists ===== */}
+        {phase === 'preview' && previewData && (<>
           <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12, textAlign: 'center' }}>{t('expr.preview_title')}</h3>
-          <div style={{ width: 160, height: 160, margin: '0 auto 16px', borderRadius: 16, overflow: 'hidden',
+
+          {/* Status badge */}
+          {isActive && (
+            <div style={{ textAlign: 'center', marginBottom: 12 }}>
+              <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 20,
+                background: 'rgba(76,175,80,0.2)', color: '#4caf50', fontSize: 11, fontWeight: 600,
+              }}>Active</span>
+            </div>
+          )}
+
+          <div style={{ width: 160, height: 160, margin: '0 auto 12px', borderRadius: 16, overflow: 'hidden',
             background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(124,77,255,0.3)' }}>
             <video ref={previewVideoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
           </div>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
             {t(`expr.emotion.${previewEmotion}`)}
           </p>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 20 }}>
             {EMOTIONS.map((emo) => (
               <button key={emo} onClick={() => setPreviewEmotion(emo)} style={{
@@ -282,29 +293,35 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setPhase('edit'); localStorage.removeItem(JOB_KEY); }} style={{
-              flex: 1, padding: '12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)',
-              background: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 14, cursor: 'pointer',
-            }}>{t('expr.preview_redo')}</button>
-            <button onClick={handleApply} style={{
-              flex: 2, padding: '12px', borderRadius: 12, border: 'none',
-              background: 'linear-gradient(135deg, #7c4dff, #448aff)',
-              color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}>{t('expr.preview_use')}</button>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {isActive ? (
+              <button onClick={handleDeactivate} style={{
+                flex: 1, padding: '12px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.3)',
+                background: 'rgba(255,82,82,0.1)', color: '#ff5252', fontSize: 13, cursor: 'pointer',
+              }}>
+                {t('expr.deactivate') || 'Deactivate'}
+              </button>
+            ) : (
+              <button onClick={handleActivate} style={{
+                flex: 2, padding: '12px', borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #7c4dff, #448aff)',
+                color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}>
+                {t('expr.preview_use')}
+              </button>
+            )}
           </div>
+
+          <button onClick={handleRedo} style={{
+            width: '100%', padding: '10px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+            background: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer',
+          }}>
+            {t('expr.preview_redo')}
+          </button>
         </>)}
 
-        {phase === 'done' && (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-            <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.done_title')}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20 }}>{t('expr.done_desc')}</p>
-            <button onClick={onClose} style={{ padding: '12px 32px', borderRadius: 12, border: 'none',
-              background: '#7c4dff', color: '#fff', fontSize: 14, cursor: 'pointer' }}>{t('expr.done_btn')}</button>
-          </div>
-        )}
-
+        {/* ===== ERROR ===== */}
         {phase === 'error' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>😵</div>
