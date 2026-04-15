@@ -249,7 +249,9 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#7c4dff',
               animation: 'spin 0.8s linear infinite' }} />
             <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>{progress}</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>
+              {t(`expr.step.${step}`) !== `expr.step.${step}` ? t(`expr.step.${step}`) : progress}
+            </p>
             <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)' }}>
               <div style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 3,
                 background: 'linear-gradient(90deg, #7c4dff, #448aff)', transition: 'width 0.5s ease' }} />
