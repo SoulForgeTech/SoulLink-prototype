@@ -21,6 +21,13 @@ const EMOJI: Record<string, string> = {
   surprised: '😲', shy: '😳', thinking: '🤔', loving: '🥰',
 };
 
+interface HistoryEntry {
+  id: string;
+  data: Record<string, unknown>;
+  style?: string;
+  created_at: string;
+}
+
 export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetupModalProps) {
   const dispatch = useAppDispatch();
   const authFetch = useAuthFetch();
@@ -45,6 +52,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
   const [regeneratingEmotion, setRegeneratingEmotion] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const previewImgRef = useRef<HTMLImageElement>(null);
   const previewVidRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -57,9 +65,21 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     };
   }, []);
 
+  // Load history from backend
+  const loadHistory = useCallback(async () => {
+    try {
+      const resp = await authFetch('/api/characters/expression-history');
+      const data = await resp.json();
+      if (Array.isArray(data.history)) setHistory(data.history);
+    } catch { /* ignore */ }
+  }, [authFetch]);
+
   // On open: decide what to show
   useEffect(() => {
     if (!isOpen) return;
+
+    // Fetch history from backend
+    loadHistory();
 
     // Priority 1: ongoing generation job → show progress
     const savedJobId = localStorage.getItem(JOB_KEY);
@@ -239,6 +259,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           if (pollRef.current) clearInterval(pollRef.current);
           setPreviewData(data.result);
           dispatch(setCharacterExpressions(data.result as never));
+          loadHistory();
           setPhase('preview');
           localStorage.removeItem(JOB_KEY);
         } else if (data.status === 'error') {
@@ -261,7 +282,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     };
     poll();
     pollRef.current = setInterval(poll, 3000);
-  }, [authFetch, dispatch, existingExpressions, loadAppearance]);
+  }, [authFetch, dispatch, existingExpressions, loadAppearance, loadHistory]);
 
   const handleGenerate = useCallback(async () => {
     if (isGuest) { setError(t('expr.guest_error')); setPhase('error'); return; }
@@ -300,6 +321,35 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     setPreviewData(null);
     loadAppearance();
   }, [loadAppearance]);
+
+  const handleRestoreHistory = useCallback(async (entry: HistoryEntry) => {
+    // Optimistic update
+    setPreviewData(entry.data);
+    dispatch(setCharacterExpressions(entry.data as never));
+    setPreviewEmotion('neutral');
+    try {
+      await authFetch('/api/characters/restore-expression', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entry.id }),
+      });
+    } catch { /* ignore - local update already applied */ }
+  }, [dispatch, authFetch]);
+
+  const handleDeleteHistory = useCallback(async (id: string) => {
+    // Optimistic
+    setHistory(prev => prev.filter(h => h.id !== id));
+    try {
+      await authFetch('/api/characters/delete-expression-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+    } catch {
+      // Revert on error
+      loadHistory();
+    }
+  }, [authFetch, loadHistory]);
 
   const startSinglePolling = useCallback((jobId: string, emotion: string) => {
     if (singlePollRef.current) clearInterval(singlePollRef.current);
@@ -550,6 +600,55 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               </div>
             ))}
           </div>
+
+          {/* History — saved previously generated portraits */}
+          {history.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 8 }}>
+                {t('expr.history_title')}
+              </div>
+              <div style={{
+                display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4,
+                scrollbarWidth: 'thin',
+              }}>
+                {history.map((entry) => {
+                  const thumb = (entry.data as { neutralImage?: string; webpUrls?: Record<string, string> }).neutralImage
+                    || (entry.data as { webpUrls?: Record<string, string> }).webpUrls?.neutral
+                    || '';
+                  const currentNeutral = (previewData as { webpUrls?: Record<string, string> })?.webpUrls?.neutral;
+                  const entryNeutral = (entry.data as { webpUrls?: Record<string, string> }).webpUrls?.neutral;
+                  const isCurrent = currentNeutral && currentNeutral === entryNeutral;
+                  return (
+                    <div key={entry.id} style={{
+                      position: 'relative', flexShrink: 0,
+                      width: 64, height: 64, borderRadius: 10, overflow: 'hidden',
+                      border: isCurrent ? '2px solid #7c4dff' : '2px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer', background: 'rgba(255,255,255,0.05)',
+                    }}
+                    onClick={() => handleRestoreHistory(entry)}
+                    title={new Date(entry.created_at).toLocaleString()}
+                    >
+                      {thumb && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteHistory(entry.id); }}
+                        style={{
+                          position: 'absolute', top: 2, right: 2,
+                          width: 16, height: 16, borderRadius: '50%',
+                          border: 'none', background: 'rgba(0,0,0,0.6)',
+                          color: '#fff', fontSize: 10, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 0, lineHeight: 1,
+                        }}
+                      >×</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             {isActive ? (

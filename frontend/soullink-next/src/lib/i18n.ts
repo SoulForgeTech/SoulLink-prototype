@@ -308,6 +308,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'expr.emotion.shy': 'Shy',
     'expr.emotion.thinking': 'Thinking',
     'expr.emotion.loving': 'Loving',
+    'expr.history_title': 'Saved portraits (tap to switch)',
   },
 
   'zh-CN': {
@@ -603,6 +604,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'expr.emotion.shy': '害羞',
     'expr.emotion.thinking': '思考',
     'expr.emotion.loving': '喜爱',
+    'expr.history_title': '历史生成（点击切换）',
   },
 };
 

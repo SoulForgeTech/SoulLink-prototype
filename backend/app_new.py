@@ -4162,20 +4162,37 @@ def generate_expressions():
             )
 
             if result:
-                # Save to user settings
+                # Build history entry
+                import uuid as _uuid
+                history_entry = {
+                    "id": str(_uuid.uuid4()),
+                    "data": result,
+                    "style": style,
+                    "created_at": __import__("datetime").datetime.utcnow().isoformat(),
+                }
+                # Save to user settings — set current + prepend to history (cap 10)
                 db.db["users"].update_one(
                     {"_id": user_id},
-                    {"$set": {
-                        "settings.character_expressions": result,
-                        "settings.expression_style": style,
-                        "settings.character_display_mode": "micro",
-                    }},
+                    {
+                        "$set": {
+                            "settings.character_expressions": result,
+                            "settings.expression_style": style,
+                            "settings.character_display_mode": "micro",
+                        },
+                        "$push": {
+                            "settings.character_expressions_history": {
+                                "$each": [history_entry],
+                                "$position": 0,
+                                "$slice": 10,
+                            },
+                        },
+                    },
                 )
                 db.db["expression_jobs"].update_one(
                     {"_id": job_id},
                     {"$set": {"status": "done", "result": result, "step": 4, "progress": "Complete!"}},
                 )
-                logger.info(f"[EXPR_GEN] Job {job_id} completed for user {user_id}")
+                logger.info(f"[EXPR_GEN] Job {job_id} completed for user {user_id}, history entry {history_entry['id']}")
             else:
                 db.db["expression_jobs"].update_one(
                     {"_id": job_id},
@@ -4424,6 +4441,85 @@ def regenerate_emotion():
     t.start()
 
     return jsonify({"job_id": str(job_id), "status": "started", "emotion": emotion})
+
+
+@app.route("/api/characters/expression-history", methods=["GET"])
+@login_required
+def expression_history():
+    """List saved expression history for current user."""
+    user_id = get_current_user_id()
+    user = db.db["users"].find_one({"_id": user_id}) or {}
+    settings = user.get("settings", {})
+    history = settings.get("character_expressions_history", [])
+    current = settings.get("character_expressions", {})
+
+    # Backward-compat: if no history but current exists, seed history from current
+    if not history and current.get("webpUrls"):
+        import uuid as _uuid
+        seeded = {
+            "id": str(_uuid.uuid4()),
+            "data": current,
+            "style": settings.get("expression_style", "anime"),
+            "created_at": __import__("datetime").datetime.utcnow().isoformat(),
+        }
+        db.db["users"].update_one(
+            {"_id": user_id},
+            {"$set": {"settings.character_expressions_history": [seeded]}},
+        )
+        history = [seeded]
+
+    return jsonify({"history": history, "current": current})
+
+
+@app.route("/api/characters/restore-expression", methods=["POST"])
+@login_required
+def restore_expression():
+    """Restore a historical expression set as the current active one."""
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+    entry_id = data.get("id", "")
+
+    if not entry_id:
+        return jsonify({"error": "Missing id"}), 400
+
+    user = db.db["users"].find_one({"_id": user_id})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    history = user.get("settings", {}).get("character_expressions_history", [])
+    entry = next((h for h in history if h.get("id") == entry_id), None)
+    if not entry:
+        return jsonify({"error": "History entry not found"}), 404
+
+    db.db["users"].update_one(
+        {"_id": user_id},
+        {"$set": {
+            "settings.character_expressions": entry["data"],
+            "settings.expression_style": entry.get("style", "anime"),
+            "settings.character_display_mode": "micro",
+        }},
+    )
+    logger.info(f"[EXPR_GEN] Restored expression {entry_id} for user {user_id}")
+    return jsonify({"success": True, "expressions": entry["data"]})
+
+
+@app.route("/api/characters/delete-expression-history", methods=["POST"])
+@login_required
+def delete_expression_history():
+    """Remove one history entry (does not affect current active)."""
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+    entry_id = data.get("id", "")
+
+    if not entry_id:
+        return jsonify({"error": "Missing id"}), 400
+
+    db.db["users"].update_one(
+        {"_id": user_id},
+        {"$pull": {"settings.character_expressions_history": {"id": entry_id}}},
+    )
+    logger.info(f"[EXPR_GEN] Deleted history entry {entry_id} for user {user_id}")
+    return jsonify({"success": True})
 
 
 @app.route("/api/user/clear-lore", methods=["POST"])
