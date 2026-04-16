@@ -46,11 +46,11 @@ const CHANGELOG: VersionEntry[] = [
   {
     version: 'v0.2.2-beta', date: '2026-04-16',
     changes: [
-      { badge: 'feat', text: '🎭 Live Portrait (Beta) — animated avatar with 8 emotions that react to your conversation mood', text_zh: '🎭 微立绘（内测）— 8 种表情的动态头像，聊天时跟着情绪自动切换 ✨' },
-      { badge: 'feat', text: '🎨 Smart art style detection — auto-suggests anime / realistic / 3D / illustration from your description', text_zh: '🎨 智能识别画风 — 根据角色描述自动推荐动漫/写实/3D/插画' },
-      { badge: 'feat', text: '🔄 Regenerate one emotion at a time — keep your character consistent, no need to redo all 8', text_zh: '🔄 单个表情重新生成 — 不满意哪个就重做哪个，角色保持一致' },
-      { badge: 'feat', text: '📚 Portrait history — every generation is saved, switch between them anytime, across devices', text_zh: '📚 立绘历史记录 — 每次生成都自动保存，随时切换回之前的版本，跨设备同步' },
-      { badge: 'feat', text: '👆 Tap the portrait in chat to edit directly', text_zh: '👆 聊天中点击立绘直接编辑' },
+      { badge: 'feat', text: 'Live Portrait (Beta) — animated avatar with 8 emotions that react to your conversation mood', text_zh: '微立绘（内测）— 8 种表情的动态头像，聊天时跟着情绪自动切换' },
+      { badge: 'feat', text: 'Smart art style detection — auto-suggests anime / realistic / 3D / illustration from your description', text_zh: '智能识别画风 — 根据角色描述自动推荐动漫/写实/3D/插画' },
+      { badge: 'feat', text: 'Regenerate one emotion at a time — keep your character consistent, no need to redo all 8', text_zh: '单个表情重新生成 — 不满意哪个就重做哪个，角色保持一致' },
+      { badge: 'feat', text: 'Portrait history — every generation is saved, switch between versions anytime, synced across devices', text_zh: '立绘历史记录 — 每次生成都自动保存，随时切换回之前的版本，跨设备同步' },
+      { badge: 'feat', text: 'Tap the portrait in chat to edit directly', text_zh: '聊天中点击立绘直接编辑' },
       { badge: 'fix', text: 'Knowledge base upload & embedding more stable (DOCX works now, PDF paused until we add OCR)', text_zh: '知识库上传和嵌入更稳定了（DOCX 可用，PDF 等上线 OCR 后再开放）' },
     ],
   },
