@@ -229,7 +229,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
               background: 'rgba(107,163,214,0.1)',
               color: '#6BA3D6',
             }}>
-              v0.2.1-beta
+              v0.2.2-beta
             </span>
           </div>
         </div>
