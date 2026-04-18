@@ -28,6 +28,31 @@ interface HistoryEntry {
   created_at: string;
 }
 
+interface QuotaState {
+  allowed: boolean;
+  reason: string;
+  next_available_at: string | null;
+  used_24h: number;
+  used_5d: number;
+  limit_5d: number;
+}
+
+// Per-run cost estimate for Live Portrait, derived from the pipeline in expression_gen.py.
+// One run = 8 keyframes (1 Venice + 7 FLUX img2img) + 8 image-to-video calls
+// (Kling 2.1 master @ $0.28/s × ~5s = $1.40/clip, or Wan fallback @ ~$0.40/clip)
+// + ~128 BiRefNet compute-seconds + small Cloudinary/Gemini overhead.
+const COST_ITEMS: { key: string; usd: [number, number] }[] = [
+  { key: 'keyframes', usd: [0.30, 0.60] },
+  { key: 'videos', usd: [9.00, 12.00] },
+  { key: 'matting', usd: [0.30, 0.80] },
+  { key: 'misc', usd: [0.05, 0.10] },
+];
+const COST_TOTAL: [number, number] = COST_ITEMS.reduce<[number, number]>(
+  (acc, it) => [acc[0] + it.usd[0], acc[1] + it.usd[1]],
+  [0, 0],
+);
+const fmtUsd = (n: number) => `$${n.toFixed(2)}`;
+
 export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetupModalProps) {
   const dispatch = useAppDispatch();
   const authFetch = useAuthFetch();
@@ -53,6 +78,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const [previewEmotion, setPreviewEmotion] = useState('neutral');
   const [regeneratingEmotion, setRegeneratingEmotion] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [quota, setQuota] = useState<QuotaState | null>(null);
   const previewImgRef = useRef<HTMLImageElement>(null);
   const previewVidRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -74,12 +100,22 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
     } catch { /* ignore */ }
   }, [authFetch]);
 
+  // Load generation quota from backend
+  const loadQuota = useCallback(async () => {
+    try {
+      const resp = await authFetch('/api/characters/expression-quota');
+      const data = await resp.json();
+      if (typeof data?.allowed === 'boolean') setQuota(data as QuotaState);
+    } catch { /* ignore */ }
+  }, [authFetch]);
+
   // On open: decide what to show
   useEffect(() => {
     if (!isOpen) return;
 
-    // Fetch history from backend
+    // Fetch history + quota from backend
     loadHistory();
+    loadQuota();
 
     // Priority 1: ongoing generation job → show progress
     const savedJobId = localStorage.getItem(JOB_KEY);
@@ -287,6 +323,10 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const handleGenerate = useCallback(async () => {
     if (isGuest) { setError(t('expr.guest_error')); setPhase('error'); return; }
     if (!appearance.trim()) { setError(t('expr.no_appearance')); return; }
+    if (quota && !quota.allowed) {
+      setError(t('expr.quota_blocked'));
+      return;
+    }
     setPhase('generating'); setProgress('Starting...'); setStep(0); setError('');
     try {
       const resp = await authFetch('/api/characters/generate-expressions', {
@@ -295,15 +335,30 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
         body: JSON.stringify({ style, appearance: appearance.trim() }),
       });
       const data = await resp.json();
+      if (resp.status === 429) {
+        // Refresh local quota state so the edit screen shows the right banner.
+        setQuota({
+          allowed: false,
+          reason: data.reason || 'rate_limited',
+          next_available_at: data.next_available_at || null,
+          used_24h: data.used_24h || 0,
+          used_5d: data.used_5d || 0,
+          limit_5d: data.limit_5d || 2,
+        });
+        setPhase('edit');
+        setError(t('expr.quota_blocked'));
+        return;
+      }
       if (data.job_id) {
         localStorage.setItem(JOB_KEY, data.job_id);
         startPolling(data.job_id);
+        loadQuota();
       } else { throw new Error(data.error || 'Failed'); }
     } catch (err) {
       setPhase('error');
       setError(err instanceof Error ? err.message : 'Error');
     }
-  }, [authFetch, style, appearance, isGuest, t, startPolling]);
+  }, [authFetch, style, appearance, isGuest, t, startPolling, quota, loadQuota]);
 
   const handleActivate = useCallback(() => {
     if (previewData) {
@@ -448,6 +503,77 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               {t('expr.intro')}
             </p>
           </div>
+
+          {/* Cost breakdown: why we need to rate-limit */}
+          <div style={{
+            padding: '12px 14px', borderRadius: 10, marginBottom: 12,
+            background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)',
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8,
+            }}>
+              <span style={{ color: '#ffb300', fontSize: 12, fontWeight: 600 }}>{t('expr.cost_title')}</span>
+              <span style={{ color: '#ffb300', fontSize: 13, fontWeight: 700 }}>
+                {fmtUsd(COST_TOTAL[0])}–{fmtUsd(COST_TOTAL[1])}
+              </span>
+            </div>
+            {COST_ITEMS.map((it) => (
+              <div key={it.key} style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7,
+              }}>
+                <span>{t(`expr.cost.${it.key}`)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtUsd(it.usd[0])}–{fmtUsd(it.usd[1])}
+                </span>
+              </div>
+            ))}
+            <p style={{
+              color: 'rgba(255,255,255,0.4)', fontSize: 11, lineHeight: 1.5,
+              margin: '8px 0 0', fontStyle: 'italic',
+            }}>
+              {t('expr.cost_note_cheaper_coming')}
+            </p>
+          </div>
+
+          {/* Quota: 1/day, 2/5 days */}
+          {quota && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+              background: quota.allowed ? 'rgba(76,175,80,0.06)' : 'rgba(255,82,82,0.08)',
+              border: `1px solid ${quota.allowed ? 'rgba(76,175,80,0.25)' : 'rgba(255,82,82,0.25)'}`,
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              }}>
+                <span style={{
+                  color: quota.allowed ? '#81c784' : '#ff8a80',
+                  fontSize: 12, fontWeight: 600,
+                }}>
+                  {t('expr.quota_title')}
+                </span>
+                <span style={{
+                  color: 'rgba(255,255,255,0.7)', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {quota.used_5d}/{quota.limit_5d}
+                </span>
+              </div>
+              <p style={{
+                color: 'rgba(255,255,255,0.5)', fontSize: 11, lineHeight: 1.5, margin: '4px 0 0',
+              }}>
+                {quota.allowed
+                  ? t('expr.quota_rule')
+                  : t(quota.reason === 'daily_limit' ? 'expr.quota_daily_blocked' : 'expr.quota_window_blocked', {
+                      when: quota.next_available_at
+                        ? new Date(quota.next_available_at).toLocaleString(language === 'zh-CN' ? 'zh-CN' : 'en-US', {
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                          })
+                        : '',
+                    })}
+              </p>
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
             <textarea value={appearance} onChange={(e) => handleAppearanceChange(e.target.value)}
@@ -498,10 +624,14 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             </div>
           </div>
           {error && <p style={{ color: '#ff5252', fontSize: 12, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
-          <button onClick={handleGenerate} style={{
+          <button onClick={handleGenerate} disabled={!!(quota && !quota.allowed)} style={{
             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-            background: 'linear-gradient(135deg, #7c4dff, #448aff)',
-            color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+            background: quota && !quota.allowed
+              ? 'rgba(255,255,255,0.1)'
+              : 'linear-gradient(135deg, #7c4dff, #448aff)',
+            color: quota && !quota.allowed ? 'rgba(255,255,255,0.4)' : '#fff',
+            fontSize: 15, fontWeight: 600,
+            cursor: quota && !quota.allowed ? 'not-allowed' : 'pointer',
           }}>{t('expr.generate_btn')}</button>
           <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, textAlign: 'center', marginTop: 8 }}>{t('expr.generate_time')}</p>
         </>)}

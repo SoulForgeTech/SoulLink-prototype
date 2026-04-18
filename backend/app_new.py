@@ -4072,6 +4072,90 @@ def clear_persona():
 
 # ==================== Expression Generation ====================
 
+# Cost-limit policy: Live Portrait uses Kling/Wan video + BiRefNet, ~$2.50-$4.00/run.
+# Cap users to 1 full generation per 24h and at most 2 per 5 days until we ship a cheaper pipeline.
+EXPRESSION_DAILY_WINDOW_SEC = 24 * 3600
+EXPRESSION_MULTI_WINDOW_SEC = 5 * 24 * 3600
+EXPRESSION_MULTI_WINDOW_LIMIT = 2
+
+
+def _get_expression_quota(user_id):
+    """Return quota status for a user.
+
+    Returns dict: {allowed, reason, next_available_at (iso|None),
+                   used_24h, used_5d, limit_5d, log (list of iso timestamps within 5d)}
+    """
+    import datetime as _dt
+    now = _dt.datetime.utcnow()
+    user = db.db["users"].find_one({"_id": user_id}, {"settings.expression_generation_log": 1}) or {}
+    raw_log = (user.get("settings", {}) or {}).get("expression_generation_log", []) or []
+
+    # Normalize to datetime, drop entries older than 5d window
+    entries = []
+    for ts in raw_log:
+        try:
+            if isinstance(ts, _dt.datetime):
+                dt = ts
+            else:
+                dt = _dt.datetime.fromisoformat(str(ts).replace("Z", ""))
+            if (now - dt).total_seconds() <= EXPRESSION_MULTI_WINDOW_SEC:
+                entries.append(dt)
+        except Exception:
+            continue
+    entries.sort(reverse=True)
+
+    in_24h = [dt for dt in entries if (now - dt).total_seconds() <= EXPRESSION_DAILY_WINDOW_SEC]
+    in_5d = entries  # already trimmed to 5d
+
+    allowed = True
+    reason = ""
+    next_available = None
+
+    if in_24h:
+        allowed = False
+        reason = "daily_limit"
+        next_available = in_24h[0] + _dt.timedelta(seconds=EXPRESSION_DAILY_WINDOW_SEC)
+    elif len(in_5d) >= EXPRESSION_MULTI_WINDOW_LIMIT:
+        allowed = False
+        reason = "window_limit"
+        # Oldest entry in the 5d window defines when a slot frees up
+        oldest = min(in_5d)
+        next_available = oldest + _dt.timedelta(seconds=EXPRESSION_MULTI_WINDOW_SEC)
+
+    return {
+        "allowed": allowed,
+        "reason": reason,
+        "next_available_at": next_available.isoformat() + "Z" if next_available else None,
+        "used_24h": len(in_24h),
+        "used_5d": len(in_5d),
+        "limit_5d": EXPRESSION_MULTI_WINDOW_LIMIT,
+        "log": [dt.isoformat() + "Z" for dt in entries],
+    }
+
+
+def _record_expression_generation(user_id):
+    """Append a timestamp and prune entries older than 5d in one update."""
+    import datetime as _dt
+    now = _dt.datetime.utcnow()
+    cutoff = now - _dt.timedelta(seconds=EXPRESSION_MULTI_WINDOW_SEC)
+    # Fetch, filter, rewrite — keeps the array small and self-cleaning.
+    user = db.db["users"].find_one({"_id": user_id}, {"settings.expression_generation_log": 1}) or {}
+    raw_log = (user.get("settings", {}) or {}).get("expression_generation_log", []) or []
+    kept = []
+    for ts in raw_log:
+        try:
+            dt = ts if isinstance(ts, _dt.datetime) else _dt.datetime.fromisoformat(str(ts).replace("Z", ""))
+            if dt > cutoff:
+                kept.append(dt)
+        except Exception:
+            continue
+    kept.append(now)
+    db.db["users"].update_one(
+        {"_id": user_id},
+        {"$set": {"settings.expression_generation_log": kept}},
+    )
+
+
 @app.route("/api/characters/generate-expressions", methods=["POST"])
 @login_required
 def generate_expressions():
@@ -4081,6 +4165,17 @@ def generate_expressions():
     """
     user_id = get_current_user_id()
     data = request.get_json() or {}
+
+    quota = _get_expression_quota(user_id)
+    if not quota["allowed"]:
+        return jsonify({
+            "error": "rate_limited",
+            "reason": quota["reason"],
+            "next_available_at": quota["next_available_at"],
+            "used_24h": quota["used_24h"],
+            "used_5d": quota["used_5d"],
+            "limit_5d": quota["limit_5d"],
+        }), 429
 
     appearance = data.get("appearance", "")
     style = data.get("style", "anime")
@@ -4205,10 +4300,22 @@ def generate_expressions():
                 {"$set": {"status": "error", "progress": str(e)}},
             )
 
+    # Count this attempt against the user's quota BEFORE launching the thread.
+    # We charge on start (not on completion) so failed runs still protect against abuse —
+    # the paid API calls kick off inside the thread and can't be refunded cleanly.
+    _record_expression_generation(user_id)
+
     t = threading.Thread(target=_run_generation, daemon=True)
     t.start()
 
     return jsonify({"job_id": str(job_id), "status": "started"})
+
+
+@app.route("/api/characters/expression-quota", methods=["GET"])
+@login_required
+def expression_quota():
+    """Return the current user's Live Portrait generation quota state."""
+    return jsonify(_get_expression_quota(get_current_user_id()))
 
 
 @app.route("/api/characters/translate-appearance", methods=["POST"])
