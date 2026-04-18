@@ -105,6 +105,38 @@ function readUserSettings(): Partial<SettingsState> {
   }
 }
 
+/**
+ * Map a server `user.settings` object (snake_case keys from MongoDB) to a
+ * Partial<SettingsState> (camelCase keys). Use with `updateSettings` after
+ * login / token refresh so cross-device state (Live Portrait, companion name,
+ * etc.) hydrates the Redux slice even when localStorage was empty at boot.
+ */
+export function settingsFromUser(user: unknown): Partial<SettingsState> {
+  if (!user || typeof user !== 'object') return {};
+  const s = ((user as { settings?: Record<string, unknown> }).settings ?? {}) as Record<string, unknown>;
+  const out: Partial<SettingsState> = {};
+  if (typeof s.model === 'string') out.model = s.model;
+  if (typeof s.companion_name === 'string') out.companionName = s.companion_name;
+  if (typeof s.companion_avatar === 'string') out.companionAvatar = s.companion_avatar;
+  if (typeof s.chat_background === 'string') out.chatBackground = s.chat_background;
+  if (typeof s.custom_background_url === 'string') out.customBackgroundUrl = s.custom_background_url;
+  if (typeof s.user_bubble_color === 'string') out.userBubbleColor = s.user_bubble_color;
+  if (typeof s.voice_id === 'string') out.voicePresetId = s.voice_id;
+  if (typeof s.tts_enabled === 'boolean') out.ttsEnabled = s.tts_enabled;
+  if (typeof s.kb_enabled === 'boolean') out.kbEnabled = s.kb_enabled;
+  if (typeof s.custom_persona_active === 'boolean') out.customPersonaActive = s.custom_persona_active;
+  if (s.character_expressions !== undefined) {
+    out.characterExpressions = s.character_expressions as CharacterExpressions | null;
+  }
+  if (s.character_display_mode === 'micro' || s.character_display_mode === 'full' || s.character_display_mode === 'hidden') {
+    out.characterDisplayMode = s.character_display_mode;
+  }
+  if (s.expression_style === 'anime' || s.expression_style === 'realistic' || s.expression_style === '3d' || s.expression_style === 'illustration') {
+    out.expressionStyle = s.expression_style;
+  }
+  return out;
+}
+
 // ==================== Initial state ====================
 
 const persisted = readUserSettings();

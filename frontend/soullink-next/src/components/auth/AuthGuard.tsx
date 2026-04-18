@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { setCredentials, logout } from '@/store/authSlice';
+import { settingsFromUser, updateSettings } from '@/store/settingsSlice';
 import { verifyToken, refreshToken as refreshTokenApi } from '@/lib/api/auth';
 
 interface AuthGuardProps {
@@ -52,6 +53,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
                     user: result.user,
                   }),
                 );
+                dispatch(updateSettings(settingsFromUser(result.user)));
               }
             }
           } catch {
@@ -88,6 +90,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
               user: mergedUser,
             }),
           );
+          // Re-hydrate settings slice from the merged (server ∪ localStorage)
+          // user so cross-device fields like Live Portrait survive new-browser
+          // login — the slice's boot-time read ran before we had any user.
+          dispatch(updateSettings(settingsFromUser(mergedUser)));
           setChecking(false);
         } else {
           // Both token and refresh failed -- clear and redirect

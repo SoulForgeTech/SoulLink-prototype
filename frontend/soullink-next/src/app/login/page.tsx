@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setCredentials } from '@/store/authSlice';
+import { settingsFromUser, updateSettings } from '@/store/settingsSlice';
 import { enterGuestMode } from '@/store/guestSlice';
 import { googleCallback } from '@/lib/api/auth';
 import { initGuestSession } from '@/lib/api/guest';
@@ -52,6 +53,10 @@ export default function LoginPage() {
             user: data.user,
           }),
         );
+        // Hydrate the settings slice so cross-device state (Live Portrait,
+        // companion name, etc.) shows up on a fresh browser where the slice's
+        // boot-time localStorage read returned nothing.
+        dispatch(updateSettings(settingsFromUser(data.user)));
 
         // Migrate guest conversations if coming from guest mode
         const guestSessionId = localStorage.getItem('soullink_guest_session_id');
