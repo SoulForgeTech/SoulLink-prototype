@@ -88,6 +88,69 @@ def get_previous_conversation_context(user_id, current_conv_id, db_instance, max
         return ""
 
 
+# ==================== AnythingLLM Thread per Conversation ====================
+
+def ensure_thread_for_conversation(api, conversation, db_instance):
+    """
+    Make sure the given MongoDB conversation is backed by a dedicated AnythingLLM
+    thread. Different threads in the same workspace keep their chat histories
+    isolated, so two browser tabs can't bleed into each other.
+
+    Returns (thread_slug, history_prefix):
+      - thread_slug: str slug to pass into send_message / send_message_stream, or
+        None if thread creation failed (caller should fall back to workspace-level
+        chat so the user still gets a reply).
+      - history_prefix: string to prepend to the user message the first time a
+        pre-existing conversation is migrated onto a new thread. Empty otherwise.
+    """
+    log = logging.getLogger(__name__)
+    thread_slug = conversation.get("anythingllm_thread_slug")
+    if thread_slug:
+        return thread_slug, ""
+
+    title = conversation.get("title") or f"conv-{str(conversation['_id'])[-8:]}"
+    result = api.create_thread(name=title[:60])
+    if not result.get("success") or not result.get("slug"):
+        log.warning(
+            f"[THREAD] Failed to create AnythingLLM thread for conv "
+            f"{conversation['_id']}: {result.get('error')}"
+        )
+        return None, ""
+
+    thread_slug = result["slug"]
+    try:
+        db_instance.db["conversations"].update_one(
+            {"_id": conversation["_id"]},
+            {"$set": {"anythingllm_thread_slug": thread_slug}}
+        )
+    except Exception as e:
+        log.warning(f"[THREAD] Persisting thread_slug failed (non-fatal): {e}")
+
+    # Migrate: if this conversation already has messages, the new thread starts
+    # empty — replay the last ~10 turns into the first message so the AI
+    # continues smoothly instead of acting like it just met the user.
+    existing_msgs = conversation.get("messages") or []
+    if existing_msgs:
+        last_msgs = existing_msgs[-10:]
+        lines = []
+        for m in last_msgs:
+            role_label = "User" if m.get("role") == "user" else "Assistant"
+            content = (m.get("content") or "").strip()[:500]
+            if content:
+                lines.append(f"{role_label}: {content}")
+        if lines:
+            history_prefix = (
+                "[以下是我们之前的对话记录，请基于这些上下文自然地继续对话，"
+                "不要主动提及这段回顾]\n"
+                + "\n".join(lines)
+                + "\n[对话记录结束]\n\n"
+            )
+            log.info(f"[THREAD] Injected {len(lines)} past messages into new thread '{thread_slug}'")
+            return thread_slug, history_prefix
+
+    return thread_slug, ""
+
+
 # ==================== Shared Knowledge Base (Psychology) ====================
 KB_WORKSPACE_SLUG = os.getenv("KB_WORKSPACE_SLUG", "soullink_test")
 
@@ -1370,6 +1433,9 @@ def chat():
 
         logger.info(f"AnythingLLM API client created successfully")
 
+        # Per-conversation AnythingLLM thread isolation (fixes concurrent-session merging).
+        thread_slug, thread_history_prefix = ensure_thread_for_conversation(api, conversation, db)
+
         # 获取最近的对话历史作为上下文
         recent_messages = conversation.get("messages", [])[-10:]  # 最近10条消息
 
@@ -1446,12 +1512,18 @@ def chat():
                 message_to_send = prev_context + message_to_send
                 logger.info("[CONTEXT] Injected previous conversation context into new chat")
 
+        # Thread history replay for conversations that existed before threads were
+        # introduced (first message on a freshly-created thread).
+        if thread_history_prefix:
+            message_to_send = thread_history_prefix + message_to_send
+
         # 发送消息
         logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
             message_to_send,
             session_id=str(conversation["_id"]),
-            attachments=attachments
+            attachments=attachments,
+            thread_slug=thread_slug,
         )
         logger.info(f"Response received: {response}")
 
@@ -2041,6 +2113,22 @@ def chat_stream():
                     _user_image_b64 = cs.split(",", 1)[-1] if "," in cs else cs
                     break
 
+        # Per-conversation AnythingLLM thread — isolates concurrent browser tabs
+        # so streams from different conversations can't bleed into each other.
+        try:
+            _thread_api = AnythingLLMAPI(
+                base_url=workspace_manager.anythingllm_base_url,
+                api_key=workspace_manager.anythingllm_api_key,
+                workspace_slug=workspace_slug
+            )
+            thread_slug, thread_history_prefix = ensure_thread_for_conversation(_thread_api, conversation, db)
+        except Exception as e:
+            logger.warning(f"[THREAD] Setup failed, falling back to workspace-level chat: {e}")
+            thread_slug, thread_history_prefix = None, ""
+
+        if thread_history_prefix:
+            message_to_send = thread_history_prefix + message_to_send
+
         # Pre-load all variables needed inside generator
         conv_id = conversation["_id"]
         conv_id_str = str(conv_id)
@@ -2083,7 +2171,8 @@ def chat_stream():
                 for c in api.send_message_stream(
                     message_to_send,
                     session_id=conv_id_str,
-                    attachments=attachments
+                    attachments=attachments,
+                    thread_slug=thread_slug,
                 ):
                     chunk_queue.put(("chunk", c))
                 chunk_queue.put(("done", None))
@@ -2641,6 +2730,9 @@ def voice_chat_stream():
                 workspace_slug=workspace_slug
             )
 
+            # Per-conversation thread isolation (see ensure_thread_for_conversation).
+            voice_thread_slug, voice_thread_prefix = ensure_thread_for_conversation(api, conversation, db)
+
             # ⚡ PERF: Skip web search during voice calls — latency matters more than search quality
             message_to_send = transcript
         except Exception as e:
@@ -2688,6 +2780,8 @@ def voice_chat_stream():
         # AnythingLLM chat history and pollutes subsequent text chats,
         # causing all replies to be unnaturally short.
         message_with_prefix = message_to_send
+        if voice_thread_prefix:
+            message_with_prefix = voice_thread_prefix + message_with_prefix
 
         full_reply = ""
         sentence_buffer = ""
@@ -2709,6 +2803,7 @@ def voice_chat_stream():
             for chunk in api.send_message_stream(
                 message_with_prefix,
                 session_id=str(conversation["_id"]),
+                thread_slug=voice_thread_slug,
             ):
                 if chunk.get("error"):
                     err_msg = chunk["error"] if isinstance(chunk["error"], str) else "LLM error"
@@ -2988,12 +3083,44 @@ def delete_conversation(conv_id):
     user_id = get_current_user_id()
 
     try:
-        success = db.delete_conversation(ObjectId(conv_id), user_id)
+        conv_oid = ObjectId(conv_id)
     except Exception:
         return jsonify({"error": "Invalid conversation ID"}), 400
 
+    # Look up the thread slug before we soft-delete, so we can clean up the
+    # AnythingLLM-side thread too (avoid leaking orphan threads per workspace).
+    thread_slug_to_drop = None
+    try:
+        conv_doc = db.db["conversations"].find_one(
+            {"_id": conv_oid, "user_id": user_id},
+            {"anythingllm_thread_slug": 1}
+        )
+        if conv_doc:
+            thread_slug_to_drop = conv_doc.get("anythingllm_thread_slug")
+    except Exception as e:
+        logger.warning(f"[THREAD] Thread lookup on delete failed (non-fatal): {e}")
+
+    success = db.delete_conversation(conv_oid, user_id)
     if not success:
         return jsonify({"error": "Conversation not found or already deleted"}), 404
+
+    if thread_slug_to_drop:
+        def _drop_thread():
+            try:
+                workspace_result = workspace_manager.get_or_create_workspace(user_id)
+                if not workspace_result.get("success"):
+                    return
+                api = AnythingLLMAPI(
+                    base_url=workspace_manager.anythingllm_base_url,
+                    api_key=workspace_manager.anythingllm_api_key,
+                    workspace_slug=workspace_result["workspace"]["slug"],
+                )
+                api.delete_thread(thread_slug_to_drop)
+            except Exception as e:
+                logger.warning(f"[THREAD] Background delete of '{thread_slug_to_drop}' failed: {e}")
+
+        import threading as _thr
+        _thr.Thread(target=_drop_thread, daemon=True).start()
 
     return jsonify({"success": True})
 
@@ -3910,14 +4037,7 @@ def import_lore():
                 file_bytes = file.read()
 
                 if ext == ".pdf":
-                    try:
-                        from pypdf import PdfReader
-                        import io
-                        reader = PdfReader(io.BytesIO(file_bytes))
-                        text_content = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
-                    except Exception as e:
-                        logger.error(f"[LORE] PDF extraction failed: {e}")
-                        return jsonify({"error": f"Failed to read PDF: {e}"}), 400
+                    return jsonify({"error": "PDF is not supported yet. Please use TXT, MD, or DOCX."}), 400
                 elif ext == ".docx":
                     try:
                         from docx import Document
@@ -3932,7 +4052,7 @@ def import_lore():
                     try:
                         text_content = file_bytes.decode("utf-8")
                     except UnicodeDecodeError:
-                        return jsonify({"error": "File must be UTF-8 text, PDF, or DOCX"}), 400
+                        return jsonify({"error": "File must be UTF-8 text or DOCX"}), 400
         # 也可能同时有 text 字段
         if not text_content:
             text_content = request.form.get("text", "").strip()
@@ -3944,8 +4064,10 @@ def import_lore():
     if not text_content:
         return jsonify({"error": "No content provided (text or file required)"}), 400
 
-    if len(text_content) > 100000:
-        return jsonify({"error": "Content too large (max 100K chars)"}), 400
+    # AnythingLLM handles chunking/vectorization server-side, so we only need a
+    # sanity upper bound to avoid OOM on the temp file. 5M chars ≈ 5 MB text.
+    if len(text_content) > 5_000_000:
+        return jsonify({"error": "Content too large (max 5M chars)"}), 400
 
     try:
         import tempfile

@@ -167,7 +167,7 @@
     },
     "file": {
       "too_large": "文件过大（最大10MB）",
-      "unsupported": "不支持的文件类型。支持：图片、PDF、TXT、MD、CSV、JSON"
+      "unsupported": "不支持的文件类型。支持：图片、TXT、MD、CSV、JSON"
     }
   },
   "loading": {

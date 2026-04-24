@@ -166,7 +166,7 @@
     },
     "file": {
       "too_large": "File too large (max 10MB)",
-      "unsupported": "Unsupported file type. Supported: images, PDF, TXT, MD, CSV, JSON"
+      "unsupported": "Unsupported file type. Supported: images, TXT, MD, CSV, JSON"
     }
   },
   "loading": {

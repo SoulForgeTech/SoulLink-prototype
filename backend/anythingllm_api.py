@@ -226,13 +226,19 @@ class AnythingLLMAPI:
             logging.error(error_msg)
             return {'status_code': 500, 'error': error_msg}
 
-    def send_message(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None) -> Dict[str, Any]:
+    def send_message(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None, thread_slug: Optional[str] = None) -> Dict[str, Any]:
         """
         Send a message to the workspace.
         FIXED: Improved source extraction and response formatting.
         Supports attachments (base64 encoded) for AnythingLLM v1.9.1+.
+
+        If `thread_slug` is provided, the message is sent to the thread-scoped
+        endpoint so concurrent conversations stay isolated from each other.
         """
-        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/chat"
+        if thread_slug:
+            url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/thread/{thread_slug}/chat"
+        else:
+            url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/chat"
         payload = {
             "message": message,
             "mode": mode,
@@ -334,15 +340,21 @@ class AnythingLLMAPI:
                 'full_response': response
             }
 
-    def send_message_stream(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None):
+    def send_message_stream(self, message: str, mode: str = "chat", session_id: Optional[str] = None, attachments: list = None, thread_slug: Optional[str] = None):
         """
         Stream a message response from AnythingLLM workspace.
         Uses the /stream-chat endpoint for real-time token streaming.
 
         Yields dicts: {"textResponse": "token_text", "close": bool, "error": bool/str}
         On the final chunk, "close" is True and may include "sources".
+
+        If `thread_slug` is provided, streams from the thread-scoped endpoint
+        so concurrent conversations can't bleed chat history into each other.
         """
-        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/stream-chat"
+        if thread_slug:
+            url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/thread/{thread_slug}/stream-chat"
+        else:
+            url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/stream-chat"
         payload = {
             "message": message,
             "mode": mode,
@@ -467,6 +479,57 @@ class AnythingLLMAPI:
                 
         except Exception as e:
             logging.error(f"Error adding document to workspace: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def create_thread(self, name: Optional[str] = None, slug: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Create a new thread inside the workspace. Each thread has its own isolated
+        chat history, which prevents concurrent conversations (e.g. two browser
+        tabs) from mixing replies.
+
+        Returns {'success': bool, 'slug': str|None, 'raw': dict}.
+        """
+        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/thread/new"
+        payload: Dict[str, Any] = {}
+        if name:
+            payload["name"] = name
+        if slug:
+            payload["slug"] = slug
+
+        try:
+            response = self._post_request(url, payload=payload)
+            if response.get('status_code') == 200:
+                data = response.get('data', {}) or {}
+                thread = data.get('thread') or data
+                thread_slug = thread.get('slug') if isinstance(thread, dict) else None
+                if thread_slug:
+                    logging.info(f"✅ Created thread '{thread_slug}' in workspace '{self.workspace_slug}'")
+                    return {'success': True, 'slug': thread_slug, 'raw': data}
+                logging.error(f"Thread create returned 200 but no slug: {data}")
+                return {'success': False, 'error': 'No thread slug in response', 'raw': data}
+            logging.error(f"Failed to create thread: {response}")
+            return {'success': False, 'error': response}
+        except Exception as e:
+            logging.error(f"Error creating thread: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def delete_thread(self, thread_slug: str) -> Dict[str, Any]:
+        """
+        Delete a thread from the workspace. Safe to call even if the thread no
+        longer exists (we swallow 404s).
+        """
+        if not thread_slug:
+            return {'success': False, 'error': 'Missing thread_slug'}
+        url = f"{self.base_url}/api/v1/workspace/{self.workspace_slug}/thread/{thread_slug}"
+        try:
+            response = requests.delete(url, headers=self.headers, timeout=15)
+            if response.status_code in (200, 204, 404):
+                logging.info(f"Thread '{thread_slug}' deleted (status {response.status_code})")
+                return {'success': True, 'status_code': response.status_code}
+            logging.error(f"Failed to delete thread '{thread_slug}': HTTP {response.status_code} {response.text[:200]}")
+            return {'success': False, 'error': f'HTTP {response.status_code}'}
+        except Exception as e:
+            logging.error(f"Error deleting thread '{thread_slug}': {e}")
             return {'success': False, 'error': str(e)}
 
     def remove_document_from_workspace(self, document_name: str) -> Dict[str, Any]:
