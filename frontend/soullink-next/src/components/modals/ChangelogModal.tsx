@@ -44,6 +44,17 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.2.3-beta', date: '2026-04-24',
+    changes: [
+      { badge: 'feat', text: 'Emoji density control — pick how liberally I sprinkle emojis (Off / Light / Normal / Lots)', text_zh: 'Emoji 密度可调 — 自己选 AI 回复里 emoji 的多少（关/少/正常/多）' },
+      { badge: 'feat', text: 'Memory receipts in chat — a small chip under my reply shows what just got remembered, tap to jump into the Memory panel', text_zh: '聊天里显示记忆回执 — AI 回复下方小提示告诉你刚刚记住了什么，点一下直接跳到记忆面板' },
+      { badge: 'feat', text: 'Edit memories inline — fix the text or change the tier of any memory without deleting it', text_zh: '记忆可直接编辑 — 改文字、改层级（核心/重要/近期），不用先删再加' },
+      { badge: 'feat', text: 'Manually add memories — type a fact you want me to remember, stored exactly as you wrote it', text_zh: '手动添加记忆 — 想让 AI 记住什么，直接写进去，原样保存不被改写' },
+      { badge: 'fix', text: 'Each conversation now has its own thread — opening multiple tabs no longer makes replies bleed across chats', text_zh: '每个对话独立上下文 — 同时开多个标签页不会再串话了' },
+      { badge: 'opt', text: 'Knowledge base upload limit raised from 100K to 5M characters — long novels and codex files now fit', text_zh: '知识库单次上传上限从 10 万字提升到 500 万字 — 长篇小说和角色资料集可以整份导入了' },
+    ],
+  },
+  {
     version: 'v0.2.2-beta', date: '2026-04-16',
     changes: [
       { badge: 'feat', text: 'Live Portrait (Beta) — animated avatar with 8 emotions that react to your conversation mood', text_zh: '微立绘（内测）— 8 种表情的动态头像，聊天时跟着情绪自动切换' },
