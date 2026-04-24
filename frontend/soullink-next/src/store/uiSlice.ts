@@ -45,6 +45,11 @@ interface UIState {
   cropImageSrc: string;
   /** Resulting cropped avatar blob URL (set by crop modal, consumed by avatar modal) */
   croppedAvatarUrl: string;
+  /**
+   * Memory ids to briefly highlight when the Memory panel opens (e.g. clicked
+   * from a chat receipt chip). Cleared when the panel consumes them.
+   */
+  memoryHighlightIds: string[];
 }
 
 const initialState: UIState = {
@@ -77,6 +82,7 @@ const initialState: UIState = {
   },
   cropImageSrc: '',
   croppedAvatarUrl: '',
+  memoryHighlightIds: [],
 };
 
 // ==================== Slice ====================
@@ -199,6 +205,16 @@ const uiSlice = createSlice({
     setCroppedAvatarUrl(state, action: PayloadAction<string>) {
       state.croppedAvatarUrl = action.payload;
     },
+
+    /** Set ids to highlight the next time the memory panel renders */
+    setMemoryHighlight(state, action: PayloadAction<string[]>) {
+      state.memoryHighlightIds = action.payload;
+    },
+
+    /** Clear highlight ids — MemoryPanel calls this after consuming */
+    clearMemoryHighlight(state) {
+      state.memoryHighlightIds = [];
+    },
   },
 });
 
@@ -216,6 +232,8 @@ export const {
   closeGame,
   setCropImageSrc,
   setCroppedAvatarUrl,
+  setMemoryHighlight,
+  clearMemoryHighlight,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

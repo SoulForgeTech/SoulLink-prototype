@@ -14,7 +14,7 @@
  * Auto-scrolls to the bottom on new messages.
  */
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppSelector } from '@/store';
 import { shouldShowTimeSeparator, formatMessageTime } from '@/lib/utils';
 import type { Message } from '@/types';
@@ -24,6 +24,7 @@ import ThinkingBubble from './ThinkingBubble';
 import TypingIndicator from './TypingIndicator';
 import StreamingBubble from './StreamingBubble';
 import PersonaDetectedBanner from './PersonaDetectedBanner';
+import MemoryReceiptChip from './MemoryReceiptChip';
 
 // ==================== i18n ====================
 
@@ -106,12 +107,42 @@ export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
   const isStreaming = useAppSelector((s) => s.chat.isStreaming);
   const thinkingContent = useAppSelector((s) => s.chat.thinkingContent);
   const language = useAppSelector((s) => s.settings.language);
+  const conversationId = useAppSelector((s) => s.conversations.currentId);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMsgCountRef = useRef(0);
   // Track how many messages were loaded from history (no entrance animation for these)
   const historyCountRef = useRef(0);
+
+  // Anchor for the memory receipt chip: attaches under the most recent AI
+  // message that was just produced by a user's send (not loaded from history).
+  // Key = messages.length at the moment we saw the new assistant message;
+  // afterIso = the preceding user message's timestamp, so the poller only
+  // picks up receipts created by this turn.
+  const [receiptAnchor, setReceiptAnchor] = useState<{
+    index: number;
+    afterIso: string;
+    conversationId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const prev = prevMsgCountRef.current;
+    const curr = messages.length;
+    // First load / history fill: don't anchor.
+    if (prev === 0 || curr <= prev || curr === historyCountRef.current) return;
+    const last = messages[curr - 1];
+    const prevMsg = curr >= 2 ? messages[curr - 2] : null;
+    if (!last || last.role !== 'assistant' || !prevMsg || prevMsg.role !== 'user') return;
+    if (!conversationId) return;
+    const afterIso = prevMsg.timestamp || new Date(Date.now() - 30_000).toISOString();
+    setReceiptAnchor({ index: curr - 1, afterIso, conversationId });
+  }, [messages, conversationId]);
+
+  // Reset the anchor when switching conversations.
+  useEffect(() => {
+    setReceiptAnchor(null);
+  }, [conversationId]);
 
   // Auto-scroll to bottom on new messages or streaming updates.
   useEffect(() => {
@@ -226,6 +257,17 @@ export default function MessageList({ onTTS, onImageEdit }: MessageListProps) {
                         onTTS={onTTS}
                         noAnimate={isHistory}
                         onImageEdit={onImageEdit}
+                      />
+                    )}
+
+                    {/* Memory extraction receipt — only under the freshly-added AI bubble */}
+                    {receiptAnchor
+                      && receiptAnchor.index === index
+                      && !msg.is_voice_call
+                      && !msg.audio_url && (
+                      <MemoryReceiptChip
+                        conversationId={receiptAnchor.conversationId}
+                        afterIso={receiptAnchor.afterIso}
                       />
                     )}
                   </div>

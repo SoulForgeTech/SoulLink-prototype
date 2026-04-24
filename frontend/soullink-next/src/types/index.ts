@@ -21,6 +21,7 @@ export interface UserSettings {
   model?: string;
   image_appearance?: string;
   language?: string;
+  emoji_density?: 'none' | 'low' | 'medium' | 'high';
 }
 
 export interface User {

@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { closeModal, setSettingsTab, openModal, setCropImageSrc, setCroppedAvatarUrl } from '@/store/uiSlice';
-import { updateSettings, setCustomPersonaActive } from '@/store/settingsSlice';
+import { updateSettings, setCustomPersonaActive, setEmojiDensity, type EmojiDensity } from '@/store/settingsSlice';
 import { setUser } from '@/store/authSlice';
 import { MODEL_DEFINITIONS, SUBTYPES } from '@/lib/constants';
 import { useT } from '@/hooks/useT';
@@ -265,6 +265,7 @@ export default function SettingsModal() {
   const voicePresets = useAppSelector((s) => s.voice.presets);
   const model = useAppSelector((s) => s.settings.model);
   const kbEnabled = useAppSelector((s) => s.settings.kbEnabled);
+  const emojiDensity = useAppSelector((s) => s.settings.emojiDensity);
   const customPersonaActive = useAppSelector((s) => s.settings.customPersonaActive);
   const croppedAvatarUrl = useAppSelector((s) => s.ui.croppedAvatarUrl);
 
@@ -1516,6 +1517,59 @@ export default function SettingsModal() {
                     }}
                   />
                 </button>
+              </div>
+
+              {/* Emoji Density Selector */}
+              <div style={{
+                ...formGroupStyle,
+                padding: 12,
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.5)',
+                border: '1px solid rgba(0,0,0,0.1)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 500, color: '#1a202c', margin: 0 }}>
+                      {t('settings.emoji.title')}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: '#a0aec0', marginTop: 2 }}>
+                      {t('settings.emoji.hint')}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                  {(['none', 'low', 'medium', 'high'] as const).map((d) => {
+                    const active = emojiDensity === d;
+                    const icon = d === 'none' ? '🚫' : d === 'low' ? '🙂' : d === 'medium' ? '😊' : '🥰';
+                    return (
+                      <button
+                        key={d}
+                        onClick={() => {
+                          dispatch(setEmojiDensity(d as EmojiDensity));
+                          apiUpdateSettings(authFetch, { emoji_density: d }).catch(console.error);
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          padding: '8px 4px',
+                          borderRadius: 8,
+                          border: `1px solid ${active ? '#6BA3D6' : 'rgba(0,0,0,0.1)'}`,
+                          background: active ? 'rgba(107,163,214,0.12)' : 'white',
+                          color: active ? '#2B6CB0' : '#4A5568',
+                          fontSize: '0.72rem',
+                          fontWeight: active ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{icon}</span>
+                        <span>{t(`settings.emoji.${d}`)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Custom Persona Section */}

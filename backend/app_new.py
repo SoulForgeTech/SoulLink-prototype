@@ -1057,6 +1057,170 @@ def delete_user_memory(memory_id):
         return jsonify({"error": str(e)}), 500
 
 
+_ALLOWED_TIERS = ("permanent", "long_term", "short_term")
+
+
+@app.route("/api/user/memories/<memory_id>", methods=["PATCH"])
+@login_required
+def update_user_memory(memory_id):
+    """更新记忆内容或层级 — 前端行内编辑使用"""
+    if os.getenv("MEM0_ENABLED", "false").lower() != "true":
+        return jsonify({"error": "Memory system not enabled"}), 400
+
+    data = request.get_json() or {}
+    new_fact = (data.get("fact") or "").strip() if data.get("fact") is not None else None
+    new_tier = data.get("tier")
+
+    if new_fact is not None and (len(new_fact) < 2 or len(new_fact) > 500):
+        return jsonify({"error": "fact must be 2-500 characters"}), 400
+    if new_tier is not None and new_tier not in _ALLOWED_TIERS:
+        return jsonify({"error": f"tier must be one of {_ALLOWED_TIERS}"}), 400
+    if new_fact is None and new_tier is None:
+        return jsonify({"error": "No updatable fields provided"}), 400
+
+    try:
+        from mem0_engine import _get_mem0, _calculate_expiry
+        m = _get_mem0()
+
+        # Fetch current record so we can preserve unchanged metadata fields
+        try:
+            current = m.get(memory_id)
+        except Exception:
+            current = None
+        current_meta = (current or {}).get("metadata", {}) or {}
+        current_fact = (current or {}).get("memory", "") or ""
+
+        tier = new_tier or current_meta.get("tier", "long_term")
+        fact = new_fact if new_fact is not None else current_fact
+        if not fact or len(fact.strip()) < 2:
+            # Tier-only edit where we couldn't recover the original text.
+            return jsonify({"error": "Unable to resolve memory content"}), 400
+        metadata = {
+            "tier": tier,
+            "expires_at": _calculate_expiry(tier),
+            "source": current_meta.get("source", "manual"),
+            "edited": True,
+        }
+        m.update(memory_id, data=fact, metadata=metadata)
+        return jsonify({
+            "success": True,
+            "memory": {"id": memory_id, "fact": fact, "tier": tier},
+        })
+    except Exception as e:
+        logger.error(f"[MEMORIES] Error updating memory {memory_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/memories", methods=["POST"])
+@login_required
+def create_user_memory():
+    """手动添加记忆 — 不走 LLM 抽取（infer=False）"""
+    user_id = get_current_user_id()
+    uid_str = str(user_id)
+
+    if os.getenv("MEM0_ENABLED", "false").lower() != "true":
+        return jsonify({"error": "Memory system not enabled"}), 400
+
+    data = request.get_json() or {}
+    fact = (data.get("fact") or "").strip()
+    tier = data.get("tier", "long_term")
+
+    if len(fact) < 2 or len(fact) > 500:
+        return jsonify({"error": "fact must be 2-500 characters"}), 400
+    if tier not in _ALLOWED_TIERS:
+        return jsonify({"error": f"tier must be one of {_ALLOWED_TIERS}"}), 400
+
+    try:
+        from mem0_engine import _get_mem0, _calculate_expiry, get_permanent_memories, MAX_PERMANENT
+        m = _get_mem0()
+
+        # Permanent cap: downgrade instead of rejecting so the fact still gets stored.
+        if tier == "permanent":
+            if len(get_permanent_memories(uid_str)) >= MAX_PERMANENT:
+                tier = "long_term"
+
+        metadata = {
+            "tier": tier,
+            "expires_at": _calculate_expiry(tier),
+            "source": "manual",
+        }
+        # infer=False tells mem0 to store the raw fact without LLM reinterpretation.
+        try:
+            result = m.add(messages=fact, user_id=uid_str, metadata=metadata, infer=False)
+        except TypeError:
+            # Older mem0 signature fallback
+            result = m.add(messages=[{"role": "user", "content": fact}], user_id=uid_str, metadata=metadata, infer=False)
+
+        new_id = None
+        events = result if isinstance(result, list) else (result or {}).get("results", [])
+        for ev in events:
+            if ev.get("event") == "ADD" and ev.get("id"):
+                new_id = ev.get("id")
+                break
+
+        return jsonify({
+            "success": True,
+            "memory": {"id": new_id, "fact": fact, "tier": tier},
+        })
+    except Exception as e:
+        logger.error(f"[MEMORIES] Error creating memory: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/<conversation_id>/memory_events", methods=["GET"])
+@login_required
+def get_conversation_memory_events(conversation_id):
+    """返回本次对话的记忆抽取回执（前端轮询调用）。
+
+    查询参数:
+      after: 可选，ISO 时间戳；只返回 created_at > after 的事件
+    """
+    user_id = get_current_user_id()
+    try:
+        conv_id = ObjectId(conversation_id)
+    except Exception:
+        return jsonify({"error": "Invalid conversation id"}), 400
+
+    # Authorization: only the conversation owner can read its events.
+    conv = db.get_conversation(conv_id, user_id)
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    from datetime import datetime as _dt
+    after_raw = request.args.get("after")
+    query = {"user_id": user_id, "conversation_id": conv_id}
+    if after_raw:
+        try:
+            # Accept trailing Z
+            after_dt = _dt.fromisoformat(after_raw.replace("Z", "+00:00"))
+            # Mongo stored naive UTC; strip tz for comparison
+            if after_dt.tzinfo is not None:
+                after_dt = after_dt.replace(tzinfo=None)
+            query["created_at"] = {"$gt": after_dt}
+        except (ValueError, TypeError):
+            pass
+
+    try:
+        events = list(
+            db.db["memory_events"]
+              .find(query)
+              .sort("created_at", 1)
+              .limit(50)
+        )
+        out = []
+        for ev in events:
+            out.append({
+                "id": str(ev["_id"]),
+                "created_at": ev["created_at"].isoformat() + "Z" if ev.get("created_at") else None,
+                "added": ev.get("added", []),
+                "updated": ev.get("updated", []),
+            })
+        return jsonify({"events": out})
+    except Exception as e:
+        logger.error(f"[MEMORIES] Error fetching memory events: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/user/settings", methods=["PUT"])
 @login_required
 def update_settings():
@@ -1068,7 +1232,7 @@ def update_settings():
         return jsonify({"error": "No data provided"}), 400
 
     # 只允许更新特定字段
-    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "custom_background_url", "voice_id", "voice_name", "kb_enabled"]
+    allowed_fields = ["theme", "language", "notifications_enabled", "model", "companion_name", "companion_avatar", "companion_gender", "companion_subtype", "companion_relationship", "chat_background", "custom_background_url", "voice_id", "voice_name", "kb_enabled", "emoji_density"]
     updates = {f"settings.{k}": v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
@@ -1156,8 +1320,8 @@ def update_settings():
             import traceback
             traceback.print_exc()
 
-    # 如果语言或AI昵称改变了，同步更新 system prompt
-    elif "language" in data or "companion_name" in data:
+    # 如果语言/AI昵称/emoji 密度改变了，同步更新 system prompt
+    elif "language" in data or "companion_name" in data or "emoji_density" in data:
         try:
             user = get_current_user()
             workspace_manager.update_system_prompt(
@@ -1856,13 +2020,28 @@ def chat():
                 for img in generated_images
             ]
 
-        # 异步提取记忆（不阻塞响应）
+        # 异步提取记忆（不阻塞响应），并写 memory_events 供前端轮询
         import threading
-        def _async_memory_extraction(uid, umsg, areply):
+        conv_id_for_memory = conversation["_id"]
+        def _async_memory_extraction(uid, umsg, areply, conv_id):
             try:
                 if os.environ.get("MEM0_ENABLED", "false").lower() == "true":
                     from mem0_engine import process_memory, cleanup_expired_memories
-                    process_memory(uid, umsg, areply)
+                    receipt = process_memory(uid, umsg, areply) or {}
+                    # Persist receipt so the UI can show "已记住：..." under the AI bubble.
+                    # Only write when there's something meaningful to show.
+                    if receipt.get("added") or receipt.get("updated"):
+                        try:
+                            from datetime import datetime as _dt
+                            db.db["memory_events"].insert_one({
+                                "user_id": uid,
+                                "conversation_id": conv_id,
+                                "added": receipt.get("added", []),
+                                "updated": receipt.get("updated", []),
+                                "created_at": _dt.utcnow(),
+                            })
+                        except Exception as e:
+                            logger.warning(f"[MEM0] Failed to persist receipt: {e}")
                     import random
                     if random.random() < 0.05:
                         cleanup_expired_memories(str(uid))
@@ -1873,7 +2052,7 @@ def chat():
                 logger.warning(f"[MEMORY] Async extraction error: {e}")
         threading.Thread(
             target=_async_memory_extraction,
-            args=(user_id, user_message, reply),
+            args=(user_id, user_message, reply, conv_id_for_memory),
             daemon=True
         ).start()
 

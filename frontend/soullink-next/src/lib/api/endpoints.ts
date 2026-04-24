@@ -37,6 +37,8 @@ export const USER = {
   MEMORIES: `${BASE}/api/user/memories`,
   /** Delete a specific memory */
   deleteMemory: (id: string) => `${BASE}/api/user/memories/${id}`,
+  /** Update a specific memory (PATCH) */
+  updateMemory: (id: string) => `${BASE}/api/user/memories/${id}`,
 } as const;
 
 // ==================== Chat ====================
@@ -57,6 +59,8 @@ export const CONVERSATIONS = {
   delete: (id: string) => `${BASE}/api/conversations/${id}`,
   /** Export all conversations */
   EXPORT_ALL: `${BASE}/api/conversations/export-all`,
+  /** Poll memory extraction receipts for a conversation */
+  memoryEvents: (id: string) => `${BASE}/api/conversations/${id}/memory_events`,
 } as const;
 
 // ==================== Voice ====================

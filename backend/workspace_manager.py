@@ -375,7 +375,33 @@ class WorkspaceManager:
             print(f"[PROMPT] Failed to generate subtype persona: {e}")
             return None
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False, companion_relationship: str = "lover") -> str:
+    # Emoji density guidelines injected into system prompt. Replaces the
+    # default emoji line in the template based on user setting.
+    EMOJI_DENSITY_LINES = {
+        "none": "- 不要使用任何 emoji / Do NOT use any emojis",
+        "low": "- emoji 极少，每条消息最多 1 个 / Use emojis very sparingly, max 1 per message",
+        "medium": "- emoji 自然 1-3个：😊 🥺 😤 💕",
+        "high": "- emoji 可以多用，2-5个自然表达情绪 / Use emojis freely, 2-5 per message to express emotion",
+    }
+    DEFAULT_EMOJI_DENSITY = "medium"
+
+    @classmethod
+    def _apply_emoji_density(cls, prompt: str, density: str) -> str:
+        """Replace the default emoji line in the system prompt with the
+        user-selected density guideline. Safe to call with any prompt — if
+        no matching line is found, the prompt is returned unchanged."""
+        if not density or density == cls.DEFAULT_EMOJI_DENSITY:
+            return prompt
+        replacement = cls.EMOJI_DENSITY_LINES.get(density)
+        if not replacement:
+            return prompt
+        # Match any existing emoji bullet regardless of template variant.
+        pattern = re.compile(r"^- emoji[^\n]*$", re.MULTILINE)
+        if pattern.search(prompt):
+            return pattern.sub(replacement, prompt, count=1)
+        return prompt
+
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False, companion_relationship: str = "lover", emoji_density: str = None) -> str:
         """构建完整的 system prompt"""
         # 自定义角色性格生效时，使用专用模板（不含固定的性别/girlfriend等设定）
         if use_custom_template:
@@ -470,6 +496,9 @@ This tag is invisible to the user — it's for the system to animate your avatar
 Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
 """.replace("{{companion_name}}", companion_name or self.DEFAULT_COMPANION_NAME)
 
+        # Apply user's emoji density preference (no-op if medium / unset)
+        system_prompt = self._apply_emoji_density(system_prompt, emoji_density)
+
         return system_prompt
 
     def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None, companion_gender: str = "female") -> bool:
@@ -517,6 +546,7 @@ Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
         companion_name = user.get("settings", {}).get("companion_name")
         companion_gender = user.get("settings", {}).get("companion_gender", "female")
         companion_relationship = user.get("settings", {}).get("companion_relationship", "lover")
+        emoji_density = user.get("settings", {}).get("emoji_density", self.DEFAULT_EMOJI_DENSITY)
 
         # 确定 persona（和 update_system_prompt 逻辑一致）
         use_custom_template = False
@@ -547,6 +577,7 @@ Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
             memory=memory_text,
             use_custom_template=use_custom_template,
             companion_relationship=companion_relationship,
+            emoji_density=emoji_density,
         )
 
         # Grok 专属沉浸式规则
@@ -641,6 +672,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
         # 获取伴侣性别和关系类型
         companion_gender = user.get("settings", {}).get("companion_gender", "female") if user else "female"
         companion_relationship = user.get("settings", {}).get("companion_relationship", "lover") if user else "lover"
+        emoji_density = user.get("settings", {}).get("emoji_density", self.DEFAULT_EMOJI_DENSITY) if user else self.DEFAULT_EMOJI_DENSITY
 
         # 获取用户当前选择的模型名称
         user_model_id = user.get("settings", {}).get("model", self.DEFAULT_MODEL) if user else self.DEFAULT_MODEL
@@ -661,7 +693,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship)
+        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density)
 
         # Grok 专属：角色锚定 + 内容自由（切换风格/语言/昵称时也要保留）
         if user_model_id == "grok":
@@ -754,6 +786,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             companion_name = user.get("settings", {}).get("companion_name")
             companion_gender = user.get("settings", {}).get("companion_gender", "female")
             companion_relationship = user.get("settings", {}).get("companion_relationship", "lover")
+            emoji_density = user.get("settings", {}).get("emoji_density", self.DEFAULT_EMOJI_DENSITY)
 
             # 优先使用自定义角色性格，其次性格测试结果（和 update_system_prompt 逻辑一致）
             use_custom_template = False
@@ -782,7 +815,7 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             except Exception as e:
                 print(f"[MEMORY] Failed to build memory text in model switch: {e}")
 
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship)
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density)
 
             # Grok 专属：角色锚定 + 内容自由
             if model_id == "grok":

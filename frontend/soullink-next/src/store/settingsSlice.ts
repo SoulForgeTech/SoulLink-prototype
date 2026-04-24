@@ -56,6 +56,14 @@ interface SettingsState {
   characterDisplayMode: 'micro' | 'full' | 'hidden';
   /** Expression visual style */
   expressionStyle: 'anime' | 'realistic' | '3d' | 'illustration';
+  /** How liberally the AI should use emojis in replies */
+  emojiDensity: 'none' | 'low' | 'medium' | 'high';
+}
+
+export type EmojiDensity = SettingsState['emojiDensity'];
+const EMOJI_DENSITIES: ReadonlyArray<EmojiDensity> = ['none', 'low', 'medium', 'high'];
+function isEmojiDensity(v: unknown): v is EmojiDensity {
+  return typeof v === 'string' && (EMOJI_DENSITIES as readonly string[]).includes(v);
 }
 
 // ==================== localStorage helpers ====================
@@ -99,6 +107,7 @@ function readUserSettings(): Partial<SettingsState> {
       characterExpressions: s.character_expressions ?? null,
       characterDisplayMode: s.character_display_mode ?? 'micro',
       expressionStyle: s.expression_style ?? 'anime',
+      emojiDensity: isEmojiDensity(s.emoji_density) ? s.emoji_density : 'medium',
     };
   } catch {
     return {};
@@ -134,6 +143,9 @@ export function settingsFromUser(user: unknown): Partial<SettingsState> {
   if (s.expression_style === 'anime' || s.expression_style === 'realistic' || s.expression_style === '3d' || s.expression_style === 'illustration') {
     out.expressionStyle = s.expression_style;
   }
+  if (isEmojiDensity(s.emoji_density)) {
+    out.emojiDensity = s.emoji_density;
+  }
   return out;
 }
 
@@ -156,6 +168,7 @@ const initialState: SettingsState = {
   characterExpressions: persisted.characterExpressions ?? null,
   characterDisplayMode: persisted.characterDisplayMode ?? 'micro',
   expressionStyle: persisted.expressionStyle ?? 'anime',
+  emojiDensity: persisted.emojiDensity ?? 'medium',
 };
 
 // ==================== Helpers ====================
@@ -265,6 +278,11 @@ const settingsSlice = createSlice({
       persistUserSetting('expression_style', action.payload);
     },
 
+    setEmojiDensity(state, action: PayloadAction<EmojiDensity>) {
+      state.emojiDensity = action.payload;
+      persistUserSetting('emoji_density', action.payload);
+    },
+
     /** Bulk-update multiple settings at once (e.g. after fetching user profile) */
     updateSettings(state, action: PayloadAction<Partial<SettingsState>>) {
       const p = action.payload;
@@ -282,6 +300,7 @@ const settingsSlice = createSlice({
       if (p.characterExpressions !== undefined) persistUserSetting('character_expressions', p.characterExpressions);
       if (p.characterDisplayMode != null) persistUserSetting('character_display_mode', p.characterDisplayMode);
       if (p.expressionStyle != null) persistUserSetting('expression_style', p.expressionStyle);
+      if (p.emojiDensity != null) persistUserSetting('emoji_density', p.emojiDensity);
       return { ...state, ...p };
     },
   },
@@ -302,6 +321,7 @@ export const {
   setCharacterExpressions,
   setCharacterDisplayMode,
   setExpressionStyle,
+  setEmojiDensity,
   updateSettings,
 } = settingsSlice.actions;
 

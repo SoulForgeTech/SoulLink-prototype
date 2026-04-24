@@ -257,17 +257,29 @@ def build_memory_text(permanent: List[Dict], relevant: List[Dict]) -> str:
 
 # ==================== 记忆提取（后台异步调用） ====================
 
-def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str):
+def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str) -> Dict:
     """
     主入口 — 在后台线程中运行。
     1. 预过滤 trivial 消息
     2. Mem0 add() 自动提取 + 去重
     3. 后置垃圾过滤
     4. 分类打标 + 设 TTL
+
+    Returns a receipt dict so callers can surface extraction results to the UI:
+      {
+        "added":   [ {id, fact, tier}, ... ],   # newly extracted facts
+        "updated": [ {id, fact, tier}, ... ],   # facts refined/merged by mem0
+        "skipped": bool,                        # True if input was filtered
+        "skip_reason": str | None,
+      }
     """
+    receipt: Dict = {"added": [], "updated": [], "skipped": False, "skip_reason": None}
+
     if _should_skip_extraction(user_msg):
         logger.debug(f"[MEM0] Skipped trivial: '{user_msg[:50]}'")
-        return
+        receipt["skipped"] = True
+        receipt["skip_reason"] = "trivial"
+        return receipt
 
     uid_str = str(user_id)
     m = _get_mem0()
@@ -281,15 +293,26 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str):
 
         # 处理结果：后置过滤 + 分类
         if not result:
-            return
+            return receipt
 
         events = result if isinstance(result, list) else result.get("results", [])
         for event in events:
-            if event.get("event") != "ADD":
-                continue
-
+            ev_type = event.get("event")
             mem_text = event.get("memory", "")
             mem_id = event.get("id")
+
+            if ev_type == "UPDATE":
+                # Mem0 merged/refined an existing memory — surface it too.
+                if mem_text and mem_id:
+                    receipt["updated"].append({
+                        "id": mem_id,
+                        "fact": mem_text,
+                        "tier": _classify_tier(mem_text),
+                    })
+                continue
+
+            if ev_type != "ADD":
+                continue
 
             # 垃圾过滤
             if _is_junk_memory(mem_text):
@@ -320,12 +343,15 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str):
             except Exception as e:
                 logger.warning(f"[MEM0] Failed to update metadata for '{mem_text}': {e}")
 
+            receipt["added"].append({"id": mem_id, "fact": mem_text, "tier": tier})
             logger.info(f"[MEM0] Added [{tier}]: '{mem_text}'")
 
     except Exception as e:
         logger.error(f"[MEM0] process_memory error: {e}")
         import traceback
         traceback.print_exc()
+
+    return receipt
 
 
 def cleanup_expired_memories(user_id: str):
