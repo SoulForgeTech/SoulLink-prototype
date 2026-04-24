@@ -378,10 +378,11 @@ class WorkspaceManager:
     # Emoji density guidelines injected into system prompt. Replaces the
     # default emoji line in the template based on user setting.
     EMOJI_DENSITY_LINES = {
-        "none": "- 不要使用任何 emoji / Do NOT use any emojis",
-        "low": "- emoji 极少，每条消息最多 1 个 / Use emojis very sparingly, max 1 per message",
+        "none": "- 完全不用 emoji / Do not use emojis at all",
+        "low": "- emoji 用得很少，大多数消息里一个都不放 / Rarely use emojis — most messages have none",
+        # medium 保留模板原话（女/男/自定义各自的风格），_apply_emoji_density 会跳过替换
         "medium": "- emoji 自然 1-3个：😊 🥺 😤 💕",
-        "high": "- emoji 可以多用，2-5个自然表达情绪 / Use emojis freely, 2-5 per message to express emotion",
+        "high": "- emoji 用得大方，几乎每句都可以点缀一下 / Use emojis generously — almost every sentence can have one",
     }
     DEFAULT_EMOJI_DENSITY = "medium"
 
