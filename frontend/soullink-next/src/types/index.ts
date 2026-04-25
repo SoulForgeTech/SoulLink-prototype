@@ -42,6 +42,12 @@ export interface AuthResponse {
   refresh_token?: string;
   user?: User;
   error?: string;
+  /**
+   * Stable error code for the UI to render targeted messages / CTAs.
+   * Backend only returns this on failure. Known values:
+   *   EMAIL_NOT_FOUND, WRONG_PASSWORD, GOOGLE_ACCOUNT, RATE_LIMITED
+   */
+  code?: string;
   requires_verification?: boolean;
   email?: string;
 }

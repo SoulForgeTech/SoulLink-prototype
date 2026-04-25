@@ -8,6 +8,8 @@ interface LoginFormProps {
   onSuccess: (data: AuthResponse) => void;
   onNeedVerification: (email: string) => void;
   onForgotPassword: () => void;
+  /** Switch the parent tab to the signup form (called from EMAIL_NOT_FOUND CTA). */
+  onSwitchToSignup?: () => void;
   lang?: 'en' | 'zh';
 }
 
@@ -19,6 +21,12 @@ const i18n = {
     fillAll: 'Please fill in all fields.',
     loginFailed: 'Login failed. Please try again.',
     networkError: 'Network error. Please check your connection.',
+    errEmailNotFound: 'This email is not registered.',
+    errWrongPassword: 'Wrong password.',
+    errGoogleAccount: 'This account uses Google Sign-In. Please log in with Google.',
+    errRateLimited: 'Too many failed attempts. Please try again in a few minutes.',
+    ctaSignup: 'Sign up instead',
+    ctaForgot: 'Forgot password?',
   },
   zh: {
     email: '邮箱', emailPh: '请输入邮箱',
@@ -27,22 +35,44 @@ const i18n = {
     fillAll: '请填写所有字段',
     loginFailed: '登录失败，请重试',
     networkError: '网络错误，请检查网络连接',
+    errEmailNotFound: '该邮箱尚未注册',
+    errWrongPassword: '密码错误',
+    errGoogleAccount: '该邮箱使用 Google 登录，请用 Google 方式登录',
+    errRateLimited: '尝试次数过多，请稍后再试',
+    ctaSignup: '去注册',
+    ctaForgot: '忘记密码？',
   },
 };
 
-export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassword, lang = 'en' }: LoginFormProps) {
+interface ErrorState {
+  message: string;
+  code?: string;
+}
+
+export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassword, onSwitchToSignup, lang = 'en' }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ErrorState | null>(null);
   const [loading, setLoading] = useState(false);
   const t = i18n[lang];
 
+  /** Map backend error code → localized message. Falls back to backend message. */
+  function messageForCode(code: string | undefined, fallback: string): string {
+    switch (code) {
+      case 'EMAIL_NOT_FOUND': return t.errEmailNotFound;
+      case 'WRONG_PASSWORD':  return t.errWrongPassword;
+      case 'GOOGLE_ACCOUNT':  return t.errGoogleAccount;
+      case 'RATE_LIMITED':    return t.errRateLimited;
+      default:                return fallback || t.loginFailed;
+    }
+  }
+
   async function handleSubmit(e?: FormEvent) {
     e?.preventDefault();
-    setError('');
+    setError(null);
 
     if (!email.trim() || !password.trim()) {
-      setError(t.fillAll);
+      setError({ message: t.fillAll });
       return;
     }
 
@@ -56,13 +86,16 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
       }
 
       if (!data.success) {
-        setError(data.error || t.loginFailed);
+        setError({
+          message: messageForCode(data.code, data.error || ''),
+          code: data.code,
+        });
         return;
       }
 
       onSuccess(data);
     } catch {
-      setError(t.networkError);
+      setError({ message: t.networkError });
     } finally {
       setLoading(false);
     }
@@ -124,9 +157,49 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
             borderRadius: '8px',
             marginBottom: '16px',
             fontSize: '0.9rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
           }}
         >
-          {error}
+          <div>{error.message}</div>
+          {/* Code-aware CTA: signup for missing email, forgot-password for bad password */}
+          {error.code === 'EMAIL_NOT_FOUND' && onSwitchToSignup && (
+            <button
+              type="button"
+              onClick={onSwitchToSignup}
+              style={{
+                alignSelf: 'flex-start',
+                background: 'rgba(255,255,255,0.18)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: '#fff',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              {t.ctaSignup}
+            </button>
+          )}
+          {error.code === 'WRONG_PASSWORD' && (
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              style={{
+                alignSelf: 'flex-start',
+                background: 'rgba(255,255,255,0.18)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: '#fff',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              {t.ctaForgot}
+            </button>
+          )}
         </div>
       )}
 

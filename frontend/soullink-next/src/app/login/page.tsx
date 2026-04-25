@@ -382,6 +382,7 @@ export default function LoginPage() {
                   onSuccess={handleAuthSuccess}
                   onNeedVerification={handleNeedVerification}
                   onForgotPassword={handleForgotPassword}
+                  onSwitchToSignup={() => setTab('signup')}
                   lang={lang}
                 />
               ) : (

@@ -477,25 +477,111 @@ def _register_test_account(email: str, password: str, name: Optional[str] = None
     }
 
 
-def handle_email_login(email: str, password: str, user_agent: str = "") -> Dict[str, Any]:
+# ==================== 登录失败限流（防账户枚举） ====================
+#
+# 真实用户输错 1-3 次能直接看到"邮箱未注册" / "密码错误"的精确提示，
+# 但同一 IP 在 5 分钟内累积 ≥ LOGIN_FAIL_THRESHOLD 次失败时切回通用错误，
+# 阻止脚本批量枚举注册邮箱 / 撞库。
+
+LOGIN_FAIL_WINDOW_SEC = 300        # 统计窗口：5 分钟
+LOGIN_FAIL_THRESHOLD = 10          # 阈值：超过则匿名化错误
+LOGIN_FAIL_COLLECTION = "login_fails"
+
+
+def _ensure_login_fail_indexes():
+    """确保 TTL 索引存在，过期文档自动清理。幂等。"""
+    try:
+        db.db[LOGIN_FAIL_COLLECTION].create_index(
+            "expires_at", expireAfterSeconds=0, background=True
+        )
+        db.db[LOGIN_FAIL_COLLECTION].create_index("ip", background=True)
+    except Exception:
+        pass
+
+
+def _count_recent_login_fails(ip: str) -> int:
+    if not ip:
+        return 0
+    try:
+        cutoff = datetime.utcnow() - timedelta(seconds=LOGIN_FAIL_WINDOW_SEC)
+        return db.db[LOGIN_FAIL_COLLECTION].count_documents(
+            {"ip": ip, "created_at": {"$gte": cutoff}}
+        )
+    except Exception:
+        return 0
+
+
+def _record_login_fail(ip: str, email: str, reason: str):
+    if not ip:
+        return
+    try:
+        now = datetime.utcnow()
+        db.db[LOGIN_FAIL_COLLECTION].insert_one({
+            "ip": ip,
+            "email": email,
+            "reason": reason,
+            "created_at": now,
+            "expires_at": now + timedelta(seconds=LOGIN_FAIL_WINDOW_SEC),
+        })
+    except Exception:
+        pass
+
+
+def _clear_login_fails(ip: str):
+    if not ip:
+        return
+    try:
+        db.db[LOGIN_FAIL_COLLECTION].delete_many({"ip": ip})
+    except Exception:
+        pass
+
+
+def handle_email_login(email: str, password: str, user_agent: str = "", ip: str = "") -> Dict[str, Any]:
     """
     处理邮箱登录
     返回 JWT token + refresh token 和用户信息，或错误信息
+
+    错误响应附带 `code` 字段供前端做差异化提示：
+      - EMAIL_NOT_FOUND   邮箱未注册
+      - WRONG_PASSWORD    密码错误
+      - GOOGLE_ACCOUNT    邮箱用 Google 注册过，无密码
+      - RATE_LIMITED      同 IP 短时间内失败过多，匿名化错误防枚举
+      - NEEDS_VERIFICATION 邮箱未验证（沿用 requires_verification 字段）
     """
+    _ensure_login_fail_indexes()
+
+    rate_limited = _count_recent_login_fails(ip) >= LOGIN_FAIL_THRESHOLD
+
     # 查找用户
     user = db.get_user_by_email(email)
 
     if not user:
-        return {"success": False, "error": "Invalid email or password"}
+        _record_login_fail(ip, email, "email_not_found")
+        if rate_limited:
+            return {"success": False, "error": "Login failed. Please try again later.",
+                    "code": "RATE_LIMITED"}
+        return {"success": False, "error": "Email is not registered.",
+                "code": "EMAIL_NOT_FOUND"}
 
     # 检查是否是邮箱注册的用户
     if not user.get("password_hash"):
         # 这个用户是通过 Google 注册的，没有密码
-        return {"success": False, "error": "This account was registered with Google. Please use Google Sign-In."}
+        _record_login_fail(ip, email, "google_account")
+        if rate_limited:
+            return {"success": False, "error": "Login failed. Please try again later.",
+                    "code": "RATE_LIMITED"}
+        return {"success": False,
+                "error": "This account was registered with Google. Please use Google Sign-In.",
+                "code": "GOOGLE_ACCOUNT"}
 
     # 验证密码
     if not verify_password(password, user["password_hash"]):
-        return {"success": False, "error": "Invalid email or password"}
+        _record_login_fail(ip, email, "wrong_password")
+        if rate_limited:
+            return {"success": False, "error": "Login failed. Please try again later.",
+                    "code": "RATE_LIMITED"}
+        return {"success": False, "error": "Wrong password.",
+                "code": "WRONG_PASSWORD"}
 
     # 检查邮箱是否已验证
     if not user.get("email_verified", False):
@@ -523,6 +609,9 @@ def handle_email_login(email: str, password: str, user_agent: str = "") -> Dict[
             "requires_verification": True,
             "email": email
         }
+
+    # 登录成功：清空该 IP 的失败计数
+    _clear_login_fails(ip)
 
     # 更新登录时间
     db.update_user_login(user["_id"])

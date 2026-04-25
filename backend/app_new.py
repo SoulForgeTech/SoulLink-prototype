@@ -489,7 +489,19 @@ def login():
     if not email or not password:
         return jsonify({"success": False, "error": "Email and password are required"}), 400
 
-    result = handle_email_login(email, password, request.headers.get("User-Agent", ""))
+    # Use the proxied client IP if behind nginx/Cloudflare, fall back to direct.
+    client_ip = (
+        (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+        or request.headers.get("X-Real-IP", "")
+        or request.remote_addr
+        or ""
+    )
+
+    result = handle_email_login(
+        email, password,
+        request.headers.get("User-Agent", ""),
+        ip=client_ip,
+    )
 
     if result.get("success"):
         return jsonify(result)
