@@ -38,6 +38,9 @@ from auth import (
 from workspace_manager import workspace_manager
 from anythingllm_api import AnythingLLMAPI
 from image_gen import process_image_markers
+from lorebook_engine import build_lorebook_prefix
+from companion_service import get_active_companion
+from timing import StepTimer
 import requests as _requests
 
 
@@ -1693,6 +1696,17 @@ def chat():
         if thread_history_prefix:
             message_to_send = thread_history_prefix + message_to_send
 
+        # Lorebook injection — keyword-triggered character-knowledge block
+        # prefixed onto the user message. No-op when companion has no entries,
+        # so existing users see identical behavior.
+        try:
+            companion = get_active_companion(user_id, user_doc=user)
+            lore_prefix = build_lorebook_prefix(user_message, conversation, companion)
+            if lore_prefix:
+                message_to_send = lore_prefix + message_to_send
+        except Exception as e:
+            logger.warning(f"[LOREBOOK] /api/chat injection failed (non-fatal): {e}")
+
         # 发送消息
         logger.info(f"Sending message: {message_to_send[:80]}...")
         response = api.send_message(
@@ -2118,6 +2132,7 @@ def chat_stream():
     Same logic as /api/chat but streams tokens via SSE for instant display.
     Events: text (token), thinking (content), done (full reply + metadata), error.
     """
+    _timer = StepTimer("chat_stream_setup")
     try:
         user_id = get_current_user_id()
         user = get_current_user()
@@ -2133,6 +2148,7 @@ def chat_stream():
         msg_type = data.get("type", "text")
         user_audio_url = data.get("audio_url")
         user_audio_duration = data.get("audio_duration")
+        _timer.mark("auth_parse")
 
         # Pre-load workspace
         workspace_result = workspace_manager.get_or_create_workspace(user_id)
@@ -2140,6 +2156,7 @@ def chat_stream():
             return jsonify({"error": "Failed to get workspace"}), 500
         workspace = workspace_result["workspace"]
         workspace_slug = workspace["slug"]
+        _timer.mark("workspace")
 
         # Sync model + prompt (with Mem0 semantic memory if enabled)
         try:
@@ -2176,6 +2193,7 @@ def chat_stream():
                 )
         except Exception:
             pass
+        _timer.mark("prompt_sync")
 
         # Get or create conversation
         conversation = None
@@ -2191,6 +2209,7 @@ def chat_stream():
             conversation = db.create_conversation(user_id)
 
         is_first_message = conversation.get("metadata", {}).get("total_messages", 0) == 0
+        _timer.mark("conv_load")
 
         # Save user message（图片附件上传 Cloudinary 持久化）
         attachment_meta = None
@@ -2316,15 +2335,31 @@ def chat_stream():
         except Exception as e:
             logger.warning(f"[THREAD] Setup failed, falling back to workspace-level chat: {e}")
             thread_slug, thread_history_prefix = None, ""
+        _timer.mark("thread")
 
         if thread_history_prefix:
             message_to_send = thread_history_prefix + message_to_send
+
+        # Lorebook injection — see comment in /api/chat for rationale.
+        try:
+            companion = get_active_companion(user_id, user_doc=user)
+            lore_prefix = build_lorebook_prefix(user_message, conversation, companion)
+            if lore_prefix:
+                message_to_send = lore_prefix + message_to_send
+        except Exception as e:
+            logger.warning(f"[LOREBOOK] /api/chat/stream injection failed (non-fatal): {e}")
+        _timer.mark("lorebook")
 
         # Pre-load all variables needed inside generator
         conv_id = conversation["_id"]
         conv_id_str = str(conv_id)
         anythingllm_base = workspace_manager.anythingllm_base_url
         anythingllm_key = workspace_manager.anythingllm_api_key
+
+        # Only emit per-step breakdown for the first message — that's where
+        # latency is felt; subsequent messages add log noise without insight.
+        if is_first_message:
+            _timer.summary()
 
     except Exception as e:
         logger.error(f"Chat stream setup error: {e}", exc_info=True)
@@ -3206,6 +3241,30 @@ def get_conversation(conv_id):
     })
 
 
+def _eager_create_thread(user_id, conversation_id):
+    """
+    Pre-create the AnythingLLM thread for a freshly-made conversation so the
+    user's first message doesn't pay the create_thread round-trip on the hot
+    path. Best-effort — if anything fails the chat route will create the
+    thread inline as before.
+    """
+    try:
+        conv = db.db["conversations"].find_one({"_id": conversation_id})
+        if not conv or conv.get("anythingllm_thread_slug"):
+            return
+        ws_result = workspace_manager.get_or_create_workspace(user_id)
+        if not ws_result.get("success"):
+            return
+        api = AnythingLLMAPI(
+            base_url=workspace_manager.anythingllm_base_url,
+            api_key=workspace_manager.anythingllm_api_key,
+            workspace_slug=ws_result["workspace"]["slug"],
+        )
+        ensure_thread_for_conversation(api, conv, db)
+    except Exception as e:
+        logger.warning(f"[EAGER-THREAD] Failed for conv {conversation_id}: {e}")
+
+
 @app.route("/api/conversations", methods=["POST"])
 @login_required
 def create_conversation():
@@ -3215,6 +3274,19 @@ def create_conversation():
 
     title = data.get("title", "新对话")
     conversation = db.create_conversation(user_id, title)
+
+    # Spawn AnythingLLM thread creation in background — by the time the user
+    # sends their first message it should already be ready, removing 200-500ms
+    # from the first-message critical path.
+    try:
+        import threading
+        threading.Thread(
+            target=_eager_create_thread,
+            args=(user_id, conversation["_id"]),
+            daemon=True,
+        ).start()
+    except Exception as e:
+        logger.warning(f"[EAGER-THREAD] Spawn failed (non-fatal): {e}")
 
     return jsonify({
         "success": True,
@@ -5470,6 +5542,115 @@ def voice_health():
         return jsonify(check_voice_service_health())
     except ImportError:
         return jsonify({"configured": False, "error": "voice_service module not found"}), 503
+
+
+# ==================== Companion + Lorebook ====================
+
+def _serialize_companion(comp: dict) -> dict:
+    """Convert Mongo companion doc into JSON-safe response shape."""
+    if not comp:
+        return None
+    return {
+        "id": str(comp["_id"]),
+        "name": comp.get("name"),
+        "is_default": bool(comp.get("is_default", False)),
+        "gender": comp.get("gender"),
+        "relationship": comp.get("relationship"),
+        "custom_persona": comp.get("custom_persona", ""),
+        "lorebook_entries": comp.get("lorebook_entries", []) or [],
+        "example_dialogs": comp.get("example_dialogs", []) or [],
+        "created_at": comp["created_at"].isoformat() if comp.get("created_at") else None,
+        "updated_at": comp["updated_at"].isoformat() if comp.get("updated_at") else None,
+    }
+
+
+@app.route("/api/companions", methods=["GET"])
+@login_required
+def list_companions_route():
+    from companion_service import list_companions, get_active_companion
+    user_id = get_current_user_id()
+    user = get_current_user()
+    # Trigger lazy default-creation if user has none.
+    get_active_companion(user_id, user_doc=user)
+    companions = list_companions(user_id)
+    return jsonify({
+        "success": True,
+        "companions": [_serialize_companion(c) for c in companions],
+        "active_companion_id": (user.get("settings") or {}).get("active_companion_id"),
+    })
+
+
+@app.route("/api/companions/active", methods=["GET"])
+@login_required
+def get_active_companion_route():
+    from companion_service import get_active_companion
+    user_id = get_current_user_id()
+    user = get_current_user()
+    comp = get_active_companion(user_id, user_doc=user)
+    return jsonify({"success": True, "companion": _serialize_companion(comp)})
+
+
+@app.route("/api/companions/<companion_id>/lorebook", methods=["GET"])
+@login_required
+def list_lorebook_entries_route(companion_id):
+    from companion_service import get_companion_by_id
+    user_id = get_current_user_id()
+    comp = get_companion_by_id(companion_id, user_id)
+    if not comp:
+        return jsonify({"error": "Companion not found"}), 404
+    return jsonify({
+        "success": True,
+        "entries": comp.get("lorebook_entries", []) or [],
+    })
+
+
+@app.route("/api/companions/<companion_id>/lorebook", methods=["POST"])
+@login_required
+def add_lorebook_entry_route(companion_id):
+    from companion_service import add_lorebook_entry
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+
+    keys = data.get("keys") or []
+    if isinstance(keys, str):
+        keys = [k.strip() for k in keys.split(",") if k.strip()]
+
+    entry = add_lorebook_entry(
+        companion_id,
+        user_id,
+        keys=keys,
+        content=data.get("content", ""),
+        priority=data.get("priority", 50),
+        selective_logic=data.get("selective_logic", "any"),
+        constant=data.get("constant", False),
+        enabled=data.get("enabled", True),
+    )
+    if not entry:
+        return jsonify({"error": "Invalid entry (companion not found, missing content, or no keys for non-constant entry)"}), 400
+    return jsonify({"success": True, "entry": entry})
+
+
+@app.route("/api/companions/<companion_id>/lorebook/<entry_id>", methods=["PUT"])
+@login_required
+def update_lorebook_entry_route(companion_id, entry_id):
+    from companion_service import update_lorebook_entry
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+    entry = update_lorebook_entry(companion_id, user_id, entry_id, data)
+    if not entry:
+        return jsonify({"error": "Entry not found or no valid fields"}), 404
+    return jsonify({"success": True, "entry": entry})
+
+
+@app.route("/api/companions/<companion_id>/lorebook/<entry_id>", methods=["DELETE"])
+@login_required
+def delete_lorebook_entry_route(companion_id, entry_id):
+    from companion_service import delete_lorebook_entry
+    user_id = get_current_user_id()
+    ok = delete_lorebook_entry(companion_id, user_id, entry_id)
+    if not ok:
+        return jsonify({"error": "Entry not found"}), 404
+    return jsonify({"success": True})
 
 
 # ==================== 启动应用 ====================
