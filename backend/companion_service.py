@@ -110,6 +110,21 @@ def _new_companion_doc(
 
 # ---------- Public API ----------
 
+def _rehydrate_cached(doc: Dict) -> Dict:
+    """Cache stores stringified ObjectIds; restore them so callers can pass
+    `doc["_id"]` straight into Mongo queries without silently mismatching."""
+    if not doc:
+        return doc
+    for k in ("_id", "user_id"):
+        v = doc.get(k)
+        if isinstance(v, str):
+            try:
+                doc[k] = ObjectId(v)
+            except Exception:
+                pass
+    return doc
+
+
 def get_companion_by_id(companion_id, user_id: ObjectId) -> Optional[Dict]:
     """Fetch by id with cache. Verifies ownership."""
     cid_str = str(companion_id)
@@ -119,7 +134,7 @@ def get_companion_by_id(companion_id, user_id: ObjectId) -> Optional[Dict]:
             doc = json.loads(cached)
             # Trust cache only if user_id matches (defense in depth).
             if str(doc.get("user_id")) == str(user_id):
-                return doc
+                return _rehydrate_cached(doc)
         except Exception:
             pass
 
@@ -215,9 +230,19 @@ def _create_default_from_legacy(user_id: ObjectId, settings: Dict) -> Dict:
     return doc
 
 
+def _coerce_oid(val) -> Optional[ObjectId]:
+    """Cache deserialization returns string ids — coerce back before queries."""
+    if isinstance(val, ObjectId):
+        return val
+    try:
+        return ObjectId(str(val))
+    except Exception:
+        return None
+
+
 def _extract_and_save_lorebook(
-    companion_id: ObjectId,
-    user_id: ObjectId,
+    companion_id,
+    user_id,
     persona_text: str,
     character_name: str,
     user_name: Optional[str] = None,
@@ -226,7 +251,8 @@ def _extract_and_save_lorebook(
     """
     Run LLM extraction and replace the companion's lorebook_entries with the
     result. Returns the number of entries written. On failure (Gemini error,
-    parse error, no valid entries), keeps existing entries intact and returns 0.
+    parse error, no valid entries, or zero matched docs), keeps existing
+    entries intact and returns 0.
 
     Used both for background-spawned extraction during companion creation and
     for the synchronous backfill script.
@@ -240,9 +266,15 @@ def _extract_and_save_lorebook(
         log.error(f"[COMPANION] persona_extractor import failed: {e}")
         return 0
 
+    cid = _coerce_oid(companion_id)
+    uid = _coerce_oid(user_id)
+    if not cid or not uid:
+        log.error(f"[COMPANION] Invalid id types: companion={companion_id!r} user={user_id!r}")
+        return 0
+
     extracted = extract_lorebook_from_persona(persona_text, character_name=character_name)
     if not extracted:
-        log.info(f"[COMPANION] Extraction yielded 0 entries for companion {companion_id} — keeping existing")
+        log.info(f"[COMPANION] Extraction yielded 0 entries for companion {cid} — keeping existing")
         return 0
 
     # Always prepend a synthesized core-identity entry regardless of what the
@@ -255,8 +287,8 @@ def _extract_and_save_lorebook(
     final_entries = [core] + extracted
 
     try:
-        db.db[COLLECTION].update_one(
-            {"_id": companion_id, "user_id": user_id},
+        result = db.db[COLLECTION].update_one(
+            {"_id": cid, "user_id": uid},
             {
                 "$set": {
                     "lorebook_entries": final_entries,
@@ -265,8 +297,11 @@ def _extract_and_save_lorebook(
                 }
             },
         )
-        _cache_invalidate(str(companion_id))
-        log.info(f"[COMPANION] Saved {len(final_entries)} lorebook entries to companion {companion_id}")
+        if result.matched_count == 0:
+            log.warning(f"[COMPANION] Update matched 0 docs (companion={cid} user={uid}) — entries lost")
+            return 0
+        _cache_invalidate(str(cid))
+        log.info(f"[COMPANION] Saved {len(final_entries)} lorebook entries to companion {cid}")
         return len(final_entries)
     except Exception as e:
         log.warning(f"[COMPANION] Failed to persist extracted lorebook: {e}")
