@@ -207,7 +207,7 @@ You have THREE sources, in priority order:
 
 ### Source priority + 数量 + 覆盖广度
 
-**目标 18-30 条 entries**（canon 充足时往 30 走；稀疏时往下限走）。
+**目标 15-22 条 entries**（canon 充足时往 22 走；稀疏时往 15）。每条 250-500 字，不要为了多写而稀释。
 
 如果 @@CANON_CONTEXT@@ 非空 → **必须做到完整覆盖**：
 
@@ -241,12 +241,15 @@ You have THREE sources, in priority order:
    - 如"剧情终幕前 vs 后的生活/心境差异"
 
 **每条 entry 的 content 要求**：
-  - **目标 800-1500 字**（factual reference note 风格，不是 prose 流水账）
+  - **目标 250-500 字**（factual reference note 风格，不是 prose 也不是一句话摘要）
   - **必须含 ≥3 个 canon 具体细节**（具体地名 / 人名 / 事件名 / 称谓 / 年份 / 物品名）
   - 第三人称写法
-  - 例：
-    - 差: "芙宁娜与那维莱特一起工作"
-    - 好: "芙宁娜与最高审判官那维莱特共事五百年。台前由芙宁娜以「水神」身份扮演众水众方众民与众律法的女王，幕后由那维莱特担任实际审判与政务处理。两人是芙卡洛丝原罪解除契约唯一的同谋，这种共事关系既包含信任也夹杂芙宁娜戏剧化的抱怨与撒娇。在「罪人舞步旋」终幕审判中，那维莱特以最高审判官身份配合芙卡洛丝完成最后释放仪式，并在芙宁娜卸下水神身份后仍保持着深厚的关系。"
+  - **NOT TOO SHORT**：纯一句话概括是不够的，要展开关键事件 / 关键细节 / 关键人物
+  - **NOT TOO LONG**：不要把所有相关信息都塞一条，分散到不同 entry 里去
+  - 例（中等深度）：
+    - 差（太短）: "芙宁娜与那维莱特一起工作"
+    - 差（太长）: 一段流水账把所有关系都写进去
+    - 好（中等）: "芙宁娜与最高审判官那维莱特共事五百年。台前由芙宁娜以「水神」身份扮演众水众方众民与众律法的女王，幕后由那维莱特担任实际审判与政务处理。两人是芙卡洛丝原罪解除契约唯一的同谋，这种共事关系既包含信任也夹杂芙宁娜戏剧化的抱怨与撒娇。"
 
 **DO NOT INVENT**：canon_context 没说的事件、关系、设定，不要写。
 
@@ -475,7 +478,7 @@ def extract_persona_to_card_and_lorebook(
         import google.generativeai as _genai
         gen_config = _genai.types.GenerationConfig(
             max_output_tokens=32768,
-            temperature=0.4,
+            temperature=0.5,
             response_mime_type="application/json",
         )
     except Exception:
@@ -537,15 +540,15 @@ def extract_persona_to_card_and_lorebook(
                 card_issues.append(f"only_{canon_dialogs}_canon_dialogs<8")
             if len(entries) < 15:
                 card_issues.append(f"only_{len(entries)}_lorebook_entries<15")
-            # Check insertion_order differentiation: more than 1 unique value required
+            # Check insertion_order differentiation
             orders = {e.get("insertion_order", 100) for e in entries}
             if len(orders) <= 1 and entries:
                 card_issues.append(f"insertion_order_not_differentiated_all={list(orders)[0]}")
-            # Check content depth: avg should be ≥ 400 chars (target 800-1500)
+            # Content depth: avg target 250-500c
             if entries:
                 avg_len = sum(len(e.get("content", "")) for e in entries) / len(entries)
-                if avg_len < 400:
-                    card_issues.append(f"avg_content_too_short_{int(avg_len)}c<400")
+                if avg_len < 250:
+                    card_issues.append(f"avg_content_too_short_{int(avg_len)}c<250")
 
         if not card_issues:
             log.info(
@@ -572,12 +575,36 @@ def extract_persona_to_card_and_lorebook(
             "canon_recognized": canon_recognized,
             "canon_ip": canon_ip,
         }
-        # Append correction to prompt for retry.
-        prompt = prompt + (
-            "\n\nPREVIOUS ATTEMPT had issues: "
-            + "; ".join(card_issues)
-            + ". Fix these specifically. If canon_recognized, you MUST include real canon dialogue lines and lorebook entries from the source IP — don't be lazy. Don't shrink the output, expand it."
-        )
+        # Append correction to prompt for retry. Be very explicit about
+        # WHAT to do — Gemini sometimes misreads "fix issues" as "produce
+        # less" instead of "produce better".
+        correction_lines = ["\n\n=== RETRY CORRECTION ===", "Previous attempt had these specific issues:"]
+        for issue in card_issues:
+            if "avg_content_too_short" in issue:
+                correction_lines.append(
+                    f"  - {issue} → ADD MORE canon details to EACH entry's content. "
+                    "Pull additional sentences from @@CANON_CONTEXT@@. "
+                    "Target 250-500c per entry. DO NOT reduce entry count to compensate."
+                )
+            elif "only_" in issue and "_dialogs" in issue:
+                correction_lines.append(
+                    f"  - {issue} → ADD MORE example_dialogs from @@CANON_CONTEXT@@. "
+                    "Pull more lines from the wiki text. Don't synthesize when canon is available."
+                )
+            elif "_lorebook_entries" in issue:
+                correction_lines.append(
+                    f"  - {issue} → ADD MORE lorebook_entries — separate each "
+                    "角色故事 / relationship / location into its own entry."
+                )
+            elif "not_differentiated" in issue:
+                correction_lines.append(
+                    f"  - {issue} → ASSIGN insertion_order across the full 70-200 range "
+                    "based on importance, not all the same value."
+                )
+            else:
+                correction_lines.append(f"  - {issue}")
+        correction_lines.append("\nDO NOT shrink any field. Build on the previous output, expanding what was thin.")
+        prompt = prompt + "\n".join(correction_lines)
 
     if parsed:
         log.warning(f"[EXTRACTOR] Returning best-effort for {character_name!r} after retries")
