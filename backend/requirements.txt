@@ -30,3 +30,6 @@ redis==5.0.1
 
 # 中文分词 (lorebook 关键词触发)
 jieba==0.42.1
+
+# Wiki/Fandom HTML parsing for canon material augmentation
+beautifulsoup4==4.12.3

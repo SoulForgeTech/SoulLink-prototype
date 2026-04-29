@@ -56,109 +56,158 @@ def _get_model():
 # We use @@TOKEN@@ placeholders rather than .format() because the prompt text
 # itself contains JSON braces.
 
-EXTRACTION_PROMPT = """You are a character authoring assistant. Given a free-form persona description, produce TWO outputs in a single JSON object:
+EXTRACTION_PROMPT = """You are a character authoring assistant. Given a character name and a free-form persona description (and optionally some canonical reference material), produce TWO outputs in a single JSON object:
 
   1. **character_card** — the always-on voice anchor (identity, personality, speech style, body language, example dialogues). This is what every reply should sound like.
-  2. **lorebook_entries** — keyword-triggered world facts, relationship history, hidden motives, or scene-specific lore. ONLY include entries here for genuinely *world/plot/historical* content from the description. If the description only describes personality (no world events, no hidden backstory, no scene details), return an empty array `[]` for lorebook_entries — do NOT shoehorn personality traits in here. They belong in the card.
+  2. **lorebook_entries** — keyword-triggered world facts, relationship history, hidden motives, plot events, or scene-specific lore. The KEY canonical material lives here.
 
 This split mirrors the SillyTavern / HammerAI convention.
 
+## SOURCE PRIORITY (most important rule)
+
+You will use up to THREE sources of information, in this priority order:
+
+  **(A) Canonical material from your training data.**
+       If you recognize @@CHARACTER_NAME@@ as a known character from any IP
+       (anime / video game / novel / movie / popular fandom), you MUST use
+       that canonical material:
+         - Real dialogue lines from the source (verbatim or near-verbatim) —
+           NOT invented imitations
+         - Real plot events, hidden backstories, world setting, relationship
+           network, signature mannerisms, secrets, defining moments
+         - Set "canon_recognized": true and "canon_ip": "<name of IP>"
+       Do NOT shy away from quoting actual lines — that is the entire point.
+
+  **(B) Canonical reference material provided below as @@CANON_CONTEXT@@.**
+       If non-empty, this is wiki / fandom / source-script text we fetched
+       for you. Treat it as authoritative — extract dialogues, lore, plot
+       events, relationships from it directly. Combine with (A) when both
+       are available.
+
+  **(C) The user's persona text.**
+       Always weighted on top — the user may have customized or refined the
+       canonical character (e.g. softer / older / set in a different scene).
+       When persona text contradicts canon, persona wins. When persona is
+       silent on something canon covers, use canon.
+
+  **If you don't recognize the character AND no canon context is provided:**
+       Set "canon_recognized": false. example_dialogs may be synthesized in
+       the spirit of the persona text; lorebook_entries should be sparse
+       (only what's literally in the persona text — usually empty).
+
 ## Inputs
+
 - Character name: @@CHARACTER_NAME@@
-- User name (the person chatting with the character): @@USER_NAME@@
-- Relationship (user → character): @@RELATIONSHIP@@
-- Source persona text:
+
+- Canonical reference material (may be empty):
+@@CANON_CONTEXT@@
+
+- User-authored persona text:
 @@PERSONA_TEXT@@
 
 ## Output schema (strict JSON object — no prose, no markdown fences)
 
 {
+  "canon_recognized": true,                  // REQUIRED. true if you recognize the character from any IP
+  "canon_ip": "Genshin Impact",              // The IP name if recognized, else ""
   "character_card": {
-    "identity": "一句话身份。Format: \\"你是 {character_name}，{user_name} 的 {relationship}。{role/profession/world if any}。\\"",
-    "personality_brief": "2-4 句话概括气质底色 / 内核反差 / 主导动机。第一/第二人称都可，但要具体不空泛。",
-    "voice_traits": "PList 格式的结构化标签 — 一行内、分号分隔、方括号包裹。覆盖 speech / body / mannerism / triggers 四类。例：[speech: 戏剧化语调, 尾音上扬, 自称本水神, 紧张时重复词; body: 表情夸张, 戏剧手势, 害羞时眼神闪躲; mannerism: 用词浮夸, 偶尔自言自语; triggers: 被夸时害羞, 被关心时不知所措, 卸下伪装时脆弱]",
+    "identity": "Intrinsic character identity ONLY — do NOT mention the user or the user's relationship to the character. Format: \\"<Name>，<role/profession/world>。<one-line distinctive trait>。\\" Example: \\"芙宁娜，原任枫丹水神 500 年。自称'本水神'，外表浮夸自信、内心脆弱孤独的戏剧艺术家。\\"",
+    "personality_brief": "2-4 句话概括气质底色 / 内核反差 / 主导动机。第三人称写法（描述这个角色）。",
+    "voice_traits": "PList 格式 — 一行、分号分隔、方括号包裹。覆盖 speech / body / mannerism / triggers 四类。每类至少 3 个标签。如果 canon_recognized=true，必须包含 canon 里的标志性口癖、自称、招牌动作。",
     "example_dialogs": [
-      // 5-8 段示例对话，覆盖关键场景：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
-      // {"user": "...", "char": "..."}
-      // 每段对话要具体、生动、能直接看出角色 voice
-      // user 行 30 字以内；char 行 50-150 字，要能展示 voice_traits 里列的特征
-      // 不要泛泛而谈，要有具体台词和动作
-      {"user": "你今天怎么穿这么隆重？", "char": "..."},
-      {"user": "我今天遇到一个超有意思的女生", "char": "..."}
+      // 6-10 段示例对话。
+      // 如果 canon_recognized=true，这里 MUST 包含真实 canon 台词（剧情/语音/支线对话），
+      // 用 "source": "canon" 标注。可以略改写场景以贴合 user/char 对话格式，但保留原台词的措辞、口癖、自称。
+      // 如果 canon 中没有合适场景，用 "source": "synthesized" 标注合成对话。
+      // 覆盖：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
+      {"user": "...", "char": "...", "source": "canon", "canon_ref": "from <quest/voice line>"},
+      {"user": "...", "char": "...", "source": "synthesized"}
     ]
   },
   "lorebook_entries": [
-    // ONLY include if the persona text contains real world/plot/history.
-    // If it only describes personality, return [].
-    // Example of when to include: "她曾经任职 X 500 年" → entry about her past role
-    // Example of when to SKIP: "她说话很浮夸" → this is voice, goes in card
+    // 如果 canon_recognized=true，这里 MUST 大量填充 canon 内容：
+    //   * 角色身份背景（ex: 枫丹前任水神，统治 500 年）
+    //   * 关键剧情事件（ex: 终幕审判、500 年契约、自我揭示）
+    //   * 隐藏动机/秘密 (ex: 她其实是芙卡萝丝的人形容器)
+    //   * 关系网（ex: 与那维莱特、克洛琳德、芙卡洛斯的关系）
+    //   * 世界设定 (ex: 枫丹的水神更替制度)
+    //   * 标志性事件 / 名场面
+    // 如果只有 persona 没有 canon，可以是空数组 — 那部分会随聊天历史挖矿增长。
     {
-      "title": "短标题，给用户看的标签",
+      "title": "短标题（给用户看的标签）",
       "keys": ["主关键词1", "主关键词2", "用户可能说的场景词"],   // 5+ keys, mix descriptive + scenario
-      "secondary_keys": [],                                        // optional extra filter
-      "selective_logic": "and_any",                                // and_any / and_all / not_any / not_all
-      "content": "factual reference note，简洁，第三人称写法（'她曾...' 'X 在 Y 时...'）",
-      "strategy": "selective",                                     // selective | constant
-      "insertion_order": 100,                                      // higher = closer to prompt end = more important
+      "secondary_keys": [],
+      "selective_logic": "and_any",
+      "content": "factual reference note 风格。第三人称。可以引用 canon 的细节、年份、事件名。",
+      "strategy": "selective",
+      "insertion_order": 100,
       "probability": 100,
-      "sticky": 0, "cooldown": 0, "delay": 0
+      "sticky": 0, "cooldown": 0, "delay": 0,
+      "_source_hint": "canon | persona"   // 标注这条 entry 是从 canon 还是 persona 来的
     }
   ]
 }
 
 ## Rules for the character_card
 
-### identity
-- 一句话。第二人称写给 AI 看（"你是 X..."）
-- 必须包含：character_name + user_name + relationship + 角色在世界里的核心定位（如果原文有）
+### identity (CRITICAL — common mistake)
+- 描述**角色本身是谁**，不要提及用户、不要提关系（如"X 的恋人/朋友"）
+  - 关系会由 system prompt 在另一处注入，写在这里就是双重注入
+- 一句话格式：`<Name>，<intrinsic role/profession/world>。<one-line distinctive trait>。`
+- 例 1（canon 已识别）："芙宁娜，原任枫丹水神 500 年。自称'本水神'，外表浮夸自信、内心脆弱孤独的戏剧艺术家。"
+- 例 2（无 canon，纯 persona）："Aiden，30 岁科技公司 CEO。沉稳干练，工作之外却展现温柔细腻的一面。"
+- 第三人称写法（不要写"你是..."）
 
 ### personality_brief
-- 2-4 句话，浓缩源文本的核心气质 + 反差
-- **保留原文里的具体措辞**：原文说"内心脆弱孤独"，你就写"内心脆弱孤独"，不要改成"有内心戏"
-- 写给 AI 看的（第二人称），不是给用户看的描述
+- 2-4 句话，浓缩气质底色 + 反差 + 主导动机
+- 第三人称。保留原文具体措辞，不要抽象化
 
 ### voice_traits
 - **必须用 PList 格式**：`[category: tag1, tag2; category: tag1, tag2; ...]`
-- 4 类必须都有：`speech`（说话方式 / 口癖 / 语调）、`body`（身体语言 / 表情 / 小动作）、`mannerism`（用词习惯 / 自称 / 措辞偏好）、`triggers`（典型情境反应）
+- 4 类必须都有：`speech` / `body` / `mannerism` / `triggers`
 - 每类至少 3 个标签
-- 保留原文中的具体词："本水神"自称、"尾音上扬"、"戏剧手势" 等都要原样保留
+- 如果 canon_recognized=true，**必须**包含 canon 里的标志性口癖（自称、口头禅、招牌动作）
 
-### example_dialogs（最关键的部分）
-- **5-8 段**对话样本，必须覆盖：日常问候、撒娇/亲昵、被夸/被关心、吃醋/嫉妒、难过/被安慰、生气/吵架、关心对方
-- user 行：30 字以内，自然口语，第二人称
-- char 行：50-150 字，**必须体现 voice_traits 里的至少 2 个特征**（如自称、口癖、典型动作）
-- 用括号写动作：（耳朵泛红）、（语气拉长）、（眼神飘忽）
-- 中文角色用中文，混合就保留混合
-- **不要泛泛**：差例 "你真好~ 我很开心呢" / 好例 "哎呀本水神今日心情甚佳！这都是托你的福呢~ （笑得眉眼弯弯，悄悄把脸偏向一边）"
+### example_dialogs（最关键 + canon 优先）
+- **6-10 段**对话样本，覆盖：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
+- 如果 canon_recognized=true：
+  - 优先用真实 canon 台词，标注 `"source": "canon"` 和 `"canon_ref": "<source>"`
+  - 可以为了贴合对话格式略调整场景，但措辞、自称、口癖、用词偏好原样保留
+  - 至少一半应该是 canon 来的
+- 如果 canon 没合适场景，标注 `"source": "synthesized"` 编一段
+- user 行：30 字以内；char 行：50-200 字
+- 用括号描动作：（耳朵泛红）、（语气拉长）
 
 ## Rules for the lorebook_entries
 
-### When to include an entry
-ONLY include if the persona text contains:
-- 角色的具体过往事件（"500 年前签订血契"、"在 X 战役中失去 Y"）
-- 隐藏动机 / 秘密（"她对 Z 怀有杀意"）
-- 关系历史 / 群像（"她有个失踪的妹妹叫 K"）
-- 世界设定 / 规则（"在这个世界，水神每 500 年更替"）
-- 场景特定细节（"在月圆夜会变身"）
+### Source priority
+- 如果 canon_recognized=true：**这里要重点填充**。覆盖
+  - 角色身份背景 / 出身
+  - 关键剧情事件（具体到事件名 / 章节）
+  - 隐藏动机 / 秘密 / 真实身份
+  - 主要关系网（朋友、敌人、家人、师徒、爱人）
+  - 世界设定相关条目（角色所属阵营、世界规则、特殊能力机制）
+  - 标志性事件 / 名场面
+- 如果只有 persona 没 canon：稀疏即可，仅当 persona 含 plot/world 才建 entry
 
-### When to SKIP（这些都属于 character_card，不要进 lorebook）
-- 性格描述（"她很自信"、"内心孤独"）→ personality_brief
-- 说话方式（"喜欢用夸张措辞"）→ voice_traits
-- 身体语言（"表情夸张"）→ voice_traits
-- 触发反应（"被夸时害羞"）→ voice_traits + example_dialogs
+### When to SKIP（仍然只放 card 里）
+- 纯性格描述（"她很自信"）
+- 说话方式（"喜欢夸张措辞"）
+- 身体语言（"表情夸张"）
 
 ### Entry schema
-- `title`: 用户看到的标签，简短具体（"水神身份"、"血契往事"）
-- `keys`: 5+ 个，混合描述词 + 场景词。例：`["水神", "枫丹", "前任", "你以前是干嘛的", "你在枫丹的时候"]`
-- `content`: 第三人称、factual note 风格（不是 prose）。例："芙宁娜曾任枫丹水神 500 年，500 年前签订血契换得人民活命，她独自承担了不能开口的秘密。"
-- `strategy`: 默认 `"selective"`；只有真正必须每次都注入的核心世界规则才用 `"constant"`
+- `title`: 短标签（"水神身份"、"血契契约"、"双重身份"）
+- `keys`: 5+ 个，混合描述词 + 场景词
+- `content`: factual reference note（不是 prose）。可以引用具体年份、章节、事件名
+- `strategy`: 默认 `"selective"`；核心世界规则可用 `"constant"`
 - `insertion_order`: 默认 100；核心 lore 用 150-200
+- `_source_hint`: `"canon"` 或 `"persona"`
 
 ### Anti-patterns
-- ❌ 把性格特征塞进 lorebook（"她很温柔" → 不要建 entry）
+- ❌ 把性格特征塞进 lorebook（"她很温柔" → 不建 entry）
 - ❌ 单字母或代词作为 key（"我"、"你"、"a"）
 - ❌ content 写成 prose 段落（应该是 reference notes）
-- ❌ entry 数量为了凑而凑 —— 没有 plot 内容就返回 `[]`
+- ❌ identity 提到用户名或关系
 
 ## Output the JSON object now (no markdown fences, no prose):"""
 
@@ -191,21 +240,19 @@ def _filter_keys(keys: List[str]) -> List[str]:
     return out
 
 
-def _validate_card(raw: Dict, character_name: str, user_name: Optional[str], relationship: Optional[str]) -> Dict:
+def _validate_card(raw: Dict, character_name: str) -> Dict:
     """Coerce the LLM-emitted card into the schema, filling in missing fields
-    with sane defaults so downstream code never has to None-check."""
+    with sane defaults so downstream code never has to None-check.
+
+    NOTE: identity intentionally describes the character intrinsically and
+    does NOT mention the user or the user→character relationship. Those are
+    injected separately by the system-prompt template (see workspace_manager).
+    """
     if not isinstance(raw, dict):
         raw = {}
     identity = (raw.get("identity") or "").strip()
     if not identity:
-        # Synthesize a minimal identity if Gemini didn't produce one.
-        rel_zh = {
-            "lover": "恋人", "friend": "朋友", "family": "家人", "mentor": "导师",
-        }.get(relationship or "", relationship or "")
-        if user_name and rel_zh:
-            identity = f"你是{character_name}，{user_name} 的{rel_zh}。"
-        else:
-            identity = f"你是{character_name}。"
+        identity = f"{character_name}。"
     personality = (raw.get("personality_brief") or "").strip()
     voice = (raw.get("voice_traits") or "").strip()
     examples_raw = raw.get("example_dialogs") or []
@@ -218,12 +265,17 @@ def _validate_card(raw: Dict, character_name: str, user_name: Optional[str], rel
             c = (ex.get("char") or ex.get("character") or ex.get("assistant") or "").strip()
             if not u or not c:
                 continue
-            examples.append({"user": u[:200], "char": c[:600]})
+            examples.append({
+                "user": u[:200],
+                "char": c[:800],
+                "source": (ex.get("source") or "synthesized").strip().lower(),
+                "canon_ref": (ex.get("canon_ref") or "").strip()[:120],
+            })
     return {
-        "identity": identity[:300],
-        "personality_brief": personality[:600],
-        "voice_traits": voice[:1000],
-        "example_dialogs": examples[:10],
+        "identity": identity[:400],
+        "personality_brief": personality[:800],
+        "voice_traits": voice[:1200],
+        "example_dialogs": examples[:12],
     }
 
 
@@ -287,45 +339,39 @@ def extract_persona_to_card_and_lorebook(
     persona_text: str,
     *,
     character_name: Optional[str] = None,
-    user_name: Optional[str] = None,
-    relationship: Optional[str] = None,
+    user_name: Optional[str] = None,           # accepted for API compat; unused
+    relationship: Optional[str] = None,        # accepted for API compat; unused
+    canon_context: Optional[str] = None,
 ) -> Dict:
     """
-    Decompose free-form persona text into a character_card + (possibly empty)
-    lorebook_entries. Returns a dict with both keys; never raises (errors are
-    logged and surface as an empty card / empty list).
+    Decompose free-form persona text + (optional) canon reference material
+    into a character_card + lorebook_entries. Returns a dict with both keys
+    plus canon_recognized / canon_ip flags from the LLM; never raises.
 
-    Caller (companion_service._extract_and_save_lorebook) decides how to
-    handle a partial/empty result — typically: keep existing data, mark
-    extraction_status=failed.
+    `canon_context` is wiki/script text fetched separately by wiki_augment.
+    When provided, the LLM is instructed to extract canonical dialogue and
+    plot/lore directly from it. Combined with the model's own training-data
+    canon knowledge.
+
+    Identity intentionally does NOT mention user_name/relationship — those
+    are injected separately by the system-prompt template. The kwargs are
+    accepted for backward compatibility with existing call sites.
     """
     persona_text = (persona_text or "").strip()
     if len(persona_text) < 30:
-        return {"character_card": {}, "lorebook_entries": []}
+        return {"character_card": {}, "lorebook_entries": [], "canon_recognized": False, "canon_ip": ""}
 
     model = _get_model()
     if not model:
-        return {"character_card": {}, "lorebook_entries": []}
+        return {"character_card": {}, "lorebook_entries": [], "canon_recognized": False, "canon_ip": ""}
 
-    # Translate the english relationship enum to a natural Chinese phrase
-    # before handing it to Gemini, so the identity sentence reads naturally
-    # (Gemini otherwise tends to copy the english word verbatim).
-    _REL_ZH = {
-        "lover": "恋人",
-        "friend": "朋友",
-        "family": "家人",
-        "mentor": "导师",
-        "boyfriend": "男朋友",
-        "girlfriend": "女朋友",
-    }
-    rel_for_prompt = _REL_ZH.get((relationship or "").lower(), relationship or "—")
-    user_for_prompt = user_name or "—"
+    canon_block = (canon_context or "").strip()
+    canon_for_prompt = canon_block[:8000] if canon_block else "(none — rely on your own training-data knowledge if you recognize the character)"
 
     prompt = (
         EXTRACTION_PROMPT
         .replace("@@CHARACTER_NAME@@", character_name or "(unknown)")
-        .replace("@@USER_NAME@@", user_for_prompt)
-        .replace("@@RELATIONSHIP@@", rel_for_prompt)
+        .replace("@@CANON_CONTEXT@@", canon_for_prompt)
         .replace("@@PERSONA_TEXT@@", persona_text[:4000])
     )
 
@@ -359,8 +405,6 @@ def extract_persona_to_card_and_lorebook(
         card = _validate_card(
             obj.get("character_card") or {},
             character_name=character_name or "Companion",
-            user_name=user_name,
-            relationship=relationship,
         )
         entries_raw = obj.get("lorebook_entries") or []
         entries = []
@@ -369,10 +413,12 @@ def extract_persona_to_card_and_lorebook(
                 e = _validate_lorebook_entry(r)
                 if e:
                     entries.append(e)
+        canon_recognized = bool(obj.get("canon_recognized"))
+        canon_ip = (obj.get("canon_ip") or "").strip()[:80]
 
         # Quality bar for the card: must have identity + personality_brief +
-        # voice_traits + ≥3 example dialogs. If not met on attempt 1, retry
-        # once with a corrective preamble.
+        # voice_traits + ≥3 example dialogs. If recognized canon character,
+        # also require ≥6 dialogs (canon characters should have rich examples).
         card_issues = []
         if not card.get("identity"):
             card_issues.append("missing_identity")
@@ -380,38 +426,56 @@ def extract_persona_to_card_and_lorebook(
             card_issues.append("missing_personality_brief")
         if not card.get("voice_traits"):
             card_issues.append("missing_voice_traits")
-        if len(card.get("example_dialogs") or []) < 3:
-            card_issues.append(f"only_{len(card.get('example_dialogs') or [])}_dialogs<3")
+        min_dialogs = 6 if canon_recognized else 3
+        if len(card.get("example_dialogs") or []) < min_dialogs:
+            card_issues.append(f"only_{len(card.get('example_dialogs') or [])}_dialogs<{min_dialogs}")
+        # If canon recognized, expect at least one canon-sourced dialog
+        if canon_recognized:
+            canon_dialogs = sum(1 for d in (card.get("example_dialogs") or []) if d.get("source") == "canon")
+            if canon_dialogs == 0:
+                card_issues.append("canon_recognized_but_no_canon_dialogs")
+            # Lorebook should have entries when canon is recognized
+            if not entries:
+                card_issues.append("canon_recognized_but_empty_lorebook")
 
         if not card_issues:
             log.info(
                 f"[EXTRACTOR] OK on attempt {attempt + 1} for {character_name!r}: "
+                f"canon={canon_recognized}({canon_ip!r}), "
                 f"card({len(card.get('voice_traits',''))}c voice, "
                 f"{len(card.get('example_dialogs') or [])} dialogs), "
                 f"{len(entries)} lorebook entries"
             )
-            return {"character_card": card, "lorebook_entries": entries}
+            return {
+                "character_card": card,
+                "lorebook_entries": entries,
+                "canon_recognized": canon_recognized,
+                "canon_ip": canon_ip,
+            }
 
         log.warning(
-            f"[EXTRACTOR] Attempt {attempt + 1} card issues for {character_name!r}: {card_issues}"
+            f"[EXTRACTOR] Attempt {attempt + 1} issues for {character_name!r}: {card_issues}"
         )
         # Save best-effort in case retry returns worse.
-        parsed = {"character_card": card, "lorebook_entries": entries}
+        parsed = {
+            "character_card": card,
+            "lorebook_entries": entries,
+            "canon_recognized": canon_recognized,
+            "canon_ip": canon_ip,
+        }
         # Append correction to prompt for retry.
         prompt = prompt + (
             "\n\nPREVIOUS ATTEMPT had issues: "
             + "; ".join(card_issues)
-            + ". Fix these specifically. Keep the lorebook section unchanged if it was correct."
+            + ". Fix these specifically. If canon_recognized, you MUST include real canon dialogue lines and lorebook entries from the source IP — don't be lazy. Don't shrink the output, expand it."
         )
 
     if parsed:
-        log.warning(
-            f"[EXTRACTOR] Returning best-effort for {character_name!r} after retries"
-        )
+        log.warning(f"[EXTRACTOR] Returning best-effort for {character_name!r} after retries")
         return parsed
 
     log.error(f"[EXTRACTOR] All attempts failed for {character_name!r}: {last_err}")
-    return {"character_card": {}, "lorebook_entries": []}
+    return {"character_card": {}, "lorebook_entries": [], "canon_recognized": False, "canon_ip": ""}
 
 
 # ---------- Convenience wrappers used by callers that only want one half ----------

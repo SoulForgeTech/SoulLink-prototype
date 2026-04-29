@@ -340,12 +340,29 @@ def _extract_and_save_lorebook(
     )
     _cache_invalidate(str(cid))
 
+    # Augment with canonical material from a wiki/fandom page if we recognize
+    # the character. This is best-effort — failures fall back to Gemini's own
+    # training-data canon recall.
+    canon_info = {"recognized": False, "ip": "", "wiki_url": "", "corpus": "", "from_cache": False}
+    try:
+        from wiki_augment import get_canon_context
+        canon_info = get_canon_context(character_name)
+        if canon_info.get("recognized"):
+            log.info(
+                f"[COMPANION] Canon context for {character_name!r}: "
+                f"ip={canon_info.get('ip')!r} corpus={len(canon_info.get('corpus') or '')}c "
+                f"cached={canon_info.get('from_cache')}"
+            )
+    except Exception as e:
+        log.warning(f"[COMPANION] Canon augmentation failed (non-fatal): {e}")
+
     try:
         result = extract_persona_to_card_and_lorebook(
             persona_text=persona_text,
             character_name=character_name,
             user_name=user_name,
             relationship=relationship,
+            canon_context=canon_info.get("corpus") or "",
         )
     except Exception as e:
         log.exception(f"[COMPANION] Extractor raised for companion {cid}: {e}")
@@ -375,6 +392,11 @@ def _extract_and_save_lorebook(
     persona_hash = hashlib.sha256((persona_text or "").encode("utf-8")).hexdigest()[:16]
     card["extracted_at"] = datetime.utcnow()
     card["source_persona_hash"] = persona_hash
+    # Stash canon recognition info on the card for diagnostics + UI display
+    card["canon_recognized"] = bool(result.get("canon_recognized"))
+    card["canon_ip"] = (result.get("canon_ip") or "")
+    if canon_info.get("wiki_url"):
+        card["canon_wiki_url"] = canon_info.get("wiki_url")
 
     try:
         update_result = db.db[COLLECTION].update_one(
