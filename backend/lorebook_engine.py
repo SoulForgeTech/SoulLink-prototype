@@ -116,10 +116,15 @@ def select_lorebook(
     last_hits_set = set(last_hit_ids or [])
 
     # 1. Constant entries first — always included regardless of keys.
-    candidates = [
-        e for e in entries
-        if e.get("enabled", True) and e.get("constant", False)
-    ]
+    candidates = []
+    for e in entries:
+        if not (e.get("enabled", True) and e.get("constant", False)):
+            continue
+        # Constant entries are tagged with empty matched keys so observability
+        # callers can tell them apart from keyword-driven hits.
+        e["_matched_keys"] = []
+        e["_match_reason"] = "constant"
+        candidates.append(e)
 
     # 2. Keyword-triggered entries.
     scan_parts = [user_message] + (history_texts[-SCAN_WINDOW_TURNS:] if history_texts else [])
@@ -135,12 +140,17 @@ def select_lorebook(
             continue
         matched = [k for k in keys if _key_matches(k, scan_text_lower, tokens)]
         logic = e.get("selective_logic", "any")
+        fired = False
         if logic == "all":
             if len(matched) == len(keys):
-                candidates.append(e)
+                fired = True
         else:  # "any"
             if matched:
-                candidates.append(e)
+                fired = True
+        if fired:
+            e["_matched_keys"] = matched
+            e["_match_reason"] = "keyword"
+            candidates.append(e)
 
     # 3. Dedupe by entry id (in case constant + keyword-matched same entry).
     seen = set()
@@ -273,8 +283,21 @@ def build_lorebook_prefix(
     if conv_id:
         set_recency_hits(conv_id, [e.get("id") for e in selected if e.get("id")])
 
+    # Detailed log so users tailing journalctl can see exactly what fired and
+    # why — frontend has no UI for lorebook by design, so the log is the only
+    # observability surface.
+    hit_details = []
+    for e in selected:
+        title = (e.get("keys") or [""])[0] or e.get("dimension") or "fact"
+        reason = e.get("_match_reason", "?")
+        if reason == "constant":
+            hit_details.append(f"{title}[const]")
+        else:
+            mk = e.get("_matched_keys") or []
+            mk_short = ",".join(mk[:3]) + ("..." if len(mk) > 3 else "")
+            hit_details.append(f"{title}[{mk_short}]")
     log.info(
         f"[LOREBOOK] conv={conv_id[-8:] if conv_id else '?'} "
-        f"hits={len(selected)} tokens={used_tokens}"
+        f"hits={len(selected)} tokens={used_tokens} → {' | '.join(hit_details)}"
     )
     return block + "\n\n"
