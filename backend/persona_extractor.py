@@ -83,14 +83,20 @@ You have THREE sources, in priority order:
            extrapolate — if the wiki doesn't say it, don't write it.
          - Set "canon_recognized": true and "canon_ip" to the IP name.
 
-  **(B) Your training-data knowledge** (only when @@CANON_CONTEXT@@ is empty
-       AND you have HIGH confidence the character is real and well-known):
-         - You may quote real lines from your training data, but flag them
-           the same way (`source: "canon"`, `canon_ref: "from training"`).
-         - Be conservative: if you're not sure the line is real, mark it
-           `source: "synthesized"` instead.
-         - For characters you only vaguely recognize, set
-           "canon_recognized": false and skip canon-style outputs.
+  **(B) Your training-data knowledge** — **DO NOT use this as a substitute
+       for empty @@CANON_CONTEXT@@.**
+         - If @@CANON_CONTEXT@@ is empty but you recognize the character,
+           you may produce 2-4 example_dialogs marked `source: "canon"` with
+           `canon_ref: "from training data"`, ONLY for lines you are highly
+           confident are real (e.g. iconic catchphrases known across many
+           sources). Be conservative — false canon is worse than no canon.
+         - For lorebook_entries when @@CANON_CONTEXT@@ is empty: cap at 3-5
+           entries, each covering only widely-known undisputed facts. Mark
+           `_source_hint: "canon"` and append "[from training data, may be
+           outdated]" to the content.
+         - **Hallucination is the #1 failure mode.** When in doubt, leave
+           it out. The frontend will show a banner asking the user to
+           manually add canon material if needed.
 
   **(C) The user's persona text** — always overrides A/B when there's
        conflict. The user may have customized the character (softer, older,

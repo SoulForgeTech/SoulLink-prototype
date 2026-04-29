@@ -38,13 +38,11 @@ HTTP_TIMEOUT = 15
 MAX_CORPUS_CHARS = 25000     # combined budget across all sources
 PER_SOURCE_MAX = 18000       # per-source cap (so one giant page doesn't starve siblings)
 INTER_FETCH_SLEEP = 1.5      # polite delay between requests to same wiki
-# Browser-like UA — some wikis (BiliWiki notably) challenge non-browser UAs
-# with a bot-protection page on certain subpages. The MediaWiki API itself
-# is allowed for either UA, but we lean browser-like to maximize coverage.
+# Bot-style UA per Wikimedia API guidelines — empirically more reliable on
+# BiliWiki than browser-spoofing (the latter tripped Cloudflare-style 567s
+# when we tested). Wikimedia explicitly asks bots to identify themselves.
 USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 "
-    "SoulLinkPersonaBot/0.3"
+    "SoulLinkPersonaBot/0.3 (+https://soullink.app; contact dev@soullink.app)"
 )
 
 _gemini_model = None
