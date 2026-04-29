@@ -4228,6 +4228,20 @@ def confirm_persona():
         user_name = user.get("name", "Friend") if user else "Friend"
         result = workspace_manager.update_system_prompt(user_id, user_name)
 
+        # Trigger background lorebook extraction — keeps the API response
+        # snappy (Gemini call takes 2-5s) while still updating the structured
+        # entries asynchronously. User stays unaware of the underlying schema.
+        try:
+            from companion_service import re_extract_lorebook
+            re_extract_lorebook(
+                user_id,
+                persona_text=core_persona,
+                user_name=user_name,
+                background=True,
+            )
+        except Exception as e:
+            logger.warning(f"[PERSONA] Lorebook re-extraction spawn failed (non-fatal): {e}")
+
         if result.get("success"):
             logger.info(f"[PERSONA] Custom persona saved for user {user_id}: {persona_name or 'unnamed'}")
             return jsonify({"success": True})
@@ -4441,6 +4455,22 @@ def clear_persona():
                 "settings.image_appearance": "",
             }}
         )
+
+        # Wipe the active companion's extracted lorebook entries — they were
+        # derived from the now-deleted persona text and would otherwise leak
+        # the old character into the personality-test fallback persona.
+        try:
+            from companion_service import get_active_companion
+            from datetime import datetime as _dt
+            comp = get_active_companion(user_id)
+            if comp:
+                db.db["companions"].update_one(
+                    {"_id": comp["_id"], "user_id": user_id},
+                    {"$set": {"lorebook_entries": [], "updated_at": _dt.utcnow()}},
+                )
+                logger.info(f"[PERSONA] Cleared lorebook entries on companion {comp['_id']}")
+        except Exception as e:
+            logger.warning(f"[PERSONA] Lorebook clear failed (non-fatal): {e}")
 
         # 更新 system prompt（会回退到性格测试 persona 或默认）
         user = db.db["users"].find_one({"_id": user_id})
@@ -5651,6 +5681,100 @@ def delete_lorebook_entry_route(companion_id, entry_id):
     if not ok:
         return jsonify({"error": "Entry not found"}), 404
     return jsonify({"success": True})
+
+
+@app.route("/api/companions/<companion_id>/lorebook/re-extract", methods=["POST"])
+@login_required
+def re_extract_lorebook_route(companion_id):
+    """Force re-extraction of lorebook from the active companion's persona text.
+    Used by the team for debugging — not exposed in user UI."""
+    from companion_service import get_companion_by_id, _extract_and_save_lorebook
+    user_id = get_current_user_id()
+    user = get_current_user()
+    comp = get_companion_by_id(companion_id, user_id)
+    if not comp:
+        return jsonify({"error": "Companion not found"}), 404
+    persona = comp.get("custom_persona") or (user.get("settings") or {}).get("custom_persona") or ""
+    if len(persona.strip()) < 30:
+        return jsonify({"error": "No persona text to extract from"}), 400
+    name = comp.get("name") or "Companion"
+    relationship = (user.get("settings") or {}).get("companion_relationship")
+    count = _extract_and_save_lorebook(
+        comp["_id"], user_id, persona, name,
+        user_name=user.get("name"), relationship=relationship,
+    )
+    return jsonify({"success": count > 0, "entry_count": count})
+
+
+@app.route("/api/prompt-debug", methods=["POST"])
+@login_required
+def prompt_debug_route():
+    """
+    Internal debug endpoint — returns what lorebook entries would fire for a
+    given message + conversation. Used by the team to answer "why didn't this
+    fire?" without needing to wire up logging on every chat. Not exposed in UI.
+    """
+    from companion_service import get_active_companion
+    from lorebook_engine import (
+        select_lorebook,
+        format_lorebook_block,
+        estimate_tokens,
+        get_recency_hits,
+        SCAN_WINDOW_TURNS,
+    )
+
+    user_id = get_current_user_id()
+    user = get_current_user()
+    data = request.get_json() or {}
+    message = data.get("message", "")
+    conversation_id = data.get("conversation_id")
+
+    if not message:
+        return jsonify({"error": "message required"}), 400
+
+    history_texts = []
+    last_hits = []
+    conv_id_str = ""
+    if conversation_id:
+        try:
+            conv = db.get_conversation(ObjectId(conversation_id), user_id)
+            if conv:
+                history_msgs = conv.get("messages", []) or []
+                history_texts = [(m.get("content") or "") for m in history_msgs[-SCAN_WINDOW_TURNS:]]
+                conv_id_str = str(conv["_id"])
+                last_hits = get_recency_hits(conv_id_str)
+        except Exception:
+            pass
+
+    companion = get_active_companion(user_id, user_doc=user)
+    entries = (companion or {}).get("lorebook_entries") or []
+
+    selected, used_tokens = select_lorebook(message, history_texts, entries, last_hits)
+    block = format_lorebook_block(selected)
+
+    return jsonify({
+        "companion_id": str(companion["_id"]) if companion else None,
+        "companion_name": (companion or {}).get("name"),
+        "total_entries": len(entries),
+        "scan_window_turns": SCAN_WINDOW_TURNS,
+        "history_used_for_scan": history_texts,
+        "previous_recency_hits": last_hits,
+        "fired_entries": [
+            {
+                "id": e.get("id"),
+                "keys": e.get("keys"),
+                "content": e.get("content"),
+                "priority": e.get("priority"),
+                "constant": e.get("constant", False),
+                "tokens": estimate_tokens(e.get("content", "")),
+                "matched_via": "constant" if e.get("constant") else "keyword",
+            }
+            for e in selected
+        ],
+        "tokens_used": used_tokens,
+        "tokens_budget": 800,
+        "rendered_block": block,
+    })
 
 
 # ==================== 启动应用 ====================

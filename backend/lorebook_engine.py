@@ -60,14 +60,20 @@ def estimate_tokens(text: str) -> int:
 
 
 def _tokenize(text: str) -> set:
-    """jieba tokens + raw substring fallback. Lowercased."""
+    """
+    jieba search-mode tokens (overlapping segmentations including sub-tokens).
+    Search mode emits both '猫咪' and '猫' for compound words, so a 1-char
+    Chinese key still matches the head of a compound word — but unrelated
+    appearances ('熊猫') still won't match because the search tokenizer
+    doesn't break across compound boundaries it didn't recognize.
+    """
     text_lower = text.lower()
     if _JIEBA_OK:
-        toks = set(jieba.lcut(text_lower))
+        toks = set(jieba.lcut_for_search(text_lower))
     else:
         toks = set()
-    # Always include the raw lowered text so single-character or English-phrase
-    # keys still match without depending on the tokenizer's segmentation.
+    # Always include the raw lowered text so the substring fallback in
+    # _key_matches can handle multi-word English phrases.
     toks.add(text_lower)
     return toks
 
@@ -78,9 +84,19 @@ def _key_matches(key: str, scan_text_lower: str, tokens: set) -> bool:
     k = key.lower()
     if k in tokens:
         return True
-    # Multi-word English keys ("blue maid"), or Chinese phrases jieba split
-    # apart — fall back to substring on the full scan text.
-    return k in scan_text_lower
+    # Substring fallback exists for two real cases jieba can't handle:
+    #   1. Multi-word English phrases ("blue maid") — tokenizer splits each word
+    #   2. Chinese phrases jieba mis-segments (rare but possible)
+    # Short keys would substring-match inside unrelated words ("猫" inside
+    # "熊猫", "ai" inside "wait"), so we restrict the fallback to keys long
+    # enough that incidental matches are unlikely. CJK threshold is stricter
+    # than ASCII because each CJK char carries more meaning.
+    if " " in k:
+        return k in scan_text_lower
+    cjk_count = sum(1 for ch in k if "一" <= ch <= "鿿")
+    if cjk_count >= 3 or (cjk_count == 0 and len(k) >= 4):
+        return k in scan_text_lower
+    return False
 
 
 def select_lorebook(

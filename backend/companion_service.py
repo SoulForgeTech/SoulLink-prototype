@@ -196,7 +196,137 @@ def _create_default_from_legacy(user_id: ObjectId, settings: Dict) -> Dict:
     _set_active_companion(user_id, doc["_id"])
     _cache_set(doc)
     log.info(f"[COMPANION] Lazy-created default companion {doc['_id']} for user {user_id}")
+
+    # Kick off lorebook extraction in the background so the user's first chat
+    # doesn't block on Gemini. The first message will fall back to legacy
+    # behavior (no lorebook entries) and subsequent messages get the layered
+    # prompt. Idempotent — re-runs replace entries.
+    if custom_persona:
+        try:
+            import threading
+            threading.Thread(
+                target=_extract_and_save_lorebook,
+                args=(doc["_id"], user_id, custom_persona, name),
+                daemon=True,
+            ).start()
+        except Exception as e:
+            log.warning(f"[COMPANION] Background extraction spawn failed: {e}")
+
     return doc
+
+
+def _extract_and_save_lorebook(
+    companion_id: ObjectId,
+    user_id: ObjectId,
+    persona_text: str,
+    character_name: str,
+    user_name: Optional[str] = None,
+    relationship: Optional[str] = None,
+) -> int:
+    """
+    Run LLM extraction and replace the companion's lorebook_entries with the
+    result. Returns the number of entries written. On failure (Gemini error,
+    parse error, no valid entries), keeps existing entries intact and returns 0.
+
+    Used both for background-spawned extraction during companion creation and
+    for the synchronous backfill script.
+    """
+    try:
+        from persona_extractor import (
+            extract_lorebook_from_persona,
+            build_core_identity_entry,
+        )
+    except Exception as e:
+        log.error(f"[COMPANION] persona_extractor import failed: {e}")
+        return 0
+
+    extracted = extract_lorebook_from_persona(persona_text, character_name=character_name)
+    if not extracted:
+        log.info(f"[COMPANION] Extraction yielded 0 entries for companion {companion_id} — keeping existing")
+        return 0
+
+    # Always prepend a synthesized core-identity entry regardless of what the
+    # LLM produced — anchors role identity in every reply.
+    core = build_core_identity_entry(
+        companion_name=character_name,
+        user_name=user_name,
+        relationship=relationship,
+    )
+    final_entries = [core] + extracted
+
+    try:
+        db.db[COLLECTION].update_one(
+            {"_id": companion_id, "user_id": user_id},
+            {
+                "$set": {
+                    "lorebook_entries": final_entries,
+                    "updated_at": datetime.utcnow(),
+                    "lorebook_extracted_at": datetime.utcnow(),
+                }
+            },
+        )
+        _cache_invalidate(str(companion_id))
+        log.info(f"[COMPANION] Saved {len(final_entries)} lorebook entries to companion {companion_id}")
+        return len(final_entries)
+    except Exception as e:
+        log.warning(f"[COMPANION] Failed to persist extracted lorebook: {e}")
+        return 0
+
+
+def re_extract_lorebook(
+    user_id: ObjectId,
+    persona_text: Optional[str] = None,
+    *,
+    user_name: Optional[str] = None,
+    background: bool = True,
+) -> None:
+    """
+    Trigger lorebook re-extraction for the user's active companion. Called
+    from /api/user/confirm-persona and similar persona-update endpoints.
+
+    Background mode (default) — fire-and-forget so the HTTP response isn't
+    blocked by the LLM call. Set background=False for the backfill script
+    where serialization is desired.
+    """
+    user_doc = db.get_user_by_id(user_id)
+    if not user_doc:
+        return
+    settings = user_doc.get("settings") or {}
+    if persona_text is None:
+        persona_text = settings.get("custom_persona") or ""
+    if not persona_text or len(persona_text.strip()) < 30:
+        return
+
+    companion = get_active_companion(user_id, user_doc=user_doc)
+    if not companion:
+        return
+
+    name = (
+        settings.get("custom_persona_name")
+        or settings.get("companion_name")
+        or companion.get("name")
+        or "Companion"
+    )
+    relationship = settings.get("companion_relationship")
+
+    def _run():
+        _extract_and_save_lorebook(
+            companion["_id"],
+            user_id,
+            persona_text,
+            name,
+            user_name=user_name,
+            relationship=relationship,
+        )
+
+    if background:
+        try:
+            import threading
+            threading.Thread(target=_run, daemon=True).start()
+        except Exception as e:
+            log.warning(f"[COMPANION] re_extract spawn failed: {e}")
+    else:
+        _run()
 
 
 def _set_active_companion(user_id: ObjectId, companion_id: ObjectId) -> None:
