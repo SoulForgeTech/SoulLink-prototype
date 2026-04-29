@@ -17,6 +17,7 @@ import { useT } from '@/hooks/useT';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { updateProfile, updateSettings as apiUpdateSettings, uploadAvatar } from '@/lib/api/user';
 import { searchCharacter, importPersona, confirmPersona as apiConfirmPersona, clearPersona as apiClearPersona, getCustomStatus, importLore, clearLore, importChatGPT } from '@/lib/api/persona';
+import LorebookSection from '@/components/settings/LorebookSection';
 import { getVoiceList, searchVoices, previewVoice } from '@/lib/api/voice';
 import { setPresets, setCurrentPresetId } from '@/store/voiceSlice';
 import type { SettingsTab, VoicePreset, LoreDocument, PersonaPreview } from '@/types';
@@ -1730,6 +1731,16 @@ export default function SettingsModal() {
                   >
                     {t('settings.custom.persona.cleared').replace('\u5DF2\u6E05\u9664', '\u6E05\u9664').replace('Custom personality cleared', 'Clear Custom Persona')}
                   </button>
+                )}
+
+                {/* Auto-extracted character memory (lorebook) — only shown for users
+                    with an active custom_persona. Preset-companion users see nothing
+                    here; their flow is the original system_prompt template path. */}
+                {localPersonaActive && (
+                  <LorebookSection
+                    authFetch={authFetch}
+                    language={language === 'zh-CN' ? 'zh-CN' : 'en'}
+                  />
                 )}
               </div>
 

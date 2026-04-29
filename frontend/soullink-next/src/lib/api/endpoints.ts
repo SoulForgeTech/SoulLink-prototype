@@ -41,6 +41,22 @@ export const USER = {
   updateMemory: (id: string) => `${BASE}/api/user/memories/${id}`,
 } as const;
 
+// ==================== Companions / Lorebook ====================
+export const COMPANIONS = {
+  LIST: `${BASE}/api/companions`,
+  ACTIVE: `${BASE}/api/companions/active`,
+  /** Read-only list of lorebook entries for a companion. */
+  lorebook: (companionId: string) => `${BASE}/api/companions/${companionId}/lorebook`,
+  /** Update / delete a single lorebook entry. */
+  lorebookEntry: (companionId: string, entryId: string) =>
+    `${BASE}/api/companions/${companionId}/lorebook/${entryId}`,
+  /** Force re-extract from current persona text + canon corpus. */
+  reExtract: (companionId: string) => `${BASE}/api/companions/${companionId}/lorebook/re-extract`,
+  /** Lightweight extraction status for polling. */
+  extractionStatus: (companionId: string) =>
+    `${BASE}/api/companions/${companionId}/extraction-status`,
+} as const;
+
 // ==================== Chat ====================
 export const CHAT = {
   SEND: `${BASE}/api/chat`,
