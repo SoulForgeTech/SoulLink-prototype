@@ -214,11 +214,16 @@ def _detect_sources(character_name: str) -> Dict:
 
 # ---------- MediaWiki API fetch + clean ----------
 
-def _fetch_mediawiki(api_url: str, page_title: str) -> str:
+def _fetch_mediawiki(api_url: str, page_title: str, *, max_retries: int = 3) -> str:
     """Fetch a page via MediaWiki action=parse and return the rendered HTML
-    body (raw — caller cleans). Returns "" on any failure."""
+    body (raw — caller cleans). Returns "" on any failure.
+
+    Retries on 5xx (transient rate-limit / Cloudflare challenge) with
+    exponential backoff: 2s, 4s, 8s. Does not retry on 4xx (page doesn't
+    exist, etc — those are deterministic)."""
     try:
         import requests
+        import time as _time
     except ImportError:
         return ""
     params = {
@@ -231,24 +236,50 @@ def _fetch_mediawiki(api_url: str, page_title: str) -> str:
         "disableeditsection": "1",
         "disabletoc": "1",
     }
-    try:
-        resp = requests.get(
-            api_url, params=params,
-            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-            timeout=HTTP_TIMEOUT,
-        )
-        if resp.status_code != 200:
-            log.warning(f"[WIKI] {api_url} page={page_title!r} → HTTP {resp.status_code}")
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(api_url, params=params, headers=headers, timeout=HTTP_TIMEOUT)
+        except Exception as e:
+            if attempt < max_retries - 1:
+                _time.sleep(2 ** (attempt + 1))
+                continue
+            log.warning(f"[WIKI] fetch exception {api_url} page={page_title!r}: {e}")
             return ""
-        data = resp.json()
-        if "error" in data:
-            log.info(f"[WIKI] {api_url} page={page_title!r} → API error: {data['error'].get('info', '')[:120]}")
+
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except Exception:
+                # Some bot-protection pages return text/html with 200; treat as failure
+                if attempt < max_retries - 1:
+                    _time.sleep(2 ** (attempt + 1))
+                    continue
+                log.warning(f"[WIKI] {api_url} page={page_title!r} → 200 but non-JSON body")
+                return ""
+            if "error" in data:
+                log.info(f"[WIKI] {api_url} page={page_title!r} → API error: {data['error'].get('info', '')[:120]}")
+                return ""
+            html = (data.get("parse") or {}).get("text", {}).get("*", "")
+            return html or ""
+
+        # 4xx → don't retry, not transient
+        if 400 <= resp.status_code < 500:
+            log.info(f"[WIKI] {api_url} page={page_title!r} → HTTP {resp.status_code} (no retry)")
             return ""
-        html = (data.get("parse") or {}).get("text", {}).get("*", "")
-        return html or ""
-    except Exception as e:
-        log.warning(f"[WIKI] fetch error {api_url} page={page_title!r}: {e}")
-        return ""
+
+        # 5xx / 567 → retry with backoff
+        log.info(f"[WIKI] {api_url} page={page_title!r} → HTTP {resp.status_code} (attempt {attempt + 1}/{max_retries})")
+        if attempt < max_retries - 1:
+            _time.sleep(2 ** (attempt + 1))
+
+    log.warning(f"[WIKI] {api_url} page={page_title!r} exhausted {max_retries} retries")
+    return ""
 
 
 def _clean_html_to_text(html: str) -> str:
