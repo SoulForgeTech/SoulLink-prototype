@@ -184,11 +184,12 @@ You have THREE sources, in priority order:
 - 如果 canon_recognized=true，**必须**包含 canon 里的标志性口癖（自称、口头禅、招牌动作）
 
 ### example_dialogs（最关键 + canon 优先 + 严禁编造）
-- **6-10 段**对话样本，覆盖：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
+- **目标 12-18 段**对话样本，覆盖：日常问候 / 撒娇亲昵 / 被夸 / 被关心 / 吃醋嫉妒 / 难过被安慰 / 生气吵架 / 关心对方 / 角色专属场景（如剧情高光、关键对手戏）
 - 如果 @@CANON_CONTEXT@@ 非空：
   - **每条 canon 标注的对话，char 部分必须有出现在 canon_context 里的句子**（可以微调标点 / 人称以适配对话格式，但词句、自称、口癖必须从原文复制）
-  - canon_ref 必须指明出自 canon_context 的哪个 SOURCE 段（如 "main", "voice"）以及大致章节 / 场景
-  - 至少 4-5 段必须是 canon 来源；剩余可以 synthesized
+  - canon_ref 必须指明出自 canon_context 的哪个 SOURCE 段、章节 / 场景（"角色故事3"、"水的女儿剧情"、"邀约事件"、"传说任务"）
+  - canon_context 越丰富，canon-sourced 对话应该越多。**至少 8-10 段**必须 canon 来源
+  - 多 source 段（如同时有"角色故事1-6"+"水的女儿"+"邀约事件"）→ 应该从每个 source 各取 1-2 段
   - **DO NOT INVENT QUOTES**：不要因为"听起来像那个角色"就标 canon。没有原句就标 synthesized
 - 如果 canon_context 为空但你 HIGHLY 熟悉角色（来自训练数据）：
   - 可以引用你确信存在的真实台词，标 canon + canon_ref="from training data"
@@ -198,16 +199,19 @@ You have THREE sources, in priority order:
 
 ## Rules for the lorebook_entries
 
-### Source priority
+### Source priority + 数量目标
+- **目标 10-20 条 entries**（canon 充足时往上限走，稀疏时往下限走）
 - 如果 @@CANON_CONTEXT@@ 非空 → **重点填充**，每条 entry 的 content 必须能在 canon_context 里找到依据：
   - 角色身份背景 / 出身（具体年份、地名要 match canon）
-  - 关键剧情事件（事件名 / 章节名 必须出自 canon）
+  - 关键剧情事件 / **每个 canon 段拆一条**（如"角色故事1"、"角色故事3"、"传说任务"、"邀约事件"等多段，应该各产出 1-2 个 entry，不要合并）
   - 隐藏动机 / 秘密 / 真实身份
-  - 主要关系网（朋友、敌人、家人、师徒、爱人）—— 涉及的角色名必须是 canon 里出现过的
+  - 主要关系网 — 每个重要关系角色单独一条（如"与那维莱特"、"与克洛琳德"、"与林尼兄妹"分别建 entry）
   - 世界设定（阵营、世界规则、能力机制）
+  - 标志性物品 / 道具 / 召唤物（如"孤心沙龙四成员"、"神之眼来源"）
+  - **重大剧情转折后的状态**（如"剧情终幕后的人类生活"、"卸下水神身份后的新住所"）
   - **DO NOT INVENT**：canon_context 没说的事件、关系、设定，不要写
 - 如果 canon_context 为空但你 HIGHLY 熟悉角色：
-  - 可以基于训练数据生成，但条数控制在 3-5 条，每条只写你高确信度的内容
+  - 可以基于训练数据生成，但条数控制在 5-8 条，每条只写你高确信度的内容
   - 标 _source_hint="canon" + 在 content 末尾加 "[from training data]"
 - 如果完全 unknown：lorebook_entries 返回 `[]`，不要硬凑
 
@@ -403,9 +407,21 @@ def extract_persona_to_card_and_lorebook(
     # 2 attempts: one normal + one retry. Quality bar is "card has identity AND
     # ≥3 example dialogs"; lorebook can legitimately be empty so we don't gate
     # on it.
+    # Gemini Flash defaults to ~8k output tokens; bump for richer extractions
+    # (12-18 dialogs + 10-20 lorebook entries can run 6-10k tokens with JSON).
+    try:
+        import google.generativeai as _genai
+        gen_config = _genai.types.GenerationConfig(
+            max_output_tokens=16384,
+            temperature=0.5,
+            response_mime_type="application/json",
+        )
+    except Exception:
+        gen_config = None
+
     for attempt in range(2):
         try:
-            response = model.generate_content(prompt)
+            response = model.generate_content(prompt, generation_config=gen_config) if gen_config else model.generate_content(prompt)
             raw_text = response.text or ""
         except Exception as e:
             last_err = e
@@ -437,9 +453,10 @@ def extract_persona_to_card_and_lorebook(
         canon_recognized = bool(obj.get("canon_recognized"))
         canon_ip = (obj.get("canon_ip") or "").strip()[:80]
 
-        # Quality bar for the card: must have identity + personality_brief +
-        # voice_traits + ≥3 example dialogs. If recognized canon character,
-        # also require ≥6 dialogs (canon characters should have rich examples).
+        # Quality bar:
+        #   any character: identity + personality_brief + voice_traits + ≥4 dialogs
+        #   canon-recognized: ≥10 dialogs, ≥6 canon-sourced, ≥8 lorebook entries
+        # Retry once with a corrective preamble if any of these miss.
         card_issues = []
         if not card.get("identity"):
             card_issues.append("missing_identity")
@@ -447,17 +464,16 @@ def extract_persona_to_card_and_lorebook(
             card_issues.append("missing_personality_brief")
         if not card.get("voice_traits"):
             card_issues.append("missing_voice_traits")
-        min_dialogs = 6 if canon_recognized else 3
-        if len(card.get("example_dialogs") or []) < min_dialogs:
-            card_issues.append(f"only_{len(card.get('example_dialogs') or [])}_dialogs<{min_dialogs}")
-        # If canon recognized, expect at least one canon-sourced dialog
+        n_dialogs = len(card.get("example_dialogs") or [])
+        min_dialogs = 10 if canon_recognized else 4
+        if n_dialogs < min_dialogs:
+            card_issues.append(f"only_{n_dialogs}_dialogs<{min_dialogs}")
         if canon_recognized:
             canon_dialogs = sum(1 for d in (card.get("example_dialogs") or []) if d.get("source") == "canon")
-            if canon_dialogs == 0:
-                card_issues.append("canon_recognized_but_no_canon_dialogs")
-            # Lorebook should have entries when canon is recognized
-            if not entries:
-                card_issues.append("canon_recognized_but_empty_lorebook")
+            if canon_dialogs < 6:
+                card_issues.append(f"only_{canon_dialogs}_canon_dialogs<6")
+            if len(entries) < 8:
+                card_issues.append(f"only_{len(entries)}_lorebook_entries<8")
 
         if not card_issues:
             log.info(

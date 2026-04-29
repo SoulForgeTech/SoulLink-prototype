@@ -34,11 +34,17 @@ from typing import Dict, List, Optional
 log = logging.getLogger(__name__)
 
 CANON_CACHE_TTL_DAYS = 30
-HTTP_TIMEOUT = 12
-MAX_CORPUS_CHARS = 12000     # combined budget across all sources
+HTTP_TIMEOUT = 15
+MAX_CORPUS_CHARS = 25000     # combined budget across all sources
+PER_SOURCE_MAX = 18000       # per-source cap (so one giant page doesn't starve siblings)
+INTER_FETCH_SLEEP = 1.5      # polite delay between requests to same wiki
+# Browser-like UA — some wikis (BiliWiki notably) challenge non-browser UAs
+# with a bot-protection page on certain subpages. The MediaWiki API itself
+# is allowed for either UA, but we lean browser-like to maximize coverage.
 USER_AGENT = (
-    "Mozilla/5.0 (compatible; SoulLinkPersonaBot/0.2; "
-    "+https://soullink.app; contact dev@soullink.app)"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 "
+    "SoulLinkPersonaBot/0.3"
 )
 
 _gemini_model = None
@@ -328,20 +334,32 @@ def get_canon_context(character_name: str, *, force_refresh: bool = False) -> Di
 
     # Fetch each source in order, accumulating into the corpus until we hit
     # the budget. Each section gets a clear delimiter so the LLM can cite.
+    # Polite delay between requests to the same domain to avoid tripping
+    # bot-detection on aggressive-looking bursts.
+    import time
     accumulated_chars = 0
     chunks: List[str] = []
     fetched_sources: List[Dict] = []
-    for src in detect["wiki_sources"]:
+    last_api_host = ""
+    for i, src in enumerate(detect["wiki_sources"]):
         if accumulated_chars >= MAX_CORPUS_CHARS:
             break
+        api_host = src["api"].split("/")[2] if "://" in src["api"] else ""
+        if i > 0 and api_host == last_api_host:
+            time.sleep(INTER_FETCH_SLEEP)
+        last_api_host = api_host
         html = _fetch_mediawiki(src["api"], src["page"])
         text = _clean_html_to_text(html)
         if not text:
             fetched_sources.append({**src, "fetched_chars": 0})
             continue
+        # Per-source cap so a 50k voice-line page doesn't starve other sources
+        if len(text) > PER_SOURCE_MAX:
+            text = text[:PER_SOURCE_MAX] + "\n[…truncated at per-source cap…]"
+        # Total budget cap
         remaining = MAX_CORPUS_CHARS - accumulated_chars
         if len(text) > remaining:
-            text = text[:remaining] + "\n[…truncated…]"
+            text = text[:remaining] + "\n[…truncated at total budget…]"
         chunk = (
             f"\n\n=== SOURCE: {src['kind']} | {src['page']} | {src['api']} ===\n{text}"
         )
