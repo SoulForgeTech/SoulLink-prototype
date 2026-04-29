@@ -67,20 +67,77 @@ def _cache_invalidate(companion_id: str) -> None:
 def _new_lorebook_entry(
     keys: List[str],
     content: str,
-    priority: int = 50,
-    selective_logic: str = "any",
-    constant: bool = False,
+    *,
+    title: str = "",
+    secondary_keys: Optional[List[str]] = None,
+    selective_logic: str = "and_any",
+    strategy: str = "selective",
+    insertion_order: int = 100,
+    insertion_position: str = "after_char_defs",
+    probability: int = 100,
+    sticky: int = 0,
+    cooldown: int = 0,
+    delay: int = 0,
     enabled: bool = True,
+    source: str = "manual",
 ) -> Dict:
+    """
+    Build a new lorebook entry conforming to the ST/HammerAI-style schema.
+
+    Backward-compatible callers can omit any of the advanced fields and they'll
+    default to sensible values. The legacy `priority` and `constant` fields are
+    superseded by `insertion_order` and `strategy` respectively — the lorebook
+    engine reads both for compat.
+    """
+    if selective_logic not in ("and_any", "and_all", "not_any", "not_all"):
+        # Tolerate legacy "any"/"all" payloads from old API clients.
+        if selective_logic == "any":
+            selective_logic = "and_any"
+        elif selective_logic == "all":
+            selective_logic = "and_all"
+        else:
+            selective_logic = "and_any"
+    if strategy not in ("constant", "selective", "vectorized"):
+        strategy = "selective"
+    if insertion_position not in (
+        "before_char_defs", "after_char_defs",
+        "before_example", "after_example",
+        "top_an", "bottom_an", "at_depth",
+    ):
+        insertion_position = "after_char_defs"
     return {
         "id": str(uuid.uuid4()),
+        "title": (title or "").strip(),
         "keys": [k.strip() for k in (keys or []) if k and k.strip()],
+        "secondary_keys": [k.strip() for k in (secondary_keys or []) if k and k.strip()],
         "content": (content or "").strip(),
-        "priority": max(0, min(100, int(priority))),
-        "selective_logic": selective_logic if selective_logic in ("any", "all") else "any",
-        "constant": bool(constant),
+        "selective_logic": selective_logic,
+        "strategy": strategy,
+        "insertion_order": max(0, min(1000, int(insertion_order))),
+        "insertion_position": insertion_position,
+        "probability": max(0, min(100, int(probability))),
+        "sticky": max(0, int(sticky)),
+        "cooldown": max(0, int(cooldown)),
+        "delay": max(0, int(delay)),
         "enabled": bool(enabled),
+        "source": source,
         "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    }
+
+
+def _empty_character_card() -> Dict:
+    """The character_card is the always-injected counterpart to the
+    keyword-triggered lorebook. It owns identity, voice traits, and example
+    dialogues — content that should always anchor the AI's persona, not be
+    surfaced situationally."""
+    return {
+        "identity": "",                # "你是 X，Y 的 Z" 一句话身份
+        "personality_brief": "",       # 2-3 句温度 / 气质底色
+        "voice_traits": "",            # PList 风格：[speech: ...; body: ...; mannerism: ...]
+        "example_dialogs": [],         # [{"user": "...", "char": "..."}, ...]
+        "extracted_at": None,          # last successful extraction timestamp
+        "source_persona_hash": "",     # crude change-detection — skip re-extract if unchanged
     }
 
 
@@ -100,9 +157,11 @@ def _new_companion_doc(
         "is_default": bool(is_default),
         "gender": gender,
         "relationship": relationship,
-        "custom_persona": custom_persona or "",  # legacy fallback text
-        "lorebook_entries": [],
-        "example_dialogs": [],  # placeholder for Layer 3
+        "custom_persona": custom_persona or "",      # source persona text (legacy field — still authoritative)
+        "character_card": _empty_character_card(),   # always-inject layer (extracted)
+        "lorebook_entries": [],                      # keyword-triggered layer (extracted + manual)
+        "extraction_status": "pending",              # pending | running | done | failed (UI polling)
+        "extraction_error": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -249,19 +308,20 @@ def _extract_and_save_lorebook(
     relationship: Optional[str] = None,
 ) -> int:
     """
-    Run LLM extraction and replace the companion's lorebook_entries with the
-    result. Returns the number of entries written. On failure (Gemini error,
-    parse error, no valid entries, or zero matched docs), keeps existing
-    entries intact and returns 0.
+    Run LLM extraction to produce BOTH a character_card (always-inject voice
+    layer) and lorebook_entries (keyword-triggered world/plot facts), and
+    persist both atomically.
 
-    Used both for background-spawned extraction during companion creation and
-    for the synchronous backfill script.
+    Returns the number of entries written (counting card filled + lorebook
+    entries) — 0 means extraction failed and existing data was kept.
+
+    Used by:
+      - Background spawn from /api/user/confirm-persona
+      - Synchronous backfill script
+      - Manual /re-extract endpoint
     """
     try:
-        from persona_extractor import (
-            extract_lorebook_from_persona,
-            build_core_identity_entry,
-        )
+        from persona_extractor import extract_persona_to_card_and_lorebook
     except Exception as e:
         log.error(f"[COMPANION] persona_extractor import failed: {e}")
         return 0
@@ -272,39 +332,80 @@ def _extract_and_save_lorebook(
         log.error(f"[COMPANION] Invalid id types: companion={companion_id!r} user={user_id!r}")
         return 0
 
-    extracted = extract_lorebook_from_persona(persona_text, character_name=character_name)
-    if not extracted:
-        log.info(f"[COMPANION] Extraction yielded 0 entries for companion {cid} — keeping existing")
-        return 0
-
-    # Always prepend a synthesized core-identity entry regardless of what the
-    # LLM produced — anchors role identity in every reply.
-    core = build_core_identity_entry(
-        companion_name=character_name,
-        user_name=user_name,
-        relationship=relationship,
+    # Mark extraction as running so the frontend status indicator can show
+    # progress; cleared on success or replaced with 'failed' on error.
+    db.db[COLLECTION].update_one(
+        {"_id": cid, "user_id": uid},
+        {"$set": {"extraction_status": "running", "extraction_error": None}},
     )
-    final_entries = [core] + extracted
+    _cache_invalidate(str(cid))
 
     try:
-        result = db.db[COLLECTION].update_one(
+        result = extract_persona_to_card_and_lorebook(
+            persona_text=persona_text,
+            character_name=character_name,
+            user_name=user_name,
+            relationship=relationship,
+        )
+    except Exception as e:
+        log.exception(f"[COMPANION] Extractor raised for companion {cid}: {e}")
+        db.db[COLLECTION].update_one(
+            {"_id": cid, "user_id": uid},
+            {"$set": {"extraction_status": "failed", "extraction_error": str(e)[:300]}},
+        )
+        _cache_invalidate(str(cid))
+        return 0
+
+    card = result.get("character_card") or {}
+    lore_entries = result.get("lorebook_entries") or []
+
+    # The card is the load-bearing piece; if Gemini returned nothing usable
+    # we keep whatever was there before. An empty lorebook is fine and common
+    # (most personas describe personality, not plot/world).
+    if not card.get("identity") and not card.get("personality_brief"):
+        log.warning(f"[COMPANION] Extraction returned empty card for companion {cid} — keeping existing")
+        db.db[COLLECTION].update_one(
+            {"_id": cid, "user_id": uid},
+            {"$set": {"extraction_status": "failed", "extraction_error": "empty_card"}},
+        )
+        _cache_invalidate(str(cid))
+        return 0
+
+    import hashlib
+    persona_hash = hashlib.sha256((persona_text or "").encode("utf-8")).hexdigest()[:16]
+    card["extracted_at"] = datetime.utcnow()
+    card["source_persona_hash"] = persona_hash
+
+    try:
+        update_result = db.db[COLLECTION].update_one(
             {"_id": cid, "user_id": uid},
             {
                 "$set": {
-                    "lorebook_entries": final_entries,
+                    "character_card": card,
+                    "lorebook_entries": lore_entries,
+                    "extraction_status": "done",
+                    "extraction_error": None,
                     "updated_at": datetime.utcnow(),
                     "lorebook_extracted_at": datetime.utcnow(),
                 }
             },
         )
-        if result.matched_count == 0:
-            log.warning(f"[COMPANION] Update matched 0 docs (companion={cid} user={uid}) — entries lost")
+        if update_result.matched_count == 0:
+            log.warning(f"[COMPANION] Update matched 0 docs (companion={cid} user={uid}) — extraction lost")
             return 0
         _cache_invalidate(str(cid))
-        log.info(f"[COMPANION] Saved {len(final_entries)} lorebook entries to companion {cid}")
-        return len(final_entries)
+        log.info(
+            f"[COMPANION] Saved character_card + {len(lore_entries)} lorebook entries to companion {cid} "
+            f"(card identity={card.get('identity', '')[:40]!r}, dialogs={len(card.get('example_dialogs') or [])})"
+        )
+        return len(lore_entries) + 1  # +1 to indicate the card itself was written
     except Exception as e:
-        log.warning(f"[COMPANION] Failed to persist extracted lorebook: {e}")
+        log.warning(f"[COMPANION] Failed to persist extraction: {e}")
+        db.db[COLLECTION].update_one(
+            {"_id": cid, "user_id": uid},
+            {"$set": {"extraction_status": "failed", "extraction_error": str(e)[:300]}},
+        )
+        _cache_invalidate(str(cid))
         return 0
 
 
@@ -437,12 +538,21 @@ def add_lorebook_entry(
     *,
     keys: List[str],
     content: str,
-    priority: int = 50,
-    selective_logic: str = "any",
-    constant: bool = False,
+    title: str = "",
+    secondary_keys: Optional[List[str]] = None,
+    selective_logic: str = "and_any",
+    strategy: str = "selective",
+    insertion_order: int = 100,
+    insertion_position: str = "after_char_defs",
+    probability: int = 100,
+    sticky: int = 0,
+    cooldown: int = 0,
+    delay: int = 0,
     enabled: bool = True,
+    source: str = "manual",
 ) -> Optional[Dict]:
-    if not keys and not constant:
+    is_constant = (strategy == "constant")
+    if not keys and not is_constant:
         # A non-constant entry with no keys would never fire — reject.
         return None
     if not content:
@@ -451,10 +561,18 @@ def add_lorebook_entry(
     entry = _new_lorebook_entry(
         keys=keys,
         content=content,
-        priority=priority,
+        title=title,
+        secondary_keys=secondary_keys,
         selective_logic=selective_logic,
-        constant=constant,
+        strategy=strategy,
+        insertion_order=insertion_order,
+        insertion_position=insertion_position,
+        probability=probability,
+        sticky=sticky,
+        cooldown=cooldown,
+        delay=delay,
         enabled=enabled,
+        source=source,
     )
 
     try:
@@ -481,23 +599,42 @@ def update_lorebook_entry(
     entry_id: str,
     fields: Dict,
 ) -> Optional[Dict]:
-    allowed = {"keys", "content", "priority", "selective_logic", "constant", "enabled"}
+    allowed = {
+        "title", "keys", "secondary_keys", "content", "selective_logic",
+        "strategy", "insertion_order", "insertion_position",
+        "probability", "sticky", "cooldown", "delay", "enabled",
+    }
     set_ops = {}
     for k, v in (fields or {}).items():
         if k not in allowed:
             continue
-        if k == "keys":
-            set_ops[f"lorebook_entries.$.keys"] = [s.strip() for s in (v or []) if s and s.strip()]
-        elif k == "priority":
-            set_ops[f"lorebook_entries.$.priority"] = max(0, min(100, int(v)))
+        if k in ("keys", "secondary_keys"):
+            set_ops[f"lorebook_entries.$.{k}"] = [s.strip() for s in (v or []) if s and s.strip()]
+        elif k in ("insertion_order", "probability"):
+            set_ops[f"lorebook_entries.$.{k}"] = max(0, min(1000 if k == "insertion_order" else 100, int(v)))
+        elif k in ("sticky", "cooldown", "delay"):
+            set_ops[f"lorebook_entries.$.{k}"] = max(0, int(v))
         elif k == "selective_logic":
-            set_ops[f"lorebook_entries.$.selective_logic"] = v if v in ("any", "all") else "any"
-        elif k in ("constant", "enabled"):
-            set_ops[f"lorebook_entries.$.{k}"] = bool(v)
+            set_ops[f"lorebook_entries.$.selective_logic"] = (
+                v if v in ("and_any", "and_all", "not_any", "not_all") else "and_any"
+            )
+        elif k == "strategy":
+            set_ops[f"lorebook_entries.$.strategy"] = (
+                v if v in ("constant", "selective", "vectorized") else "selective"
+            )
+        elif k == "insertion_position":
+            set_ops[f"lorebook_entries.$.insertion_position"] = v if v in (
+                "before_char_defs", "after_char_defs",
+                "before_example", "after_example",
+                "top_an", "bottom_an", "at_depth",
+            ) else "after_char_defs"
+        elif k == "enabled":
+            set_ops[f"lorebook_entries.$.enabled"] = bool(v)
         else:
             set_ops[f"lorebook_entries.$.{k}"] = v
     if not set_ops:
         return None
+    set_ops["lorebook_entries.$.updated_at"] = datetime.utcnow()
 
     try:
         oid = ObjectId(companion_id) if not isinstance(companion_id, ObjectId) else companion_id

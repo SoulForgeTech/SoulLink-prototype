@@ -87,11 +87,11 @@ def main():
             print(f"  - {h!r}")
     print()
 
-    selected, used = select_lorebook(
+    selected, used, _new_state = select_lorebook(
         user_message=args.message,
         history_texts=args.history,
         entries=entries,
-        last_hit_ids=[],  # no recency context for one-shot test
+        state=None,  # no recency / sticky context for one-shot test
         budget_tokens=args.budget,
     )
 
@@ -109,19 +109,19 @@ def main():
     print(f"✓ {len(selected)} entries fired (used {used}/{args.budget} tokens)")
     print()
     for i, e in enumerate(selected, 1):
-        dim = e.get("dimension", "-")
         reason = e.get("_match_reason", "?")
-        priority = e.get("priority", 50)
-        eff = e.get("_eff_priority", priority)
-        bonus_marker = f" (+{eff - priority} recency)" if eff != priority else ""
-        if reason == "constant":
-            label = "[CONSTANT]"
+        order = e.get("insertion_order", e.get("priority", 50))
+        eff = e.get("_eff_order", order)
+        bonus_marker = f" (+{eff - order} recency)" if eff != order else ""
+        if reason in ("constant", "sticky"):
+            label = f"[{reason.upper()}]"
         else:
             mk = e.get("_matched_keys") or []
             label = f"matched keys: {mk}"
-        title = (e.get("keys") or [""])[0] or dim
+        title = (e.get("title") or "").strip() or (e.get("keys") or [""])[0] or "?"
         content = (e.get("content") or "").strip()
-        print(f"  {i}. [{dim:22}] priority={priority}{bonus_marker} {label}")
+        strategy = e.get("strategy", "selective")
+        print(f"  {i}. [{strategy:10}] order={order}{bonus_marker} {label}")
         print(f"     title: {title}")
         print(f"     content: {content}")
         print()

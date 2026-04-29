@@ -5580,6 +5580,14 @@ def _serialize_companion(comp: dict) -> dict:
     """Convert Mongo companion doc into JSON-safe response shape."""
     if not comp:
         return None
+
+    def _iso(v):
+        try:
+            return v.isoformat()
+        except Exception:
+            return v
+
+    card = comp.get("character_card") or {}
     return {
         "id": str(comp["_id"]),
         "name": comp.get("name"),
@@ -5587,10 +5595,19 @@ def _serialize_companion(comp: dict) -> dict:
         "gender": comp.get("gender"),
         "relationship": comp.get("relationship"),
         "custom_persona": comp.get("custom_persona", ""),
+        "character_card": {
+            "identity": card.get("identity", "") or "",
+            "personality_brief": card.get("personality_brief", "") or "",
+            "voice_traits": card.get("voice_traits", "") or "",
+            "example_dialogs": card.get("example_dialogs", []) or [],
+            "extracted_at": _iso(card.get("extracted_at")) if card.get("extracted_at") else None,
+        },
         "lorebook_entries": comp.get("lorebook_entries", []) or [],
-        "example_dialogs": comp.get("example_dialogs", []) or [],
-        "created_at": comp["created_at"].isoformat() if comp.get("created_at") else None,
-        "updated_at": comp["updated_at"].isoformat() if comp.get("updated_at") else None,
+        "extraction_status": comp.get("extraction_status", "pending"),
+        "extraction_error": comp.get("extraction_error"),
+        "lorebook_extracted_at": _iso(comp.get("lorebook_extracted_at")) if comp.get("lorebook_extracted_at") else None,
+        "created_at": _iso(comp.get("created_at")),
+        "updated_at": _iso(comp.get("updated_at")),
     }
 
 
@@ -5631,6 +5648,38 @@ def list_lorebook_entries_route(companion_id):
     return jsonify({
         "success": True,
         "entries": comp.get("lorebook_entries", []) or [],
+        "extraction_status": comp.get("extraction_status", "pending"),
+        "extraction_error": comp.get("extraction_error"),
+    })
+
+
+@app.route("/api/companions/<companion_id>/extraction-status", methods=["GET"])
+@login_required
+def companion_extraction_status_route(companion_id):
+    """Lightweight polling endpoint — frontend hits this every few seconds
+    after a persona save so it can swap "正在分析人设…" for the actual count of
+    extracted lorebook entries + a flag indicating whether the character_card
+    is now populated. Avoids dragging the full companion payload through
+    polling."""
+    from companion_service import get_companion_by_id
+    user_id = get_current_user_id()
+    comp = get_companion_by_id(companion_id, user_id)
+    if not comp:
+        return jsonify({"error": "Companion not found"}), 404
+    card = comp.get("character_card") or {}
+    entries = comp.get("lorebook_entries") or []
+    return jsonify({
+        "success": True,
+        "status": comp.get("extraction_status", "pending"),
+        "error": comp.get("extraction_error"),
+        "lorebook_entry_count": len(entries),
+        "card_ready": bool(card.get("identity") and card.get("voice_traits")),
+        "card_dialog_count": len(card.get("example_dialogs") or []),
+        "extracted_at": (
+            card.get("extracted_at").isoformat()
+            if card.get("extracted_at") and hasattr(card.get("extracted_at"), "isoformat")
+            else card.get("extracted_at")
+        ),
     })
 
 
@@ -5644,16 +5693,33 @@ def add_lorebook_entry_route(companion_id):
     keys = data.get("keys") or []
     if isinstance(keys, str):
         keys = [k.strip() for k in keys.split(",") if k.strip()]
+    secondary_keys = data.get("secondary_keys") or []
+    if isinstance(secondary_keys, str):
+        secondary_keys = [k.strip() for k in secondary_keys.split(",") if k.strip()]
+
+    # Tolerate the legacy `constant: bool` payload from older frontends —
+    # translate to the new strategy field if `strategy` wasn't provided.
+    strategy = data.get("strategy")
+    if not strategy:
+        strategy = "constant" if data.get("constant") else "selective"
 
     entry = add_lorebook_entry(
         companion_id,
         user_id,
         keys=keys,
         content=data.get("content", ""),
-        priority=data.get("priority", 50),
-        selective_logic=data.get("selective_logic", "any"),
-        constant=data.get("constant", False),
+        title=data.get("title", ""),
+        secondary_keys=secondary_keys,
+        selective_logic=data.get("selective_logic", "and_any"),
+        strategy=strategy,
+        insertion_order=data.get("insertion_order", data.get("priority", 100)),
+        insertion_position=data.get("insertion_position", "after_char_defs"),
+        probability=data.get("probability", 100),
+        sticky=data.get("sticky", 0),
+        cooldown=data.get("cooldown", 0),
+        delay=data.get("delay", 0),
         enabled=data.get("enabled", True),
+        source="manual",
     )
     if not entry:
         return jsonify({"error": "Invalid entry (companion not found, missing content, or no keys for non-constant entry)"}), 400
@@ -5719,8 +5785,9 @@ def prompt_debug_route():
         select_lorebook,
         format_lorebook_block,
         estimate_tokens,
-        get_recency_hits,
+        get_state,
         SCAN_WINDOW_TURNS,
+        DEFAULT_BUDGET_TOKENS,
     )
 
     user_id = get_current_user_id()
@@ -5733,7 +5800,7 @@ def prompt_debug_route():
         return jsonify({"error": "message required"}), 400
 
     history_texts = []
-    last_hits = []
+    state = {"turn": 0, "hits": {}}
     conv_id_str = ""
     if conversation_id:
         try:
@@ -5742,37 +5809,42 @@ def prompt_debug_route():
                 history_msgs = conv.get("messages", []) or []
                 history_texts = [(m.get("content") or "") for m in history_msgs[-SCAN_WINDOW_TURNS:]]
                 conv_id_str = str(conv["_id"])
-                last_hits = get_recency_hits(conv_id_str)
+                state = get_state(conv_id_str)
         except Exception:
             pass
 
     companion = get_active_companion(user_id, user_doc=user)
     entries = (companion or {}).get("lorebook_entries") or []
 
-    selected, used_tokens = select_lorebook(message, history_texts, entries, last_hits)
+    selected, used_tokens, _new_state = select_lorebook(
+        message, history_texts, entries, state=state,
+    )
     block = format_lorebook_block(selected)
 
     return jsonify({
         "companion_id": str(companion["_id"]) if companion else None,
         "companion_name": (companion or {}).get("name"),
+        "character_card_present": bool((companion or {}).get("character_card", {}).get("identity")),
         "total_entries": len(entries),
         "scan_window_turns": SCAN_WINDOW_TURNS,
         "history_used_for_scan": history_texts,
-        "previous_recency_hits": last_hits,
+        "previous_state": state,
         "fired_entries": [
             {
                 "id": e.get("id"),
+                "title": e.get("title"),
                 "keys": e.get("keys"),
+                "matched_keys": e.get("_matched_keys"),
                 "content": e.get("content"),
-                "priority": e.get("priority"),
-                "constant": e.get("constant", False),
+                "insertion_order": e.get("insertion_order", e.get("priority")),
+                "strategy": e.get("strategy", "constant" if e.get("constant") else "selective"),
                 "tokens": estimate_tokens(e.get("content", "")),
-                "matched_via": "constant" if e.get("constant") else "keyword",
+                "matched_via": e.get("_match_reason", "?"),
             }
             for e in selected
         ],
         "tokens_used": used_tokens,
-        "tokens_budget": 800,
+        "tokens_budget": DEFAULT_BUDGET_TOKENS,
         "rendered_block": block,
     })
 

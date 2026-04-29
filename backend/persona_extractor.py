@@ -1,15 +1,19 @@
 """
-Persona → lorebook decomposition via LLM.
+Persona → (character_card, lorebook) decomposition via LLM.
 
-The user authors their character as one paragraph of natural-language
-custom_persona text — that's the only authoring surface they ever see. This
-module silently decomposes that paragraph into 10-15 structured lorebook
-entries covering 6 dimensions, which the chat hot path then triggers by
-keyword. The user has no UI for entries; they edit the source paragraph and
-we re-extract.
+Two-layer split per HammerAI / SillyTavern conventions:
 
-Failure mode: if Gemini returns garbage, we keep the existing lorebook
-entries unchanged. Better stale than empty — the chat keeps working.
+  character_card  — always-injected voice anchor (identity / personality /
+                    voice traits / example dialogues). Goes into system prompt.
+
+  lorebook       — keyword-triggered world facts, relationship history,
+                    hidden motives, scene-specific details. Sparse for most
+                    personality-only personas; will fill out via chat-history
+                    mining over time (Phase 2).
+
+The user authors a free-form `custom_persona` paragraph; we silently produce
+both layers in one Gemini call. Failure mode: keep existing data unchanged
+(better stale than empty).
 """
 
 import json
@@ -17,12 +21,12 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime
 from typing import Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
 _gemini_model = None
-DEFAULT_LANG = "zh-CN"
 
 
 def _get_model():
@@ -43,100 +47,123 @@ def _get_model():
     return _gemini_model
 
 
-# The 6 dimensions every well-formed lorebook must cover. The Gemini prompt
-# instructs the model to tag each entry with one of these, and
-# _validate_extraction_quality enforces full coverage.
-DIMENSIONS = (
-    "identity",                # 核心身份："你是 X，Y 的 Z"
-    "personality",             # 整体性格 / 气质底色
-    "trigger_reaction",        # 触发性反应：吃醋/生气/紧张/被夸怎样
-    "body_language",           # 身体习惯 / 微表情 / 小动作
-    "speech_style",            # 说话风格 / 口癖 / 语调
-    "relationship_dynamics",   # 对 user / 陌生人 / 工作场合的差异
-)
+# ---------- Prompt ----------
+#
+# Single Gemini call produces a JSON object with two top-level keys:
+#   - character_card: { identity, personality_brief, voice_traits, example_dialogs }
+#   - lorebook_entries: [ { title, keys, content, ... } ]   (often empty)
+#
+# We use @@TOKEN@@ placeholders rather than .format() because the prompt text
+# itself contains JSON braces.
 
+EXTRACTION_PROMPT = """You are a character authoring assistant. Given a free-form persona description, produce TWO outputs in a single JSON object:
 
-# Bilingual prompt — the persona text itself is mixed Chinese/English in
-# practice, so keep instructions in both languages and let the LLM mirror.
-EXTRACTION_PROMPT = """You are a character lorebook extraction system. Decompose the character description into 10-15 structured entries that a chat engine will trigger by keyword match. Density matters: a sparse 5-entry lorebook loses 50% of the source paragraph's signal.
-你是角色 lorebook 提取系统。把下面的角色描述拆解成 10-15 条结构化条目，聊天引擎会按关键词触发。条目数不够会丢失原文一半以上的信息密度，必须做细。
+  1. **character_card** — the always-on voice anchor (identity, personality, speech style, body language, example dialogues). This is what every reply should sound like.
+  2. **lorebook_entries** — keyword-triggered world facts, relationship history, hidden motives, or scene-specific lore. ONLY include entries here for genuinely *world/plot/historical* content from the description. If the description only describes personality (no world events, no hidden backstory, no scene details), return an empty array `[]` for lorebook_entries — do NOT shoehorn personality traits in here. They belong in the card.
 
-## Output schema (strict JSON)
-[
-  {
-    "dimension": "identity",  // REQUIRED. One of: identity | personality | trigger_reaction | body_language | speech_style | relationship_dynamics
-    "keys": ["..."],          // REQUIRED. 5+ keywords. MUST mix descriptive words AND scenario phrases (see Rule 3)
-    "content": "...",         // REQUIRED. <200 chars, vivid and concrete. What the AI should know/do when matched.
-    "priority": 50,           // 0-100
-    "constant": false,        // true ONLY for core identity. AT MOST 2 constants total.
-    "selective_logic": "any"
-  }
-]
+This split mirrors the SillyTavern / HammerAI convention.
 
-## The 6 dimensions — EVERY ONE MUST BE COVERED (≥1 entry each)
-1. **identity** — 核心身份一句话："你是 X（性别/年龄/职业），Y 的 Z（关系）"。一般 constant=true。
-2. **personality** — 整体气质 / 性格底色 / 自我认知。例："看起来高冷但其实自卑、容易胡思乱想、嘴硬心软"。
-3. **trigger_reaction** — 特定情境下的反应。**至少拆 3-4 条**分别覆盖：被夸/被关心/吃醋嫉妒/生气/被冷落/紧张害羞 等。每条聚焦一个触发场景，不要混。
-4. **body_language** — 具体身体动作 / 微表情。**至少拆 2-3 条**，每条聚焦一组动作：眼神（飘忽/瞪/低头）、手部小动作（摸后颈/转笔/绕头发）、面部（耳朵泛红/抿嘴/眉眼弯弯）等。
-5. **speech_style** — 说话风格、口癖、用词习惯、语调。例："茶言茶语、爱用夸张措辞、句尾带'啊/呢'、紧张时会重复词"。可拆 1-2 条。
-6. **relationship_dynamics** — 关系层次差异：对 user 怎样 vs 对陌生人 vs 工作场合。**至少拆 2 条**，区分不同关系下的行为差异。
-
-## Rules
-
-### Rule 1 — JSON only
-Output the JSON array ONLY. No prose, no markdown fences. Every entry MUST have `dimension`, `keys` (≥5), `content`.
-
-### Rule 2 — content 必须具体生动
-- 上限 200 字，但不要为了凑长度灌水。
-- **保留原文的具体动作 / 措辞 / 比喻**，不要抽象化。原文说"耳朵泛红、笑得眉眼弯弯" → 你就写"耳朵泛红、笑得眉眼弯弯"，不要写"会有羞涩反应"。
-- 每条 content 应该让 AI 读完知道**具体怎么说话/怎么动作**，而不是只知道"是什么样的人"。
-
-### Rule 3 — keys 必须双轨制（这是关键）
-每条 entry 的 keys 数组必须 ≥5 个，且**同时包含两类**：
-
-**A. 描述词**（角色本身"是"什么 / 第三人称视角）
-   例：吃醋、自卑、害羞、口癖、高冷
-
-**B. 场景词**（用户在聊天里**实际会说**的话 / 第一/第二人称视角 / 问句）
-   例："你是不是吃醋了"、"为啥不说话"、"怎么了"、"我今天遇到一个超帅的男生"、"我有点不开心"
-
-**至少 30% 的 entries 必须含场景词类 keys**。一个 entry 只有描述词的话，用户用口语聊天根本触发不了。
-
-**同义词扩展**：每个语义簇要给 5+ 同义说法。例如"嫉妒"应该展开为：嫉妒/吃醋/酸/醋意/小心眼/又在闹了/你是不是不高兴了。
-
-### Rule 4 — keys 黑名单
-- 不要用通用代词/虚词：我/你/他/她/它/the/a/I/you 等单字代词（这些会在每条消息上触发）
-- 不要用单个英文字母（a/i）
-
-### Rule 5 — constant
-constant=true 仅用于：核心身份（dimension=identity 那条）。**最多 2 条**。其他都靠 keys 触发。
-
-### Rule 6 — priority
-- 80-90: identity / 主要性格底色
-- 60-70: trigger_reaction / 关系动力
-- 40-60: body_language / speech_style
-- 30-40: 次要细节
-
-### Rule 7 — language
-content 和 keys 用与输入相同的语言。中文角色就用中文，混合就保留混合。
-
-### Rule 8 — 不要重复
-两条 entry 语义高度重叠就合并。但**不同 dimension 不算重叠** —— "她吃醋时会鼓脸"（trigger_reaction）和 "鼓脸是她的标志性表情"（body_language）虽然都提到鼓脸，但视角不同，应该都保留。
-
-### Rule 9 — 不要纯背景设定
-世界观/前史故事跳过（那是 RAG 的活）。lorebook 只放"AI 现在该怎么演这个角色"的指令性事实。
-
-## Character name (use this in the identity entry)
-@@CHARACTER_NAME@@
-
-## Character description
+## Inputs
+- Character name: @@CHARACTER_NAME@@
+- User name (the person chatting with the character): @@USER_NAME@@
+- Relationship (user → character): @@RELATIONSHIP@@
+- Source persona text:
 @@PERSONA_TEXT@@
 
-Output the JSON array now (10-15 entries, all 6 dimensions covered, every entry has ≥5 keys with at least 30% of entries containing scenario-style keys):"""
+## Output schema (strict JSON object — no prose, no markdown fences)
+
+{
+  "character_card": {
+    "identity": "一句话身份。Format: \\"你是 {character_name}，{user_name} 的 {relationship}。{role/profession/world if any}。\\"",
+    "personality_brief": "2-4 句话概括气质底色 / 内核反差 / 主导动机。第一/第二人称都可，但要具体不空泛。",
+    "voice_traits": "PList 格式的结构化标签 — 一行内、分号分隔、方括号包裹。覆盖 speech / body / mannerism / triggers 四类。例：[speech: 戏剧化语调, 尾音上扬, 自称本水神, 紧张时重复词; body: 表情夸张, 戏剧手势, 害羞时眼神闪躲; mannerism: 用词浮夸, 偶尔自言自语; triggers: 被夸时害羞, 被关心时不知所措, 卸下伪装时脆弱]",
+    "example_dialogs": [
+      // 5-8 段示例对话，覆盖关键场景：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
+      // {"user": "...", "char": "..."}
+      // 每段对话要具体、生动、能直接看出角色 voice
+      // user 行 30 字以内；char 行 50-150 字，要能展示 voice_traits 里列的特征
+      // 不要泛泛而谈，要有具体台词和动作
+      {"user": "你今天怎么穿这么隆重？", "char": "..."},
+      {"user": "我今天遇到一个超有意思的女生", "char": "..."}
+    ]
+  },
+  "lorebook_entries": [
+    // ONLY include if the persona text contains real world/plot/history.
+    // If it only describes personality, return [].
+    // Example of when to include: "她曾经任职 X 500 年" → entry about her past role
+    // Example of when to SKIP: "她说话很浮夸" → this is voice, goes in card
+    {
+      "title": "短标题，给用户看的标签",
+      "keys": ["主关键词1", "主关键词2", "用户可能说的场景词"],   // 5+ keys, mix descriptive + scenario
+      "secondary_keys": [],                                        // optional extra filter
+      "selective_logic": "and_any",                                // and_any / and_all / not_any / not_all
+      "content": "factual reference note，简洁，第三人称写法（'她曾...' 'X 在 Y 时...'）",
+      "strategy": "selective",                                     // selective | constant
+      "insertion_order": 100,                                      // higher = closer to prompt end = more important
+      "probability": 100,
+      "sticky": 0, "cooldown": 0, "delay": 0
+    }
+  ]
+}
+
+## Rules for the character_card
+
+### identity
+- 一句话。第二人称写给 AI 看（"你是 X..."）
+- 必须包含：character_name + user_name + relationship + 角色在世界里的核心定位（如果原文有）
+
+### personality_brief
+- 2-4 句话，浓缩源文本的核心气质 + 反差
+- **保留原文里的具体措辞**：原文说"内心脆弱孤独"，你就写"内心脆弱孤独"，不要改成"有内心戏"
+- 写给 AI 看的（第二人称），不是给用户看的描述
+
+### voice_traits
+- **必须用 PList 格式**：`[category: tag1, tag2; category: tag1, tag2; ...]`
+- 4 类必须都有：`speech`（说话方式 / 口癖 / 语调）、`body`（身体语言 / 表情 / 小动作）、`mannerism`（用词习惯 / 自称 / 措辞偏好）、`triggers`（典型情境反应）
+- 每类至少 3 个标签
+- 保留原文中的具体词："本水神"自称、"尾音上扬"、"戏剧手势" 等都要原样保留
+
+### example_dialogs（最关键的部分）
+- **5-8 段**对话样本，必须覆盖：日常问候、撒娇/亲昵、被夸/被关心、吃醋/嫉妒、难过/被安慰、生气/吵架、关心对方
+- user 行：30 字以内，自然口语，第二人称
+- char 行：50-150 字，**必须体现 voice_traits 里的至少 2 个特征**（如自称、口癖、典型动作）
+- 用括号写动作：（耳朵泛红）、（语气拉长）、（眼神飘忽）
+- 中文角色用中文，混合就保留混合
+- **不要泛泛**：差例 "你真好~ 我很开心呢" / 好例 "哎呀本水神今日心情甚佳！这都是托你的福呢~ （笑得眉眼弯弯，悄悄把脸偏向一边）"
+
+## Rules for the lorebook_entries
+
+### When to include an entry
+ONLY include if the persona text contains:
+- 角色的具体过往事件（"500 年前签订血契"、"在 X 战役中失去 Y"）
+- 隐藏动机 / 秘密（"她对 Z 怀有杀意"）
+- 关系历史 / 群像（"她有个失踪的妹妹叫 K"）
+- 世界设定 / 规则（"在这个世界，水神每 500 年更替"）
+- 场景特定细节（"在月圆夜会变身"）
+
+### When to SKIP（这些都属于 character_card，不要进 lorebook）
+- 性格描述（"她很自信"、"内心孤独"）→ personality_brief
+- 说话方式（"喜欢用夸张措辞"）→ voice_traits
+- 身体语言（"表情夸张"）→ voice_traits
+- 触发反应（"被夸时害羞"）→ voice_traits + example_dialogs
+
+### Entry schema
+- `title`: 用户看到的标签，简短具体（"水神身份"、"血契往事"）
+- `keys`: 5+ 个，混合描述词 + 场景词。例：`["水神", "枫丹", "前任", "你以前是干嘛的", "你在枫丹的时候"]`
+- `content`: 第三人称、factual note 风格（不是 prose）。例："芙宁娜曾任枫丹水神 500 年，500 年前签订血契换得人民活命，她独自承担了不能开口的秘密。"
+- `strategy`: 默认 `"selective"`；只有真正必须每次都注入的核心世界规则才用 `"constant"`
+- `insertion_order`: 默认 100；核心 lore 用 150-200
+
+### Anti-patterns
+- ❌ 把性格特征塞进 lorebook（"她很温柔" → 不要建 entry）
+- ❌ 单字母或代词作为 key（"我"、"你"、"a"）
+- ❌ content 写成 prose 段落（应该是 reference notes）
+- ❌ entry 数量为了凑而凑 —— 没有 plot 内容就返回 `[]`
+
+## Output the JSON object now (no markdown fences, no prose):"""
 
 
 def _strip_code_fences(s: str) -> str:
-    """Gemini sometimes wraps JSON in ```json ... ``` fences despite the prompt."""
     s = s.strip()
     s = re.sub(r"^```(?:json)?\s*", "", s)
     s = re.sub(r"\s*```\s*$", "", s)
@@ -144,8 +171,6 @@ def _strip_code_fences(s: str) -> str:
 
 
 PRONOUN_BLOCKLIST = {
-    # Generic pronouns / particles that would fire on every message — the LLM
-    # sometimes hallucinates these into the keys list. Reject them at validation.
     "我", "你", "他", "她", "它", "我们", "你们", "他们", "她们",
     "i", "me", "you", "he", "she", "it", "we", "they", "the", "a", "an",
     "is", "am", "are", "was", "were", "be", "this", "that", "these", "those",
@@ -154,271 +179,241 @@ PRONOUN_BLOCKLIST = {
 
 def _filter_keys(keys: List[str]) -> List[str]:
     out = []
-    for k in keys:
-        kl = k.strip().lower()
+    for k in keys or []:
+        kl = str(k).strip().lower()
         if not kl:
             continue
         if kl in PRONOUN_BLOCKLIST:
             continue
-        # Single-character non-CJK keys ("a", "i") match too broadly; drop.
         if len(kl) == 1 and not ("一" <= kl <= "鿿"):
             continue
-        out.append(k.strip())
+        out.append(str(k).strip())
     return out
 
 
-# Hints used by _is_scenario_key — tokens that signal a key is phrased as
-# something a user would actually say in chat (questions, second-person,
-# first-person), as opposed to a third-person descriptor of the character.
-_SCENARIO_HINT_TOKENS = (
-    "怎么", "什么", "为啥", "为什么", "吗", "呢", "啥", "怎样", "如何",
-    "你", "我", "?", "？", "是不是", "在干嘛", "在做什么", "干什么", "干嘛",
-)
-
-
-def _is_scenario_key(k: str) -> bool:
-    """A 'scenario' key is one a user would naturally type in chat (question
-    or first/second-person), not a third-person descriptor."""
-    if not k:
-        return False
-    kl = k.lower()
-    return any(h in kl for h in _SCENARIO_HINT_TOKENS)
-
-
-def _validate_entry(raw: Dict) -> Optional[Dict]:
-    """Coerce + validate a single entry, returning a clean dict or None if invalid."""
+def _validate_card(raw: Dict, character_name: str, user_name: Optional[str], relationship: Optional[str]) -> Dict:
+    """Coerce the LLM-emitted card into the schema, filling in missing fields
+    with sane defaults so downstream code never has to None-check."""
     if not isinstance(raw, dict):
-        return None
-    keys = raw.get("keys") or []
-    content = (raw.get("content") or "").strip()
-    if not content:
-        return None
-    if isinstance(keys, str):
-        keys = [k.strip() for k in keys.split(",") if k.strip()]
-    keys = [str(k).strip() for k in keys if k and str(k).strip()]
-    keys = _filter_keys(keys)
-    constant = bool(raw.get("constant", False))
-    if not keys and not constant:
-        # Non-constant entry with no keys would never fire; reject.
-        return None
-    priority = raw.get("priority", 50)
-    try:
-        priority = max(0, min(100, int(priority)))
-    except Exception:
-        priority = 50
-    selective_logic = raw.get("selective_logic", "any")
-    if selective_logic not in ("any", "all"):
-        selective_logic = "any"
-    dimension = (raw.get("dimension") or "").strip().lower()
-    if dimension not in DIMENSIONS:
-        dimension = ""  # unknown / missing — quality check will flag if pervasive
-    from datetime import datetime
+        raw = {}
+    identity = (raw.get("identity") or "").strip()
+    if not identity:
+        # Synthesize a minimal identity if Gemini didn't produce one.
+        rel_zh = {
+            "lover": "恋人", "friend": "朋友", "family": "家人", "mentor": "导师",
+        }.get(relationship or "", relationship or "")
+        if user_name and rel_zh:
+            identity = f"你是{character_name}，{user_name} 的{rel_zh}。"
+        else:
+            identity = f"你是{character_name}。"
+    personality = (raw.get("personality_brief") or "").strip()
+    voice = (raw.get("voice_traits") or "").strip()
+    examples_raw = raw.get("example_dialogs") or []
+    examples: List[Dict] = []
+    if isinstance(examples_raw, list):
+        for ex in examples_raw:
+            if not isinstance(ex, dict):
+                continue
+            u = (ex.get("user") or "").strip()
+            c = (ex.get("char") or ex.get("character") or ex.get("assistant") or "").strip()
+            if not u or not c:
+                continue
+            examples.append({"user": u[:200], "char": c[:600]})
     return {
-        "id": str(uuid.uuid4()),
-        "keys": keys,
-        "content": content[:500],  # hard cap, the LLM occasionally rambles
-        "priority": priority,
-        "selective_logic": selective_logic,
-        "constant": constant,
-        "enabled": True,
-        "dimension": dimension,
-        "created_at": datetime.utcnow(),
+        "identity": identity[:300],
+        "personality_brief": personality[:600],
+        "voice_traits": voice[:1000],
+        "example_dialogs": examples[:10],
     }
 
 
-def _validate_extraction_quality(entries: List[Dict]) -> List[str]:
-    """
-    Returns a list of human-readable issues. Empty list = passes all checks.
-    Used to decide whether to retry the LLM call.
+def _validate_lorebook_entry(raw: Dict) -> Optional[Dict]:
+    """Validate one ST-style lorebook entry, returning a clean dict or None."""
+    if not isinstance(raw, dict):
+        return None
+    content = (raw.get("content") or "").strip()
+    if not content:
+        return None
+    keys = raw.get("keys") or []
+    if isinstance(keys, str):
+        keys = [k.strip() for k in keys.split(",") if k.strip()]
+    keys = _filter_keys([str(k) for k in keys])
+    secondary = raw.get("secondary_keys") or []
+    if isinstance(secondary, str):
+        secondary = [k.strip() for k in secondary.split(",") if k.strip()]
+    secondary = _filter_keys([str(k) for k in secondary])
+    strategy = raw.get("strategy") or "selective"
+    if strategy not in ("constant", "selective", "vectorized"):
+        strategy = "selective"
+    if not keys and strategy != "constant":
+        return None
+    selective_logic = raw.get("selective_logic") or "and_any"
+    if selective_logic == "any":
+        selective_logic = "and_any"
+    elif selective_logic == "all":
+        selective_logic = "and_all"
+    if selective_logic not in ("and_any", "and_all", "not_any", "not_all"):
+        selective_logic = "and_any"
+    try:
+        order = max(0, min(1000, int(raw.get("insertion_order", 100))))
+    except Exception:
+        order = 100
+    try:
+        prob = max(0, min(100, int(raw.get("probability", 100))))
+    except Exception:
+        prob = 100
+    return {
+        "id": str(uuid.uuid4()),
+        "title": (raw.get("title") or "").strip()[:80],
+        "keys": keys,
+        "secondary_keys": secondary,
+        "content": content[:600],
+        "selective_logic": selective_logic,
+        "strategy": strategy,
+        "insertion_order": order,
+        "insertion_position": raw.get("insertion_position") or "after_char_defs",
+        "probability": prob,
+        "sticky": max(0, int(raw.get("sticky", 0) or 0)),
+        "cooldown": max(0, int(raw.get("cooldown", 0) or 0)),
+        "delay": max(0, int(raw.get("delay", 0) or 0)),
+        "enabled": bool(raw.get("enabled", True)),
+        "source": "auto",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    }
 
-    Checks (machine-determinable, given to the executor agent):
-      1. entries count ≥ 10
-      2. all 6 dimensions present
-      3. every entry has ≥ 5 keys
-      4. ≥ 30% of entries contain at least one scenario-style key
-    """
-    issues = []
-    if len(entries) < 10:
-        issues.append(f"too_few_entries:{len(entries)}<10")
 
-    present_dims = {e.get("dimension") for e in entries if e.get("dimension")}
-    missing_dims = [d for d in DIMENSIONS if d not in present_dims]
-    if missing_dims:
-        issues.append(f"missing_dimensions:{','.join(missing_dims)}")
-
-    sparse = [e for e in entries if len(e.get("keys") or []) < 5]
-    if sparse:
-        issues.append(f"sparse_keys:{len(sparse)}_entries_have<5_keys")
-
-    if entries:
-        scenario_count = sum(
-            1 for e in entries
-            if any(_is_scenario_key(k) for k in (e.get("keys") or []))
-        )
-        ratio = scenario_count / len(entries)
-        if ratio < 0.30:
-            issues.append(f"low_scenario_ratio:{ratio:.0%}<30%")
-
-    return issues
-
-
-def _enforce_constant_cap(entries: List[Dict], cap: int = 2) -> List[Dict]:
-    """LLMs sometimes mark too many entries constant, blowing the token budget."""
-    constants = [e for e in entries if e.get("constant")]
-    if len(constants) <= cap:
-        return entries
-    # Keep the highest-priority N as constant; demote the rest.
-    constants.sort(key=lambda e: -e.get("priority", 50))
-    keep_ids = {e["id"] for e in constants[:cap]}
-    for e in entries:
-        if e.get("constant") and e["id"] not in keep_ids:
-            e["constant"] = False
-    return entries
-
-
-def extract_lorebook_from_persona(
+def extract_persona_to_card_and_lorebook(
     persona_text: str,
+    *,
     character_name: Optional[str] = None,
-) -> List[Dict]:
+    user_name: Optional[str] = None,
+    relationship: Optional[str] = None,
+) -> Dict:
     """
-    Decompose a free-form character description into structured lorebook entries.
+    Decompose free-form persona text into a character_card + (possibly empty)
+    lorebook_entries. Returns a dict with both keys; never raises (errors are
+    logged and surface as an empty card / empty list).
 
-    Returns an empty list on any failure. Callers should preserve their existing
-    entries when this returns [], rather than overwriting them with nothing.
+    Caller (companion_service._extract_and_save_lorebook) decides how to
+    handle a partial/empty result — typically: keep existing data, mark
+    extraction_status=failed.
     """
     persona_text = (persona_text or "").strip()
     if len(persona_text) < 30:
-        # Too short to be a real persona — likely empty or noise.
-        return []
+        return {"character_card": {}, "lorebook_entries": []}
 
     model = _get_model()
     if not model:
-        return []
+        return {"character_card": {}, "lorebook_entries": []}
+
+    rel_for_prompt = relationship or "—"
+    user_for_prompt = user_name or "—"
 
     prompt = (
         EXTRACTION_PROMPT
         .replace("@@CHARACTER_NAME@@", character_name or "(unknown)")
+        .replace("@@USER_NAME@@", user_for_prompt)
+        .replace("@@RELATIONSHIP@@", rel_for_prompt)
         .replace("@@PERSONA_TEXT@@", persona_text[:4000])
     )
 
-    raw = None
-    last_err = None
-    best_validated: List[Dict] = []  # keep best result across retries as fallback
+    raw_text = None
+    last_err: Optional[Exception] = None
+    parsed: Optional[Dict] = None
 
-    # Up to 3 attempts: 1 normal + up to 2 quality-driven retries.
-    # On quality-fail retry, append the issues to the prompt so Gemini knows
-    # exactly what to fix.
-    MAX_ATTEMPTS = 3
-    for attempt in range(MAX_ATTEMPTS):
-        # On retry due to quality issues, prepend a corrective preamble.
-        attempt_prompt = prompt
-        if attempt > 0 and best_validated:
-            issues = _validate_extraction_quality(best_validated)
-            if issues:
-                correction = (
-                    "\n\nPREVIOUS ATTEMPT FAILED quality checks: "
-                    + "; ".join(issues)
-                    + ". Fix these specific issues in the new attempt. "
-                    + "Do NOT shrink the entry count — go deeper, not narrower."
-                )
-                attempt_prompt = prompt + correction
-
+    # 2 attempts: one normal + one retry. Quality bar is "card has identity AND
+    # ≥3 example dialogs"; lorebook can legitimately be empty so we don't gate
+    # on it.
+    for attempt in range(2):
         try:
-            response = model.generate_content(attempt_prompt)
-            raw = response.text or ""
+            response = model.generate_content(prompt)
+            raw_text = response.text or ""
         except Exception as e:
             last_err = e
             log.warning(f"[EXTRACTOR] Gemini call failed (attempt {attempt + 1}): {e}")
             continue
 
-        cleaned = _strip_code_fences(raw)
+        cleaned = _strip_code_fences(raw_text)
         try:
-            parsed = json.loads(cleaned)
+            obj = json.loads(cleaned)
         except json.JSONDecodeError as e:
             last_err = e
-            log.warning(f"[EXTRACTOR] JSON parse failed (attempt {attempt + 1}): {e}")
+            log.warning(f"[EXTRACTOR] JSON parse failed (attempt {attempt + 1}): {e}; first 200 chars: {cleaned[:200]!r}")
+            continue
+        if not isinstance(obj, dict):
+            log.warning(f"[EXTRACTOR] Expected JSON object, got {type(obj).__name__}")
             continue
 
-        if not isinstance(parsed, list):
-            log.warning(f"[EXTRACTOR] Expected JSON array, got {type(parsed).__name__}")
-            continue
+        card = _validate_card(
+            obj.get("character_card") or {},
+            character_name=character_name or "Companion",
+            user_name=user_name,
+            relationship=relationship,
+        )
+        entries_raw = obj.get("lorebook_entries") or []
+        entries = []
+        if isinstance(entries_raw, list):
+            for r in entries_raw:
+                e = _validate_lorebook_entry(r)
+                if e:
+                    entries.append(e)
 
-        validated = []
-        for raw_entry in parsed:
-            entry = _validate_entry(raw_entry)
-            if entry:
-                validated.append(entry)
-        if not validated:
-            log.warning("[EXTRACTOR] No valid entries after validation")
-            continue
+        # Quality bar for the card: must have identity + personality_brief +
+        # voice_traits + ≥3 example dialogs. If not met on attempt 1, retry
+        # once with a corrective preamble.
+        card_issues = []
+        if not card.get("identity"):
+            card_issues.append("missing_identity")
+        if not card.get("personality_brief"):
+            card_issues.append("missing_personality_brief")
+        if not card.get("voice_traits"):
+            card_issues.append("missing_voice_traits")
+        if len(card.get("example_dialogs") or []) < 3:
+            card_issues.append(f"only_{len(card.get('example_dialogs') or [])}_dialogs<3")
 
-        validated = _enforce_constant_cap(validated, cap=2)
-
-        # Track best across attempts so we don't lose ground if a later retry
-        # somehow returns fewer entries.
-        if len(validated) > len(best_validated):
-            best_validated = validated
-
-        issues = _validate_extraction_quality(validated)
-        if not issues:
+        if not card_issues:
             log.info(
-                f"[EXTRACTOR] Extracted {len(validated)} entries for "
-                f"{character_name!r} (quality OK on attempt {attempt + 1})"
+                f"[EXTRACTOR] OK on attempt {attempt + 1} for {character_name!r}: "
+                f"card({len(card.get('voice_traits',''))}c voice, "
+                f"{len(card.get('example_dialogs') or [])} dialogs), "
+                f"{len(entries)} lorebook entries"
             )
-            return validated
+            return {"character_card": card, "lorebook_entries": entries}
 
         log.warning(
-            f"[EXTRACTOR] Attempt {attempt + 1} quality issues for "
-            f"{character_name!r}: {issues}"
+            f"[EXTRACTOR] Attempt {attempt + 1} card issues for {character_name!r}: {card_issues}"
+        )
+        # Save best-effort in case retry returns worse.
+        parsed = {"character_card": card, "lorebook_entries": entries}
+        # Append correction to prompt for retry.
+        prompt = prompt + (
+            "\n\nPREVIOUS ATTEMPT had issues: "
+            + "; ".join(card_issues)
+            + ". Fix these specifically. Keep the lorebook section unchanged if it was correct."
         )
 
-    if best_validated:
-        # Quality bar not met after all retries, but we have something — better
-        # than empty. Caller (re_extract_lorebook) will overwrite the existing
-        # entries with these; skipping would orphan the user with stale data.
+    if parsed:
         log.warning(
-            f"[EXTRACTOR] Quality bar not met after {MAX_ATTEMPTS} attempts for "
-            f"{character_name!r}; returning best-effort {len(best_validated)} entries. "
-            f"Final issues: {_validate_extraction_quality(best_validated)}"
+            f"[EXTRACTOR] Returning best-effort for {character_name!r} after retries"
         )
-        return best_validated
+        return parsed
 
     log.error(f"[EXTRACTOR] All attempts failed for {character_name!r}: {last_err}")
-    return []
+    return {"character_card": {}, "lorebook_entries": []}
 
 
-def build_core_identity_entry(
-    *,
-    companion_name: str,
-    user_name: Optional[str] = None,
-    relationship: Optional[str] = None,
-) -> Dict:
-    """
-    Synthesize a constant entry from settings — the core role-identity sentence
-    that should anchor every reply, regardless of what's in the user's authored
-    persona text.
-    """
-    parts = [f"你是{companion_name}"]
-    if user_name and relationship:
-        rel_zh = {
-            "lover": "恋人",
-            "friend": "朋友",
-            "family": "家人",
-            "mentor": "导师",
-        }.get(relationship, relationship)
-        parts.append(f"，{user_name}的{rel_zh}")
-    content = "".join(parts) + "。"
+# ---------- Convenience wrappers used by callers that only want one half ----------
 
-    from datetime import datetime
-    return {
-        "id": str(uuid.uuid4()),
-        "keys": [],
-        "content": content,
-        "priority": 90,
-        "selective_logic": "any",
-        "constant": True,
-        "enabled": True,
-        "dimension": "identity",
-        "created_at": datetime.utcnow(),
-        "_source": "core_identity",  # internal tag, not used by engine
-    }
+def extract_lorebook_from_persona(
+    persona_text: str,
+    character_name: Optional[str] = None,
+) -> List[Dict]:
+    """Backwards-compat shim: returns just the lorebook_entries portion of a
+    full extraction. Old callers (e.g. /api/prompt-debug or experimental code)
+    can keep working while the main flow uses extract_persona_to_card_and_lorebook."""
+    result = extract_persona_to_card_and_lorebook(
+        persona_text=persona_text,
+        character_name=character_name,
+    )
+    return result.get("lorebook_entries") or []

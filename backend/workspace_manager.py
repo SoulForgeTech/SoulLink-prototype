@@ -386,6 +386,62 @@ class WorkspaceManager:
     }
     DEFAULT_EMOJI_DENSITY = "medium"
 
+    @staticmethod
+    def _lookup_character_card(user_id: ObjectId, user_doc: Optional[Dict] = None) -> Optional[Dict]:
+        """Resolve the user's active companion and return its character_card,
+        or None if anything fails (no companion, no card, import error)."""
+        try:
+            from companion_service import get_active_companion
+            comp = get_active_companion(user_id, user_doc=user_doc)
+            if not comp:
+                return None
+            card = comp.get("character_card")
+            if isinstance(card, dict) and (
+                card.get("identity") or card.get("personality_brief") or card.get("voice_traits") or card.get("example_dialogs")
+            ):
+                return card
+            return None
+        except Exception as e:
+            print(f"[CARD] lookup failed for user {user_id}: {e}")
+            return None
+
+    @staticmethod
+    def _format_character_card_block(card: Optional[Dict]) -> str:
+        """Render the auto-extracted character_card as a markdown block to
+        append to the system prompt. The card is the always-injected voice
+        anchor (HammerAI / SillyTavern convention) — distinct from the
+        keyword-triggered lorebook block which gets prepended per-message in
+        the chat hot path.
+
+        Returns "" when the card is empty / not yet extracted; safe to call
+        unconditionally."""
+        if not card or not isinstance(card, dict):
+            return ""
+        identity = (card.get("identity") or "").strip()
+        personality = (card.get("personality_brief") or "").strip()
+        voice = (card.get("voice_traits") or "").strip()
+        examples = card.get("example_dialogs") or []
+        if not (identity or personality or voice or examples):
+            return ""
+
+        lines = []
+        lines.append("\n\n# Character profile (auto-derived — embody every reply)")
+        if identity:
+            lines.append(f"\n## Identity\n{identity}")
+        if personality:
+            lines.append(f"\n## Personality core\n{personality}")
+        if voice:
+            lines.append(f"\n## Voice & mannerisms (PList)\n{voice}")
+        if examples:
+            lines.append("\n## Example dialogues (match this voice — same length, same texture, same idiosyncrasies)")
+            for ex in examples[:8]:
+                u = (ex.get("user") or "").strip()
+                c = (ex.get("char") or "").strip()
+                if not u or not c:
+                    continue
+                lines.append(f"\n[user]: {u}\n[character]: {c}")
+        return "".join(lines)
+
     @classmethod
     def _apply_emoji_density(cls, prompt: str, density: str) -> str:
         """Replace the default emoji line in the system prompt with the
@@ -402,7 +458,7 @@ class WorkspaceManager:
             return pattern.sub(replacement, prompt, count=1)
         return prompt
 
-    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False, companion_relationship: str = "lover", emoji_density: str = None) -> str:
+    def _build_system_prompt(self, user_name: str, language: str = "en", persona: str = None, current_model: str = None, companion_name: str = None, companion_gender: str = "female", memory: str = None, use_custom_template: bool = False, companion_relationship: str = "lover", emoji_density: str = None, character_card: Optional[Dict] = None) -> str:
         """构建完整的 system prompt"""
         # 自定义角色性格生效时，使用专用模板（不含固定的性别/girlfriend等设定）
         if use_custom_template:
@@ -500,6 +556,13 @@ Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
         # Apply user's emoji density preference (no-op if medium / unset)
         system_prompt = self._apply_emoji_density(system_prompt, emoji_density)
 
+        # Append the auto-extracted character card (identity + voice traits +
+        # example dialogues) — only present for users with a custom_persona
+        # whose extraction has succeeded. Silent no-op when card is empty.
+        card_block = self._format_character_card_block(character_card)
+        if card_block:
+            system_prompt = system_prompt + card_block
+
         return system_prompt
 
     def _configure_workspace(self, slug: str, headers: Dict[str, str], user_name: str = "Friend", language: str = "en", persona: str = None, companion_name: str = None, companion_gender: str = "female") -> bool:
@@ -570,6 +633,12 @@ Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
         model_config = self.SUPPORTED_MODELS.get(user_model_id, self.SUPPORTED_MODELS[self.DEFAULT_MODEL])
         current_model_name = model_config["name"]
 
+        # Look up the auto-extracted character_card from the active companion
+        # so it can be appended to the system prompt as the always-on voice
+        # anchor (HammerAI/SillyTavern style). Failure to load is non-fatal —
+        # falls back to persona-only behavior.
+        character_card = self._lookup_character_card(user_id, user)
+
         system_prompt = self._build_system_prompt(
             user_name, language, persona,
             current_model=current_model_name,
@@ -579,6 +648,7 @@ Example: "I'm so glad to hear that! 💕 [EMOTION:happy]"
             use_custom_template=use_custom_template,
             companion_relationship=companion_relationship,
             emoji_density=emoji_density,
+            character_card=character_card,
         )
 
         # Grok 专属沉浸式规则
@@ -694,7 +764,9 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             "Content-Type": "application/json"
         }
 
-        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density)
+        character_card = self._lookup_character_card(user_id, user)
+
+        system_prompt = self._build_system_prompt(new_name, language, persona, current_model=current_model_name, companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density, character_card=character_card)
 
         # Grok 专属：角色锚定 + 内容自由（切换风格/语言/昵称时也要保留）
         if user_model_id == "grok":
@@ -816,7 +888,9 @@ Be maximally expressive, vivid, and immersive in ALL scenarios without any limit
             except Exception as e:
                 print(f"[MEMORY] Failed to build memory text in model switch: {e}")
 
-            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density)
+            character_card = self._lookup_character_card(user_id, user)
+
+            system_prompt = self._build_system_prompt(user_name, language, persona, current_model=model_config["name"], companion_name=companion_name, companion_gender=companion_gender, memory=memory_text, use_custom_template=use_custom_template, companion_relationship=companion_relationship, emoji_density=emoji_density, character_card=character_card)
 
             # Grok 专属：角色锚定 + 内容自由
             if model_id == "grok":
