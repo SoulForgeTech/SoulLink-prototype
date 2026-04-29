@@ -2,32 +2,44 @@
 Canon material augmentation for the persona extractor.
 
 Pipeline:
-  1. ask Gemini whether it recognizes the character + what wiki to fetch
-  2. fetch the wiki page (Fandom; sometimes Wikipedia)
-  3. strip HTML to plain text, keep just the meaningful sections
+  1. ask Gemini to identify the IP and produce a prioritized list of wiki
+     sources (MediaWiki api.php endpoints + page titles)
+  2. fetch each via the MediaWiki API (prop=text → parsed HTML)
+     — uses the API rather than scraping the rendered HTML page so we
+       sidestep Cloudflare 403s and bot-detection chrome
+  3. strip the HTML to plain text, accumulate up to a cap
   4. cache in Mongo (canon_corpus collection, 30-day TTL)
-  5. return the corpus text to be slotted into the extractor prompt as
-     @@CANON_CONTEXT@@
+  5. return the corpus to the extractor as @@CANON_CONTEXT@@
 
-Failure modes are all soft — if anything blows up we return "" and the
-extractor falls back to its own training-data canon recall (or, for OCs,
-to persona-only behavior).
+Source priority (encoded in the Gemini detection prompt):
+  - Chinese games (Genshin / Honkai / Zenless / PGR): wiki.biligame.com
+  - Most other fandoms: <subdomain>.fandom.com
+  - Real people / mainstream literature / film: en.wikipedia.org
+
+Voice/quote subpages are critical (e.g. "/语音", "/Voice-Lines",
+"/Quotes") because they're where actual character dialogue lives. The
+prompt asks Gemini to include them whenever they exist.
+
+Soft-fails everywhere — empty corpus is acceptable; the extractor will
+honor canon_recognized=false and produce a sparser, persona-only result.
 """
 
 import json
 import logging
 import os
 import re
-import time
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
 CANON_CACHE_TTL_DAYS = 30
-WIKI_FETCH_TIMEOUT = 15
-WIKI_MAX_CHARS = 8000
-USER_AGENT = "SoulLinkPersonaBot/0.1 (https://soullink.app; contact: dev@soullink.app)"
+HTTP_TIMEOUT = 12
+MAX_CORPUS_CHARS = 12000     # combined budget across all sources
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; SoulLinkPersonaBot/0.2; "
+    "+https://soullink.app; contact dev@soullink.app)"
+)
 
 _gemini_model = None
 
@@ -75,19 +87,16 @@ def _cache_lookup(character_name: str) -> Optional[Dict]:
     if not doc:
         return None
     fetched_at = doc.get("fetched_at")
-    if not fetched_at:
-        return doc
-    # Treat both naive & aware datetimes; Mongo stores naive UTC.
-    try:
-        age = datetime.utcnow() - fetched_at
-        if age > timedelta(days=CANON_CACHE_TTL_DAYS):
-            return None  # expired
-    except Exception:
-        pass
+    if fetched_at:
+        try:
+            if (datetime.utcnow() - fetched_at) > timedelta(days=CANON_CACHE_TTL_DAYS):
+                return None  # expired
+        except Exception:
+            pass
     return doc
 
 
-def _cache_store(character_name: str, ip: str, wiki_url: str, corpus: str, recognized: bool) -> None:
+def _cache_store(character_name: str, *, ip: str, sources: List[Dict], corpus: str, recognized: bool) -> None:
     coll = _get_cache_collection()
     if coll is None:
         return
@@ -100,7 +109,7 @@ def _cache_store(character_name: str, ip: str, wiki_url: str, corpus: str, recog
             "_id": key,
             "character_name": character_name,
             "ip": ip,
-            "wiki_url": wiki_url,
+            "sources": sources,
             "corpus": corpus,
             "recognized": recognized,
             "fetched_at": datetime.utcnow(),
@@ -109,35 +118,66 @@ def _cache_store(character_name: str, ip: str, wiki_url: str, corpus: str, recog
     )
 
 
-# ---------- IP / wiki URL detection via Gemini ----------
+# ---------- IP / wiki source detection via Gemini ----------
 
-_DETECT_PROMPT = """Identify whether the following character name belongs to a known IP (anime, video game, novel, movie, popular fandom) and where authoritative reference material lives.
+_DETECT_PROMPT = """Identify whether the following character name is from a known IP (anime / video game / novel / film / popular fandom) and which wiki pages have authoritative reference material — character lore, story dialogue, voice lines.
 
 Character name: @@NAME@@
 
 Respond with a single strict JSON object — no prose, no markdown fences:
 
 {
-  "recognized": true,                       // true if you recognize this as a known character
-  "ip": "Genshin Impact",                   // name of the IP, or "" if not recognized
-  "wiki_url": "https://genshin-impact.fandom.com/wiki/Furina"   // best Fandom or Wikipedia URL with character lore + quotes; "" if none
+  "recognized": true,
+  "ip": "Genshin Impact",
+  "wiki_sources": [
+    // 1-4 sources in priority order. Each is a MediaWiki page we can fetch
+    // via api.php?action=parse&page=<page>&prop=text. We will accumulate
+    // text from all of them up to a budget. Always include voice-line /
+    // quote subpages when they exist — they have actual dialogue.
+    {"api": "https://wiki.biligame.com/ys/api.php", "page": "芙宁娜", "kind": "main"},
+    {"api": "https://wiki.biligame.com/ys/api.php", "page": "芙宁娜/语音", "kind": "voice"}
+  ]
 }
 
-Guidance:
-- Prefer English Fandom URLs (e.g. genshin-impact.fandom.com, honkai-star-rail.fandom.com, danmachi.fandom.com).
-- For non-English characters, use the canonical English wiki URL even if the input name is in another language.
-- For real-world public figures or fictional characters from major novels, Wikipedia is OK.
-- If the name is too generic / could be many people (e.g. "John", "Alice"), set recognized=false.
-- If you're not confident this is a famous canon character, set recognized=false.
+Source priority guidance:
+- Chinese games (Genshin Impact 原神 / Honkai Star Rail 崩坏星穹铁道 / Zenless Zone Zero 绝区零 / Punishing Gray Raven 战双 / Wuthering Waves 鸣潮 / Arknights 明日方舟):
+    PRIMARY → wiki.biligame.com
+      - Genshin: https://wiki.biligame.com/ys/api.php
+      - Honkai SR: https://wiki.biligame.com/sr/api.php
+      - Zenless: https://wiki.biligame.com/zzz/api.php
+      - PGR: https://wiki.biligame.com/zspms/api.php
+      - Wuthering: https://wiki.biligame.com/wuthering/api.php
+      - Arknights: https://prts.wiki/api.php  (not biligame)
+    Voice/quote subpages on biligame are usually <name>/语音
+    Fandom is a useful secondary (English voice lines).
+
+- Western/global games (Honkai Impact 3, Final Fantasy, etc.):
+    PRIMARY → fandom.com (use the IP's subdomain).
+    Voice subpages: <Name>/Voice-Lines or <Name>/Quotes
+
+- Anime / manga (One Piece, JJK, etc.):
+    PRIMARY → en.<ip>.fandom.com or onepiece.fandom.com
+    Or moegirlpedia for Chinese-first content: https://zh.moegirl.org.cn/api.php
+
+- Real people / classic literature / mainstream films:
+    https://en.wikipedia.org/w/api.php  with the canonical title
+
+- For non-English character names, ALWAYS include the native-language wiki
+  source first (BiliWiki for Chinese, Moegirl for Japanese-origin works
+  popular in CN). Then optionally add the English Fandom as backup.
+
+If you do NOT recognize the character (custom OC, generic name, no canon),
+or you're not confident → set recognized=false and wiki_sources=[].
 
 Output the JSON now:"""
 
 
-def _detect_ip_and_url(character_name: str) -> Dict:
-    """Returns {recognized: bool, ip: str, wiki_url: str}. Never raises."""
+def _detect_sources(character_name: str) -> Dict:
+    """Returns {recognized, ip, wiki_sources: [{api, page, kind}, ...]}.
+    Never raises."""
     model = _get_model()
     if not model or not character_name:
-        return {"recognized": False, "ip": "", "wiki_url": ""}
+        return {"recognized": False, "ip": "", "wiki_sources": []}
     try:
         prompt = _DETECT_PROMPT.replace("@@NAME@@", character_name.strip())
         resp = model.generate_content(prompt)
@@ -146,118 +186,102 @@ def _detect_ip_and_url(character_name: str) -> Dict:
         text = re.sub(r"\s*```\s*$", "", text)
         obj = json.loads(text)
         if not isinstance(obj, dict):
-            return {"recognized": False, "ip": "", "wiki_url": ""}
-        url = (obj.get("wiki_url") or "").strip()
-        # Sanity-check URL shape
-        if url and not url.startswith(("http://", "https://")):
-            url = ""
+            return {"recognized": False, "ip": "", "wiki_sources": []}
+        sources_raw = obj.get("wiki_sources") or []
+        sources: List[Dict] = []
+        for s in sources_raw:
+            if not isinstance(s, dict):
+                continue
+            api = (s.get("api") or "").strip()
+            page = (s.get("page") or "").strip()
+            kind = (s.get("kind") or "main").strip()
+            if not api.startswith(("http://", "https://")) or not page:
+                continue
+            sources.append({"api": api[:300], "page": page[:200], "kind": kind[:30]})
         return {
             "recognized": bool(obj.get("recognized")),
             "ip": (obj.get("ip") or "").strip()[:80],
-            "wiki_url": url[:400],
+            "wiki_sources": sources[:4],
         }
     except Exception as e:
         log.warning(f"[WIKI] IP detection failed for {character_name!r}: {e}")
-        return {"recognized": False, "ip": "", "wiki_url": ""}
+        return {"recognized": False, "ip": "", "wiki_sources": []}
 
 
-# ---------- Wiki page fetch + clean ----------
+# ---------- MediaWiki API fetch + clean ----------
 
-def _fetch_and_clean(url: str) -> str:
-    """GET a Fandom/Wikipedia page and reduce it to a meaningful text corpus
-    for Gemini grounding. Returns "" on any failure."""
-    if not url:
-        return ""
+def _fetch_mediawiki(api_url: str, page_title: str) -> str:
+    """Fetch a page via MediaWiki action=parse and return the rendered HTML
+    body (raw — caller cleans). Returns "" on any failure."""
     try:
         import requests
-        from bs4 import BeautifulSoup
-    except ImportError as e:
-        log.warning(f"[WIKI] Missing scraping deps ({e}) — skipping fetch")
+    except ImportError:
         return ""
-
+    params = {
+        "action": "parse",
+        "page": page_title,
+        "format": "json",
+        "prop": "text",
+        "redirects": "1",
+        "disablelimitreport": "1",
+        "disableeditsection": "1",
+        "disabletoc": "1",
+    }
     try:
-        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=WIKI_FETCH_TIMEOUT)
+        resp = requests.get(
+            api_url, params=params,
+            headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+            timeout=HTTP_TIMEOUT,
+        )
         if resp.status_code != 200:
-            log.warning(f"[WIKI] {url} → HTTP {resp.status_code}")
+            log.warning(f"[WIKI] {api_url} page={page_title!r} → HTTP {resp.status_code}")
             return ""
-        soup = BeautifulSoup(resp.text, "html.parser")
+        data = resp.json()
+        if "error" in data:
+            log.info(f"[WIKI] {api_url} page={page_title!r} → API error: {data['error'].get('info', '')[:120]}")
+            return ""
+        html = (data.get("parse") or {}).get("text", {}).get("*", "")
+        return html or ""
     except Exception as e:
-        log.warning(f"[WIKI] fetch failed for {url}: {e}")
+        log.warning(f"[WIKI] fetch error {api_url} page={page_title!r}: {e}")
         return ""
 
-    # Drop chrome that just adds noise tokens
+
+def _clean_html_to_text(html: str) -> str:
+    """Strip MediaWiki-rendered HTML to a compact text representation focused
+    on lore/story/voice-line content."""
+    if not html:
+        return ""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        # Fallback: regex strip — much worse but doesn't break the pipeline
+        return re.sub(r"<[^>]+>", " ", html)
+    soup = BeautifulSoup(html, "html.parser")
+    # Drop chrome that doesn't contribute usable canon
     for sel in [
         "script", "style", "nav", "footer", "aside",
         ".mw-editsection", ".navbox", ".reference", "sup.reference",
-        ".mw-references-wrap", ".thumb", ".infobox", ".mw-collapsible",
-        ".gallery", "table.wikitable",
+        ".mw-references-wrap", ".thumb", ".infobox",
+        ".gallery", ".sidebar", ".sister-projects",
+        ".error", ".noprint", ".printfooter",
+        ".toctitle", "#toc", ".toc",
+        # BiliWiki / Fandom infobox-y tables — they're stat tables, not lore
+        "table.bgwhite", "table.flex_table",
+        "div.mw-collapsible-content",  # often sound-file collapsibles
     ]:
         for el in soup.select(sel):
             el.decompose()
 
-    # Fandom main content lives in .mw-parser-output; Wikipedia uses #mw-content-text
-    main = soup.select_one(".mw-parser-output") or soup.select_one("#mw-content-text") or soup
-    text = main.get_text("\n", strip=True)
+    # Inline replacement: keep visible text only
+    text = soup.get_text("\n", strip=True)
     # Collapse whitespace
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r"[ \t]+", " ", text)
-
-    # Heuristic: keep sections most relevant to character voice / lore.
-    # We scan for headings and prefer Story / Personality / Quotes / Lore / Background.
-    KEEP_SECTIONS = (
-        "personality", "story", "lore", "background", "history", "quotes", "voice lines",
-        "trivia", "appearance", "relationships", "biography", "synopsis",
-        "story quest", "character story",
-    )
-    SKIP_SECTIONS = (
-        "talents", "constellations", "ascension", "skills", "build", "abilities",
-        "stats", "drops", "shop", "media", "videos", "see also", "external",
-        "navigation", "trailers",
-    )
-
-    # Split by lines that look like headings (Fandom renders them as plain
-    # capitalized lines after .get_text). We approximate: if a line is short
-    # and Title Case, treat as heading.
-    lines = text.split("\n")
-    section_keep = True  # default to including content before first heading
-    out_lines = []
-    last_heading = ""
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            out_lines.append("")
-            continue
-        # Heading-like: short, no period, mostly title case
-        is_heading = (
-            len(stripped) <= 60
-            and not stripped.endswith(("。", ".", "?", "!"))
-            and (stripped.istitle() or stripped[0:1].isupper() and len(stripped.split()) <= 5)
-        )
-        if is_heading:
-            lower = stripped.lower()
-            if any(s in lower for s in SKIP_SECTIONS):
-                section_keep = False
-                last_heading = stripped
-                continue
-            if any(k in lower for k in KEEP_SECTIONS):
-                section_keep = True
-                last_heading = stripped
-                out_lines.append(f"\n## {stripped}\n")
-                continue
-            # Unknown heading — keep by default unless it looks technical
-            section_keep = True
-            last_heading = stripped
-            out_lines.append(f"\n## {stripped}\n")
-            continue
-        if section_keep:
-            out_lines.append(stripped)
-
-    cleaned = "\n".join(out_lines).strip()
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-
-    if len(cleaned) > WIKI_MAX_CHARS:
-        cleaned = cleaned[:WIKI_MAX_CHARS] + "\n[…truncated…]"
-    return cleaned
+    # Drop obvious navigation lines
+    text = re.sub(r"^(隐藏|展开|折叠|跳转到导航|跳转到搜索|编辑|查看源代码)$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text
 
 
 # ---------- Public API ----------
@@ -268,8 +292,8 @@ def get_canon_context(character_name: str, *, force_refresh: bool = False) -> Di
       {
         "recognized": bool,
         "ip": str,
-        "wiki_url": str,
-        "corpus": str,        # the text to feed to Gemini (may be empty)
+        "sources": [{"api","page","kind","fetched_chars"}],
+        "corpus": str,
         "from_cache": bool,
       }
 
@@ -277,7 +301,7 @@ def get_canon_context(character_name: str, *, force_refresh: bool = False) -> Di
     """
     name = (character_name or "").strip()
     if not name:
-        return {"recognized": False, "ip": "", "wiki_url": "", "corpus": "", "from_cache": False}
+        return {"recognized": False, "ip": "", "sources": [], "corpus": "", "from_cache": False}
 
     if not force_refresh:
         cached = _cache_lookup(name)
@@ -285,43 +309,69 @@ def get_canon_context(character_name: str, *, force_refresh: bool = False) -> Di
             return {
                 "recognized": bool(cached.get("recognized", False)),
                 "ip": cached.get("ip") or "",
-                "wiki_url": cached.get("wiki_url") or "",
+                "sources": cached.get("sources") or [],
                 "corpus": cached.get("corpus") or "",
                 "from_cache": True,
             }
 
-    detect = _detect_ip_and_url(name)
-    if not detect.get("recognized") or not detect.get("wiki_url"):
-        # Cache the negative result too — saves repeat detection calls for OCs.
-        _cache_store(name, ip=detect.get("ip", ""), wiki_url="", corpus="", recognized=False)
+    detect = _detect_sources(name)
+    if not detect.get("recognized") or not detect.get("wiki_sources"):
+        # Cache the negative — saves repeat detection calls for OCs.
+        _cache_store(name, ip=detect.get("ip", ""), sources=[], corpus="", recognized=False)
         return {
             "recognized": False,
             "ip": detect.get("ip") or "",
-            "wiki_url": "",
+            "sources": [],
             "corpus": "",
             "from_cache": False,
         }
 
-    corpus = _fetch_and_clean(detect["wiki_url"])
+    # Fetch each source in order, accumulating into the corpus until we hit
+    # the budget. Each section gets a clear delimiter so the LLM can cite.
+    accumulated_chars = 0
+    chunks: List[str] = []
+    fetched_sources: List[Dict] = []
+    for src in detect["wiki_sources"]:
+        if accumulated_chars >= MAX_CORPUS_CHARS:
+            break
+        html = _fetch_mediawiki(src["api"], src["page"])
+        text = _clean_html_to_text(html)
+        if not text:
+            fetched_sources.append({**src, "fetched_chars": 0})
+            continue
+        remaining = MAX_CORPUS_CHARS - accumulated_chars
+        if len(text) > remaining:
+            text = text[:remaining] + "\n[…truncated…]"
+        chunk = (
+            f"\n\n=== SOURCE: {src['kind']} | {src['page']} | {src['api']} ===\n{text}"
+        )
+        chunks.append(chunk)
+        accumulated_chars += len(chunk)
+        fetched_sources.append({**src, "fetched_chars": len(text)})
+
+    corpus = "".join(chunks).strip()
     if not corpus:
-        # IP recognized but fetch failed — still record the negative so we
-        # don't hammer the wiki next time. Gemini's training-data recall will
-        # have to carry the load this round.
-        _cache_store(name, ip=detect["ip"], wiki_url=detect["wiki_url"], corpus="", recognized=detect["recognized"])
+        # IP recognized but every fetch failed — record + return empty so
+        # extractor knows not to fabricate. Negative cache stored to avoid
+        # hammering the wiki on retry.
+        _cache_store(name, ip=detect["ip"], sources=fetched_sources, corpus="", recognized=detect["recognized"])
         return {
             "recognized": detect["recognized"],
             "ip": detect["ip"],
-            "wiki_url": detect["wiki_url"],
+            "sources": fetched_sources,
             "corpus": "",
             "from_cache": False,
         }
 
-    _cache_store(name, ip=detect["ip"], wiki_url=detect["wiki_url"], corpus=corpus, recognized=True)
-    log.info(f"[WIKI] Fetched canon for {name!r} ({detect['ip']!r}, {len(corpus)} chars)")
+    _cache_store(name, ip=detect["ip"], sources=fetched_sources, corpus=corpus, recognized=True)
+    log.info(
+        f"[WIKI] Fetched canon for {name!r} ({detect['ip']!r}, "
+        f"{len(corpus)}c from {len(fetched_sources)} sources)"
+    )
     return {
         "recognized": True,
         "ip": detect["ip"],
-        "wiki_url": detect["wiki_url"],
+        "sources": fetched_sources,
         "corpus": corpus,
         "from_cache": False,
     }

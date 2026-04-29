@@ -63,37 +63,52 @@ EXTRACTION_PROMPT = """You are a character authoring assistant. Given a characte
 
 This split mirrors the SillyTavern / HammerAI convention.
 
-## SOURCE PRIORITY (most important rule)
+## SOURCE PRIORITY (most important rule — read carefully)
 
-You will use up to THREE sources of information, in this priority order:
+**Default to NOT inventing.** Hallucination is the worst failure mode here —
+fake quotes and fabricated plot events poison the user's chat experience.
+Only produce dialogues and lorebook entries that are GROUNDED in actual
+source material.
 
-  **(A) Canonical material from your training data.**
-       If you recognize @@CHARACTER_NAME@@ as a known character from any IP
-       (anime / video game / novel / movie / popular fandom), you MUST use
-       that canonical material:
-         - Real dialogue lines from the source (verbatim or near-verbatim) —
-           NOT invented imitations
-         - Real plot events, hidden backstories, world setting, relationship
-           network, signature mannerisms, secrets, defining moments
-         - Set "canon_recognized": true and "canon_ip": "<name of IP>"
-       Do NOT shy away from quoting actual lines — that is the entire point.
+You have THREE sources, in priority order:
 
-  **(B) Canonical reference material provided below as @@CANON_CONTEXT@@.**
-       If non-empty, this is wiki / fandom / source-script text we fetched
-       for you. Treat it as authoritative — extract dialogues, lore, plot
-       events, relationships from it directly. Combine with (A) when both
-       are available.
+  **(A) @@CANON_CONTEXT@@ — wiki / fandom / source-script text fetched for you.**
+       This is THE primary source. If non-empty:
+         - Every example_dialog with `source: "canon"` MUST quote a line that
+           appears in @@CANON_CONTEXT@@ (verbatim or near-verbatim — adjust
+           punctuation / pronouns only if needed for the user/char dialogue
+           format). Cite which source section it came from in `canon_ref`.
+         - Every lorebook_entry with `_source_hint: "canon"` MUST be
+           directly supported by content in @@CANON_CONTEXT@@. Don't
+           extrapolate — if the wiki doesn't say it, don't write it.
+         - Set "canon_recognized": true and "canon_ip" to the IP name.
 
-  **(C) The user's persona text.**
-       Always weighted on top — the user may have customized or refined the
-       canonical character (e.g. softer / older / set in a different scene).
-       When persona text contradicts canon, persona wins. When persona is
-       silent on something canon covers, use canon.
+  **(B) Your training-data knowledge** (only when @@CANON_CONTEXT@@ is empty
+       AND you have HIGH confidence the character is real and well-known):
+         - You may quote real lines from your training data, but flag them
+           the same way (`source: "canon"`, `canon_ref: "from training"`).
+         - Be conservative: if you're not sure the line is real, mark it
+           `source: "synthesized"` instead.
+         - For characters you only vaguely recognize, set
+           "canon_recognized": false and skip canon-style outputs.
 
-  **If you don't recognize the character AND no canon context is provided:**
-       Set "canon_recognized": false. example_dialogs may be synthesized in
-       the spirit of the persona text; lorebook_entries should be sparse
-       (only what's literally in the persona text — usually empty).
+  **(C) The user's persona text** — always overrides A/B when there's
+       conflict. The user may have customized the character (softer, older,
+       set in a different scene). Persona wins for personality_brief and
+       voice_traits. Canon wins for plot events and relationships.
+
+## What to do when @@CANON_CONTEXT@@ is empty AND character is unknown
+
+(Original character / OC, no canonical source available.)
+
+- Set "canon_recognized": false, "canon_ip": ""
+- character_card: derive identity / personality_brief / voice_traits from
+  the persona text only.
+- example_dialogs: produce 4-6 SYNTHESIZED dialogs that match the persona's
+  described voice. Mark every one as `source: "synthesized"`.
+  The frontend will show a "✏️ AI 合成示例 — 你可以编辑或替换为真实台词" hint.
+- lorebook_entries: empty array `[]` unless the persona text literally
+  contains plot/world content (rare).
 
 ## Inputs
 
@@ -168,27 +183,33 @@ You will use up to THREE sources of information, in this priority order:
 - 每类至少 3 个标签
 - 如果 canon_recognized=true，**必须**包含 canon 里的标志性口癖（自称、口头禅、招牌动作）
 
-### example_dialogs（最关键 + canon 优先）
+### example_dialogs（最关键 + canon 优先 + 严禁编造）
 - **6-10 段**对话样本，覆盖：日常 / 撒娇 / 被夸 / 吃醋 / 难过被安慰 / 生气 / 关心对方
-- 如果 canon_recognized=true：
-  - 优先用真实 canon 台词，标注 `"source": "canon"` 和 `"canon_ref": "<source>"`
-  - 可以为了贴合对话格式略调整场景，但措辞、自称、口癖、用词偏好原样保留
-  - 至少一半应该是 canon 来的
-- 如果 canon 没合适场景，标注 `"source": "synthesized"` 编一段
+- 如果 @@CANON_CONTEXT@@ 非空：
+  - **每条 canon 标注的对话，char 部分必须有出现在 canon_context 里的句子**（可以微调标点 / 人称以适配对话格式，但词句、自称、口癖必须从原文复制）
+  - canon_ref 必须指明出自 canon_context 的哪个 SOURCE 段（如 "main", "voice"）以及大致章节 / 场景
+  - 至少 4-5 段必须是 canon 来源；剩余可以 synthesized
+  - **DO NOT INVENT QUOTES**：不要因为"听起来像那个角色"就标 canon。没有原句就标 synthesized
+- 如果 canon_context 为空但你 HIGHLY 熟悉角色（来自训练数据）：
+  - 可以引用你确信存在的真实台词，标 canon + canon_ref="from training data"
+  - 不确定就标 synthesized
 - user 行：30 字以内；char 行：50-200 字
 - 用括号描动作：（耳朵泛红）、（语气拉长）
 
 ## Rules for the lorebook_entries
 
 ### Source priority
-- 如果 canon_recognized=true：**这里要重点填充**。覆盖
-  - 角色身份背景 / 出身
-  - 关键剧情事件（具体到事件名 / 章节）
+- 如果 @@CANON_CONTEXT@@ 非空 → **重点填充**，每条 entry 的 content 必须能在 canon_context 里找到依据：
+  - 角色身份背景 / 出身（具体年份、地名要 match canon）
+  - 关键剧情事件（事件名 / 章节名 必须出自 canon）
   - 隐藏动机 / 秘密 / 真实身份
-  - 主要关系网（朋友、敌人、家人、师徒、爱人）
-  - 世界设定相关条目（角色所属阵营、世界规则、特殊能力机制）
-  - 标志性事件 / 名场面
-- 如果只有 persona 没 canon：稀疏即可，仅当 persona 含 plot/world 才建 entry
+  - 主要关系网（朋友、敌人、家人、师徒、爱人）—— 涉及的角色名必须是 canon 里出现过的
+  - 世界设定（阵营、世界规则、能力机制）
+  - **DO NOT INVENT**：canon_context 没说的事件、关系、设定，不要写
+- 如果 canon_context 为空但你 HIGHLY 熟悉角色：
+  - 可以基于训练数据生成，但条数控制在 3-5 条，每条只写你高确信度的内容
+  - 标 _source_hint="canon" + 在 content 末尾加 "[from training data]"
+- 如果完全 unknown：lorebook_entries 返回 `[]`，不要硬凑
 
 ### When to SKIP（仍然只放 card 里）
 - 纯性格描述（"她很自信"）
