@@ -124,7 +124,11 @@ def _cache_store(character_name: str, *, ip: str, sources: List[Dict], corpus: s
 
 # ---------- IP / wiki source detection via Gemini ----------
 
-_DETECT_PROMPT = """Identify whether the following character name is from a known IP (anime / video game / novel / film / popular fandom) and which wiki pages have authoritative reference material — character lore, story dialogue, voice lines.
+_DETECT_PROMPT = """Identify whether @@NAME@@ refers to a known entity and which wiki pages have authoritative reference material. Three categories all qualify as "recognized":
+
+  (a) Fictional character from a known IP (anime / video game / novel / film / fandom)
+  (b) Real public figure (actor / singer / athlete / scientist / historical figure)
+  (c) Mythological / religious figure with established lore
 
 Character name: @@NAME@@
 
@@ -132,46 +136,49 @@ Respond with a single strict JSON object — no prose, no markdown fences:
 
 {
   "recognized": true,
-  "ip": "Genshin Impact",
+  "ip": "Genshin Impact" or "Real Person — Chinese Actor" or "Greek Mythology" etc.,
   "wiki_sources": [
-    // 1-4 sources in priority order. Each is a MediaWiki page we can fetch
-    // via api.php?action=parse&page=<page>&prop=text. We will accumulate
-    // text from all of them up to a budget. Always include voice-line /
-    // quote subpages when they exist — they have actual dialogue.
     {"api": "https://wiki.biligame.com/ys/api.php", "page": "芙宁娜", "kind": "main"},
     {"api": "https://wiki.biligame.com/ys/api.php", "page": "芙宁娜/语音", "kind": "voice"}
   ]
 }
 
 Source priority guidance:
-- Chinese games (Genshin Impact 原神 / Honkai Star Rail 崩坏星穹铁道 / Zenless Zone Zero 绝区零 / Punishing Gray Raven 战双 / Wuthering Waves 鸣潮 / Arknights 明日方舟):
-    PRIMARY → wiki.biligame.com
-      - Genshin: https://wiki.biligame.com/ys/api.php
-      - Honkai SR: https://wiki.biligame.com/sr/api.php
-      - Zenless: https://wiki.biligame.com/zzz/api.php
-      - PGR: https://wiki.biligame.com/zspms/api.php
-      - Wuthering: https://wiki.biligame.com/wuthering/api.php
-      - Arknights: https://prts.wiki/api.php  (not biligame)
-    Voice/quote subpages on biligame are usually <name>/语音
-    Fandom is a useful secondary (English voice lines).
 
-- Western/global games (Honkai Impact 3, Final Fantasy, etc.):
-    PRIMARY → fandom.com (use the IP's subdomain).
-    Voice subpages: <Name>/Voice-Lines or <Name>/Quotes
+For fictional characters from CN games (Genshin Impact 原神 / Honkai Star Rail 崩坏星穹铁道 / Zenless Zone Zero 绝区零 / Punishing Gray Raven 战双 / Wuthering Waves 鸣潮 / Arknights 明日方舟):
+  PRIMARY → wiki.biligame.com (Chinese, much richer than English Fandom)
+    - Genshin: https://wiki.biligame.com/ys/api.php
+    - Honkai SR: https://wiki.biligame.com/sr/api.php
+    - Zenless: https://wiki.biligame.com/zzz/api.php
+    - PGR: https://wiki.biligame.com/zspms/api.php
+    - Wuthering: https://wiki.biligame.com/wuthering/api.php
+    - Arknights: https://prts.wiki/api.php  (NOT biligame)
+  Voice/quote subpages on biligame are usually <name>/语音
+  Fandom (en) as secondary for English voice lines.
 
-- Anime / manga (One Piece, JJK, etc.):
-    PRIMARY → en.<ip>.fandom.com or onepiece.fandom.com
-    Or moegirlpedia for Chinese-first content: https://zh.moegirl.org.cn/api.php
+For Western/global games (Honkai Impact 3, Final Fantasy, etc.):
+  PRIMARY → fandom.com with IP's subdomain. Voice subpages: <Name>/Voice-Lines or <Name>/Quotes
 
-- Real people / classic literature / mainstream films:
-    https://en.wikipedia.org/w/api.php  with the canonical title
+For anime / manga (One Piece, JJK, 全职高手 King's Avatar, etc.):
+  PRIMARY → en.<ip>.fandom.com (e.g. onepiece.fandom.com, the-kings-avatar.fandom.com)
+  ALSO: zh.moegirl.org.cn API — but that domain often returns "Unauthorized API call", so don't make it the only source
 
-- For non-English character names, ALWAYS include the native-language wiki
-  source first (BiliWiki for Chinese, Moegirl for Japanese-origin works
-  popular in CN). Then optionally add the English Fandom as backup.
+For REAL PEOPLE (actors, singers, athletes, scientists, public figures):
+  - Chinese celebrities (白敬亭, 王一博, 肖战, 易烊千玺, 周深, 鹿晗, 张艺兴 etc.)
+    PRIMARY → https://zh.wikipedia.org/w/api.php with the Chinese name as page title
+    Note: Baidu Baike is NOT MediaWiki — don't list it here.
+  - International celebrities (Taylor Swift, Tom Cruise, etc.)
+    PRIMARY → https://en.wikipedia.org/w/api.php
 
-If you do NOT recognize the character (custom OC, generic name, no canon),
-or you're not confident → set recognized=false and wiki_sources=[].
+For classic literature / mythology / mainstream film characters:
+  → https://en.wikipedia.org/w/api.php OR https://zh.wikipedia.org/w/api.php as appropriate
+
+For non-English names, ALWAYS try the native-language wiki source first
+(BiliWiki for Chinese games, zh.wikipedia for Chinese celebrities). The
+content density is much higher in the native language wiki.
+
+If you don't recognize the name (custom OC, generic 'John', Pinyin transliteration
+you can't disambiguate, etc.) → recognized=false, wiki_sources=[].
 
 Output the JSON now:"""
 
