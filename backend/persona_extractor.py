@@ -205,21 +205,72 @@ You have THREE sources, in priority order:
 
 ## Rules for the lorebook_entries
 
-### Source priority + 数量目标
-- **目标 10-20 条 entries**（canon 充足时往上限走，稀疏时往下限走）
-- 如果 @@CANON_CONTEXT@@ 非空 → **重点填充**，每条 entry 的 content 必须能在 canon_context 里找到依据：
-  - 角色身份背景 / 出身（具体年份、地名要 match canon）
-  - 关键剧情事件 / **每个 canon 段拆一条**（如"角色故事1"、"角色故事3"、"传说任务"、"邀约事件"等多段，应该各产出 1-2 个 entry，不要合并）
-  - 隐藏动机 / 秘密 / 真实身份
-  - 主要关系网 — 每个重要关系角色单独一条（如"与那维莱特"、"与克洛琳德"、"与林尼兄妹"分别建 entry）
-  - 世界设定（阵营、世界规则、能力机制）
-  - 标志性物品 / 道具 / 召唤物（如"孤心沙龙四成员"、"神之眼来源"）
-  - **重大剧情转折后的状态**（如"剧情终幕后的人类生活"、"卸下水神身份后的新住所"）
-  - **DO NOT INVENT**：canon_context 没说的事件、关系、设定，不要写
-- 如果 canon_context 为空但你 HIGHLY 熟悉角色：
-  - 可以基于训练数据生成，但条数控制在 5-8 条，每条只写你高确信度的内容
-  - 标 _source_hint="canon" + 在 content 末尾加 "[from training data]"
-- 如果完全 unknown：lorebook_entries 返回 `[]`，不要硬凑
+### Source priority + 数量 + 覆盖广度
+
+**目标 18-30 条 entries**（canon 充足时往 30 走；稀疏时往下限走）。
+
+如果 @@CANON_CONTEXT@@ 非空 → **必须做到完整覆盖**：
+
+**强制覆盖维度清单**（canon 里有就必须各出 1-2 条 entry，不能合并）：
+
+  **A. 身份 / 称号 / 阵营**
+   - 真实身份 + 表面身份（这两条要分开建）
+   - 所有称号（"本水神"、"大明星"、"不休独舞" → 各自的来源典故）
+   - 所属阵营 / 组织 / 居住地
+
+  **B. 每段角色故事**（"角色故事1"、"角色故事2"、…）—— **每段一条 entry**，不要合并
+   - 每条 entry 的 content 应该浓缩那段角色故事的核心事件 + 具体细节
+
+  **C. 主线 / 传说任务 / 邀约事件**（如有）—— 每个剧情线 1-2 条 entry
+   - 重大剧情转折点要单独成条（如"罪人舞步旋终幕"、"水的女儿登台"）
+
+  **D. 关系网 — 每个重要关系角色单独一条 entry**
+   - 那维莱特、克洛琳德、芙卡洛丝、谢贝蕾妲、林尼林妮兄妹、旅行者、…
+   - 每条要写：关系性质 + 关键事件 + 互动模式
+
+  **E. 标志性物品 / 道具 / 召唤物 / 食物**
+   - 神之眼（来源、属性、典故）
+   - 召唤物（如"孤心沙龙四成员"逐一介绍各自身份）
+   - 特殊料理 / 武器
+
+  **F. 世界设定 / 能力机制**（仅与角色直接相关的部分）
+   - 角色相关的世界规则（如"水神更替制度"、"原罪/溶解机制"）
+   - 元素 / 始基力 / 战斗风格
+
+  **G. 剧情前后的状态对比**（极重要，单独成条）
+   - 如"剧情终幕前 vs 后的生活/心境差异"
+
+**每条 entry 的 content 要求**：
+  - **目标 800-1500 字**（factual reference note 风格，不是 prose 流水账）
+  - **必须含 ≥3 个 canon 具体细节**（具体地名 / 人名 / 事件名 / 称谓 / 年份 / 物品名）
+  - 第三人称写法
+  - 例：
+    - 差: "芙宁娜与那维莱特一起工作"
+    - 好: "芙宁娜与最高审判官那维莱特共事五百年。台前由芙宁娜以「水神」身份扮演众水众方众民与众律法的女王，幕后由那维莱特担任实际审判与政务处理。两人是芙卡洛丝原罪解除契约唯一的同谋，这种共事关系既包含信任也夹杂芙宁娜戏剧化的抱怨与撒娇。在「罪人舞步旋」终幕审判中，那维莱特以最高审判官身份配合芙卡洛丝完成最后释放仪式，并在芙宁娜卸下水神身份后仍保持着深厚的关系。"
+
+**DO NOT INVENT**：canon_context 没说的事件、关系、设定，不要写。
+
+如果 canon_context 为空但你 HIGHLY 熟悉角色：
+- 可以基于训练数据生成，但条数控制在 5-8 条，每条只写你高确信度的内容
+- 标 _source_hint="canon" + 在 content 末尾加 "[from training data]"
+
+如果完全 unknown：lorebook_entries 返回 `[]`，不要硬凑
+
+### insertion_order 必须分级 — 不要全填 100
+
+**绝对不允许所有 entry 都是 100。** 按重要程度分配：
+
+  - **180-200**: 核心身份 / 真实身份 / 角色根本性的世界定位
+  - **130-160**: 主要剧情事件、剧情转折、重大状态变化
+  - **100-120**: 重要关系网、标志性物品 / 召唤物、世界设定
+  - **70-90**: 角色故事的小细节、装饰性 entry、小趣事
+
+### probability / sticky / cooldown / delay
+
+- `probability`: 默认 100（触发即注入）。仅当想引入"偶尔出现"的随机性才 < 100
+- `sticky`: 默认 0。重大剧情 entry 可用 3-5（保持几轮上下文）
+- `cooldown`: 默认 0。同一秘密 / 黑历史 entry 可用 5-10（避免重复 spam）
+- `delay`: 默认 0。深度黑历史 / 真实身份揭露 entry 可用 5-10（避免刚开聊就出底牌）
 
 ### When to SKIP（仍然只放 card 里）
 - 纯性格描述（"她很自信"）
@@ -345,12 +396,15 @@ def _validate_lorebook_entry(raw: Dict) -> Optional[Dict]:
         prob = max(0, min(100, int(raw.get("probability", 100))))
     except Exception:
         prob = 100
+    src_hint = (raw.get("_source_hint") or "").strip().lower()
+    if src_hint not in ("canon", "persona", ""):
+        src_hint = ""
     return {
         "id": str(uuid.uuid4()),
         "title": (raw.get("title") or "").strip()[:80],
         "keys": keys,
         "secondary_keys": secondary,
-        "content": content[:600],
+        "content": content[:1500],
         "selective_logic": selective_logic,
         "strategy": strategy,
         "insertion_order": order,
@@ -361,6 +415,7 @@ def _validate_lorebook_entry(raw: Dict) -> Optional[Dict]:
         "delay": max(0, int(raw.get("delay", 0) or 0)),
         "enabled": bool(raw.get("enabled", True)),
         "source": "auto",
+        "_source_hint": src_hint,
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
     }
@@ -413,13 +468,14 @@ def extract_persona_to_card_and_lorebook(
     # 2 attempts: one normal + one retry. Quality bar is "card has identity AND
     # ≥3 example dialogs"; lorebook can legitimately be empty so we don't gate
     # on it.
-    # Gemini Flash defaults to ~8k output tokens; bump for richer extractions
-    # (12-18 dialogs + 10-20 lorebook entries can run 6-10k tokens with JSON).
+    # Bumped to 32k since target is 18-30 lorebook entries × 800-1500 chars
+    # plus 12-18 dialogs × 200-400 chars plus JSON overhead — comfortably
+    # within Gemini 2.5 Flash's 65k output limit.
     try:
         import google.generativeai as _genai
         gen_config = _genai.types.GenerationConfig(
-            max_output_tokens=16384,
-            temperature=0.5,
+            max_output_tokens=32768,
+            temperature=0.4,
             response_mime_type="application/json",
         )
     except Exception:
@@ -461,7 +517,8 @@ def extract_persona_to_card_and_lorebook(
 
         # Quality bar:
         #   any character: identity + personality_brief + voice_traits + ≥4 dialogs
-        #   canon-recognized: ≥10 dialogs, ≥6 canon-sourced, ≥8 lorebook entries
+        #   canon-recognized: ≥12 dialogs (≥8 canon-sourced) AND ≥15 lorebook entries
+        #   AND insertion_order must be differentiated (not all 100)
         # Retry once with a corrective preamble if any of these miss.
         card_issues = []
         if not card.get("identity"):
@@ -471,15 +528,24 @@ def extract_persona_to_card_and_lorebook(
         if not card.get("voice_traits"):
             card_issues.append("missing_voice_traits")
         n_dialogs = len(card.get("example_dialogs") or [])
-        min_dialogs = 10 if canon_recognized else 4
+        min_dialogs = 12 if canon_recognized else 4
         if n_dialogs < min_dialogs:
             card_issues.append(f"only_{n_dialogs}_dialogs<{min_dialogs}")
         if canon_recognized:
             canon_dialogs = sum(1 for d in (card.get("example_dialogs") or []) if d.get("source") == "canon")
-            if canon_dialogs < 6:
-                card_issues.append(f"only_{canon_dialogs}_canon_dialogs<6")
-            if len(entries) < 8:
-                card_issues.append(f"only_{len(entries)}_lorebook_entries<8")
+            if canon_dialogs < 8:
+                card_issues.append(f"only_{canon_dialogs}_canon_dialogs<8")
+            if len(entries) < 15:
+                card_issues.append(f"only_{len(entries)}_lorebook_entries<15")
+            # Check insertion_order differentiation: more than 1 unique value required
+            orders = {e.get("insertion_order", 100) for e in entries}
+            if len(orders) <= 1 and entries:
+                card_issues.append(f"insertion_order_not_differentiated_all={list(orders)[0]}")
+            # Check content depth: avg should be ≥ 400 chars (target 800-1500)
+            if entries:
+                avg_len = sum(len(e.get("content", "")) for e in entries) / len(entries)
+                if avg_len < 400:
+                    card_issues.append(f"avg_content_too_short_{int(avg_len)}c<400")
 
         if not card_issues:
             log.info(
