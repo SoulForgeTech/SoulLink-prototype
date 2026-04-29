@@ -307,7 +307,18 @@ def extract_persona_to_card_and_lorebook(
     if not model:
         return {"character_card": {}, "lorebook_entries": []}
 
-    rel_for_prompt = relationship or "—"
+    # Translate the english relationship enum to a natural Chinese phrase
+    # before handing it to Gemini, so the identity sentence reads naturally
+    # (Gemini otherwise tends to copy the english word verbatim).
+    _REL_ZH = {
+        "lover": "恋人",
+        "friend": "朋友",
+        "family": "家人",
+        "mentor": "导师",
+        "boyfriend": "男朋友",
+        "girlfriend": "女朋友",
+    }
+    rel_for_prompt = _REL_ZH.get((relationship or "").lower(), relationship or "—")
     user_for_prompt = user_name or "—"
 
     prompt = (
