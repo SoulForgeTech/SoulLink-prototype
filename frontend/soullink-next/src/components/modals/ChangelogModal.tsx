@@ -44,6 +44,15 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.2.4-beta', date: '2026-04-29',
+    changes: [
+      { badge: 'feat', text: 'Character memory — auto-extracted from canon wikis.', text_zh: '角色记忆 — 自动从原作 wiki 抽取角色设定。' },
+      { badge: 'feat', text: 'Memory panel — view / edit / disable in Settings.', text_zh: '记忆面板 — 设置里查看 / 编辑 / 关闭记忆。' },
+      { badge: 'feat', text: '"Re-analyze" button — one click to refresh from canon.', text_zh: '"重新分析"按钮 — 一键重新从原作拉素材。' },
+      { badge: 'opt', text: 'Improved custom character voice consistency.', text_zh: '优化自定义角色贴皮。' },
+    ],
+  },
+  {
     version: 'v0.2.3-beta', date: '2026-04-24',
     changes: [
       { badge: 'feat', text: 'Emoji density control — pick how liberally I sprinkle emojis (Off / Light / Normal / Lots)', text_zh: 'Emoji 密度可调 — 自己选 AI 回复里 emoji 的多少（关/少/正常/多）' },
