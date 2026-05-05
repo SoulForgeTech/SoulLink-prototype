@@ -156,6 +156,45 @@ For fictional characters from CN games (Genshin Impact 原神 / Honkai Star Rail
   Voice/quote subpages on biligame are usually <name>/语音
   Fandom (en) as secondary for English voice lines.
 
+For CN otome / 乙女向 mobile games (恋与深空 / 光与夜之恋 / 时空中的绘旅人 / 恋与制作人):
+  These IPs use BOTH a Chinese biligame wiki AND an English Fandom wiki with
+  fully localized character names. List BOTH whenever applicable — biligame
+  alone is often too sparse for non-flagship characters.
+
+  - 恋与深空 (Love and Deepspace) — male leads: 沈星回, 黎深, 祁煜, 秦彻, Caleb
+      CN: https://wiki.biligame.com/lysk/api.php
+        Page patterns for biligame lysk: <name>/导航 (overview),
+        <name>/战斗语音 (battle voice), <name>-倾心之约 (story event)
+      EN: https://loveanddeepspace.fandom.com/api.php  (very rich, ~190K+ chars/page)
+        Name mapping: 沈星回=Xavier, 黎深=Zayne, 祁煜=Rafayel, 秦彻=Sylus, Caleb=Caleb
+
+  - 光与夜之恋 (Light and Night) — male leads: 齐司礼, 陆沉, 萧逸, 查理苏, 夏鸣星, 夏以昼
+      CN: https://wiki.biligame.com/qqlove/api.php
+        Page patterns: <name>·六星·<event-name> for event/story cards (no plain <name> page)
+      EN: https://lightandnight.fandom.com/api.php
+        Name mapping (use EN names on fandom):
+          齐司礼=Sariel, 陆沉=Evan, 萧逸=Osborn, 查理苏=Charlie, 夏鸣星=Jesse
+        Note: 夏以昼 has no EN fandom page yet (newer character) — fall back to
+        https://zh.wikipedia.org/w/api.php with page=光与夜之恋 (30K+ chars, contains
+        character roster).
+
+  - 时空中的绘旅人 (Lovebrush Chronicles) — male leads: 路辰, 夜尊, 司岚, 莫弈
+      No biligame wiki exists for this title.
+      EN: https://lovebrush-chronicles.fandom.com/api.php
+        Name mapping: 路辰=Lars Rorschach, 夜尊=Alkaid McGrath  (use EN names)
+      CN secondary: zh.wikipedia.org/w/api.php with the Chinese name.
+
+  - 恋与制作人 (Mr. Love: Queen's Choice) — male leads: 李泽言, 白起, 周棋洛, 许墨, 凌肖
+      CN: https://wiki.biligame.com/lyzzr/api.php  (sparse — often only 许墨 has a main page;
+                                                    always pair with the fandom below)
+      EN: https://mr-love-queens-choice.fandom.com/api.php
+        Name mapping: 李泽言=Victor, 白起=Gavin, 周棋洛=Kiro, 许墨=Lucien, 凌肖=Shaw
+
+  Fandom voice/quote subpages: <Name>/Voice_Lines or <Name>/Quotes.
+  When the user gives a Chinese name for one of these IPs, output BOTH the
+  biligame source (CN page title) AND the fandom source (EN page title from
+  the mapping above).
+
 For Western/global games (Honkai Impact 3, Final Fantasy, etc.):
   PRIMARY → fandom.com with IP's subdomain. Voice subpages: <Name>/Voice-Lines or <Name>/Quotes
 
