@@ -155,7 +155,8 @@ _SHORT_TERM_KEYWORDS = [
 
 
 def _classify_tier(fact: str) -> str:
-    """基于关键词分类记忆层级"""
+    """关键词 fallback 分类。Default 是 short_term —— 大多数对话内容是瞬时的；
+    permanent / long_term 才是例外。仅在 LLM 分类失败时使用。"""
     fact_lower = fact.lower()
     for kw in _PERMANENT_KEYWORDS:
         if kw in fact_lower:
@@ -163,7 +164,58 @@ def _classify_tier(fact: str) -> str:
     for kw in _SHORT_TERM_KEYWORDS:
         if kw in fact_lower:
             return "short_term"
-    return "long_term"
+    return "short_term"
+
+
+_TIER_PROMPT = """Classify each user-related fact into ONE memory tier based on how long it should be retained:
+
+- permanent: lifelong identity / stable demographic facts
+  (name, family members, occupation, hometown, education, languages, long-held pets, birthday)
+- long_term: stable preferences, hobbies, personality traits, recurring habits,
+  values, relationship patterns — things true for months/years without expiry
+- short_term: transient state that decays in days-to-weeks — specific plans,
+  one-off events, current mood, momentary cravings, single-meal preferences,
+  in-the-moment opinions, situational worries, ephemeral desires
+
+When uncertain, prefer short_term — most chat content is ephemeral, and
+over-tagging as long_term pollutes the user profile permanently.
+
+Facts (one per line, numbered):
+@@FACTS@@
+
+Return ONLY a JSON array of strings, one tier per fact in input order. No prose, no markdown fences.
+Example: ["short_term", "permanent", "long_term"]"""
+
+
+def _classify_tiers_llm(facts: List[str]) -> Optional[List[str]]:
+    """批量给 facts 打 tier。返回与输入等长的 tier 列表，或 None（失败时由调用方走关键词回退）。"""
+    if not facts:
+        return []
+    try:
+        from memory_engine import _call_gemini
+    except Exception:
+        return None
+    numbered = "\n".join(f"{i+1}. {f}" for i, f in enumerate(facts))
+    prompt = _TIER_PROMPT.replace("@@FACTS@@", numbered)
+    text = _call_gemini(prompt)
+    if not text:
+        return None
+    try:
+        text = re.sub(r"^```(?:json)?\s*", "", text.strip())
+        text = re.sub(r"\s*```\s*$", "", text)
+        tiers = json.loads(text)
+        if not isinstance(tiers, list) or len(tiers) != len(facts):
+            logger.warning(f"[MEM0] LLM tier output shape mismatch: got {len(tiers) if isinstance(tiers,list) else type(tiers).__name__}, expected {len(facts)}")
+            return None
+        valid = {"permanent", "long_term", "short_term"}
+        out: List[str] = []
+        for t in tiers:
+            t = (t or "").strip().lower() if isinstance(t, str) else ""
+            out.append(t if t in valid else "short_term")
+        return out
+    except Exception as e:
+        logger.warning(f"[MEM0] LLM tier parse failed: {e}; raw={text[:120]!r}")
+        return None
 
 
 def _calculate_expiry(tier: str) -> Optional[str]:
@@ -296,25 +348,26 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str) -> Dict:
             return receipt
 
         events = result if isinstance(result, list) else result.get("results", [])
+
+        # Pass 1: collect ADD events that survive junk filter, and surface UPDATE events.
+        pending_adds: List[Dict] = []  # [{"id", "text"}]
         for event in events:
             ev_type = event.get("event")
             mem_text = event.get("memory", "")
             mem_id = event.get("id")
 
             if ev_type == "UPDATE":
-                # Mem0 merged/refined an existing memory — surface it too.
                 if mem_text and mem_id:
                     receipt["updated"].append({
                         "id": mem_id,
                         "fact": mem_text,
-                        "tier": _classify_tier(mem_text),
+                        "tier": _classify_tier(mem_text),  # keyword-only is fine here; UPDATE keeps prior tier in metadata
                     })
                 continue
 
             if ev_type != "ADD":
                 continue
 
-            # 垃圾过滤
             if _is_junk_memory(mem_text):
                 try:
                     m.delete(mem_id)
@@ -322,17 +375,29 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str) -> Dict:
                     pass
                 continue
 
-            # 分类 + TTL
-            tier = _classify_tier(mem_text)
-            expires_at = _calculate_expiry(tier)
+            pending_adds.append({"id": mem_id, "text": mem_text})
 
-            # 永久记忆数量检查
+        # Pass 2: batch tier classification via Gemini (one call for all facts).
+        # Falls back to keyword classifier if LLM fails / parses badly.
+        llm_tiers = _classify_tiers_llm([p["text"] for p in pending_adds])
+        if llm_tiers is None:
+            tiers = [_classify_tier(p["text"]) for p in pending_adds]
+            tier_source = "kw"
+        else:
+            tiers = llm_tiers
+            tier_source = "llm"
+
+        # Pass 3: enforce permanent quota, write metadata, build receipt.
+        for p, tier in zip(pending_adds, tiers):
+            mem_text, mem_id = p["text"], p["id"]
+
             if tier == "permanent":
                 existing_perm = get_permanent_memories(uid_str)
                 if len(existing_perm) >= MAX_PERMANENT:
                     tier = "long_term"
-                    expires_at = _calculate_expiry("long_term")
                     logger.warning(f"[MEM0] Permanent full ({MAX_PERMANENT}), downgraded to long_term: '{mem_text}'")
+
+            expires_at = _calculate_expiry(tier)
 
             try:
                 m.update(mem_id, data=mem_text, metadata={
@@ -344,7 +409,7 @@ def process_memory(user_id: ObjectId, user_msg: str, ai_reply: str) -> Dict:
                 logger.warning(f"[MEM0] Failed to update metadata for '{mem_text}': {e}")
 
             receipt["added"].append({"id": mem_id, "fact": mem_text, "tier": tier})
-            logger.info(f"[MEM0] Added [{tier}]: '{mem_text}'")
+            logger.info(f"[MEM0] Added [{tier}/{tier_source}]: '{mem_text}'")
 
     except Exception as e:
         logger.error(f"[MEM0] process_memory error: {e}")
