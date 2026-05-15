@@ -1224,9 +1224,12 @@
             line-height: 24px;
         }
 
-        .auth-input::placeholder {
-            color: rgba(255, 255, 255, 0.55) !important;
-        }
+        /* .auth-input::placeholder removed: the rule targeted the old
+           glassmorphic LoginForm and used !important to override the
+           inline-styled white text. It now conflicts with the diary
+           port's scoped placeholder color (var(--ink-faint) on paper).
+           The diary CSS in src/app/login/_styles/diary-auth.css owns
+           the visual contract for .auth-input now. */
 
         .send-btn {
             width: 36px;
