@@ -18,7 +18,10 @@ const i18n = {
     email: 'Email', emailPh: 'your@email.com',
     password: 'Password', passwordPh: 'At least 6 characters',
     confirmPassword: 'Confirm Password', confirmPh: 'Re-enter your password',
-    submit: 'Create Account', submitting: 'Creating account...',
+    submit: 'Begin',
+    submitting: 'Beginning...',
+    stampMain: 'vol.01',
+    stampSub: 'new reader',
     fillAll: 'Please fill in all fields.',
     nickMin: 'Nickname must be at least 2 characters.',
     passMin: 'Password must be at least 6 characters.',
@@ -33,7 +36,10 @@ const i18n = {
     email: '邮箱', emailPh: '请输入邮箱',
     password: '密码', passwordPh: '至少6位字符',
     confirmPassword: '确认密码', confirmPh: '再次输入密码',
-    submit: '创建账号', submitting: '创建中...',
+    submit: '开始',
+    submitting: '开始中...',
+    stampMain: '第一卷',
+    stampSub: '新读者',
     fillAll: '请填写所有字段',
     nickMin: '昵称至少需要2个字符',
     passMin: '密码至少需要6个字符',
@@ -106,202 +112,103 @@ export default function RegisterForm({ onSuccess, onNeedVerification, lang = 'en
     }
   }
 
-  /* ---- Shared inline styles matching original CSS exactly ---- */
-  const formGroupStyle: React.CSSProperties = {
-    marginBottom: '16px',
-    textAlign: 'left',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: '6px',
-    fontSize: '0.9rem',
-    color: 'rgba(255, 255, 255, 0.8)',
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 16px',
-    background: 'rgba(255, 255, 255, 0.15)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    borderRadius: '10px',
-    color: 'white',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box',
-    opacity: loading ? 0.5 : 1,
-  };
-
-  function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-  }
-
-  function handleInputBlur(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-  }
-
   return (
-    <form onSubmit={handleSubmit}>
-      {/* .auth-error */}
+    <form className="auth-form" onSubmit={handleSubmit} noValidate>
       {error && (
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.2)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#fca5a5',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '0.9rem',
-          }}
-        >
-          {error}
+        <div className="auth-error" role="alert">
+          <p className="auth-error-msg">— {error}</p>
         </div>
       )}
 
-      {/* Nickname .form-group */}
-      <div style={formGroupStyle}>
-        <label style={labelStyle}>
-          {t.nicknameLabel} <span style={{ color: '#f87171' }}>*</span>
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="register-nickname">
+          {t.nicknameLabel} <span className="auth-required" aria-hidden>*</span>
         </label>
         <input
+          id="register-nickname"
           type="text"
+          className="auth-input"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
           placeholder={t.nicknamePh}
           autoComplete="name"
           disabled={loading}
-          className="auth-input"
-          style={inputStyle}
         />
-        <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '4px' }}>
-          {t.nicknameHint}
-        </div>
+        <p className="auth-field-hint">{t.nicknameHint}</p>
       </div>
 
-      {/* Email .form-group */}
-      <div style={formGroupStyle}>
-        <label style={labelStyle}>
-          {t.email} <span style={{ color: '#f87171' }}>*</span>
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="register-email">
+          {t.email} <span className="auth-required" aria-hidden>*</span>
         </label>
         <input
+          id="register-email"
           type="email"
+          className="auth-input"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
           placeholder={t.emailPh}
           autoComplete="email"
           disabled={loading}
-          className="auth-input"
-          style={inputStyle}
         />
       </div>
 
-      {/* Password .form-group */}
-      <div style={formGroupStyle}>
-        <label style={labelStyle}>
-          {t.password} <span style={{ color: '#f87171' }}>*</span>
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="register-password">
+          {t.password} <span className="auth-required" aria-hidden>*</span>
         </label>
         <input
+          id="register-password"
           type="password"
+          className="auth-input"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
           placeholder={t.passwordPh}
           autoComplete="new-password"
           disabled={loading}
-          className="auth-input"
-          style={inputStyle}
         />
       </div>
 
-      {/* Confirm Password .form-group */}
-      <div style={formGroupStyle}>
-        <label style={labelStyle}>
-          {t.confirmPassword} <span style={{ color: '#f87171' }}>*</span>
+      <div className="auth-field">
+        <label className="auth-field-label" htmlFor="register-confirm">
+          {t.confirmPassword} <span className="auth-required" aria-hidden>*</span>
         </label>
         <input
+          id="register-confirm"
           type="password"
+          className="auth-input"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
           placeholder={t.confirmPh}
           autoComplete="new-password"
           disabled={loading}
-          className="auth-input"
-          style={inputStyle}
         />
       </div>
 
-      {/* .auth-submit-btn */}
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          width: '100%',
-          padding: '14px',
-          background: '#e8b4b8',
-          color: '#5a4a4a',
-          border: 'none',
-          borderRadius: '10px',
-          fontSize: '1rem',
-          fontWeight: 600,
-          cursor: loading ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s',
-          marginTop: '8px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-          opacity: loading ? 0.6 : 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-        }}
-        onMouseEnter={(e) => {
-          if (!loading) {
-            e.currentTarget.style.background = '#d9a5a9';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#e8b4b8';
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-        }}
-      >
-        {loading ? (
-          <>
-            <span
-              style={{
-                display: 'inline-block',
-                width: '16px',
-                height: '16px',
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                borderColor: 'rgba(90,74,74,0.3)',
-                borderTopColor: '#5a4a4a',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-              }}
-            />
-            {t.submitting}
-          </>
-        ) : (
-          t.submit
-        )}
-      </button>
+      <div className="auth-submit-row">
+        <button type="submit" className="btn-stamp" disabled={loading}>
+          {loading ? (
+            <>
+              <span className="btn-spinner" aria-hidden />
+              <span>{t.submitting}</span>
+            </>
+          ) : (
+            <>
+              <span>{t.submit}</span>
+              <span className="arrow" aria-hidden>→</span>
+            </>
+          )}
+        </button>
+
+        <div className="wax-stamp" aria-hidden>
+          <span>{t.stampMain}</span>
+          <span className="stamp-sub">{t.stampSub}</span>
+        </div>
+      </div>
     </form>
   );
 }
