@@ -1,0 +1,415 @@
+/* ============================================================
+   SoulLink — diary auth visual contract
+
+   Direct port of `SoulLink Landing Page/assets/auth.css` plus
+   the auth-relevant pieces of `diary.css` (.btn-stamp,
+   .btn-quiet, .lang-toggle, base box-sizing reset).
+
+   All selectors scoped under `:where(.auth-scope)` so they
+   cannot leak into /chat. `:where()` keeps specificity at 0,
+   making future overrides easy.
+
+   Lang-specific rules use `:where(.auth-scope) [data-lang="zh"]`
+   — page.tsx (S2) renders a child wrapper with `data-lang`
+   set from the existing useState<'en'|'zh'>.
+
+   Decoration budget (unchanged from reference): ONE wax-seal
+   stamp + ONE Caveat margin note (login view only).
+   ============================================================ */
+
+/* ---------- box-sizing reset, scoped ---------- */
+:where(.auth-scope) *,
+:where(.auth-scope) *::before,
+:where(.auth-scope) *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ---------- page shell ---------- */
+:where(.auth-scope) .auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+:where(.auth-scope) .auth-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 140px 28px 80px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- card ---------- */
+:where(.auth-scope) .auth-card {
+  width: 100%;
+  max-width: 460px;
+  position: relative;
+}
+
+:where(.auth-scope) .auth-chapter-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sepia);
+  margin-bottom: 26px;
+}
+:where(.auth-scope) .auth-chapter-mark::before {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: var(--sepia);
+}
+:where(.auth-scope) .auth-chapter-mark em {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+:where(.auth-scope) .auth-title {
+  font-family: var(--font-display);
+  font-weight: 350;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  font-size: clamp(46px, 6vw, 68px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin-bottom: 18px;
+}
+:where(.auth-scope) [data-lang="zh"] .auth-title {
+  font-size: clamp(40px, 5vw, 58px);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+:where(.auth-scope) .auth-sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin-bottom: 44px;
+  max-width: 360px;
+}
+:where(.auth-scope) [data-lang="zh"] .auth-sub {
+  font-size: 16px;
+}
+
+/* ---------- form ---------- */
+:where(.auth-scope) .auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+:where(.auth-scope) .auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+:where(.auth-scope) .auth-field-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+:where(.auth-scope) .auth-field-label .opt {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+:where(.auth-scope) .auth-required {
+  color: var(--seal);
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 500;
+}
+
+:where(.auth-scope) .auth-input,
+:where(.auth-scope) .auth-field input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink-line);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.4;
+  padding: 8px 2px 10px;
+  outline: none;
+  transition: border-color .2s ease;
+  width: 100%;
+}
+:where(.auth-scope) .auth-input::placeholder,
+:where(.auth-scope) .auth-field input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+:where(.auth-scope) .auth-input:focus,
+:where(.auth-scope) .auth-field input:focus {
+  border-bottom-color: var(--seal);
+}
+:where(.auth-scope) .auth-input:disabled,
+:where(.auth-scope) .auth-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Chrome autofill: keep ink text on paper bg, not the yellow flash */
+:where(.auth-scope) .auth-input:-webkit-autofill,
+:where(.auth-scope) .auth-field input:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink);
+  transition: background-color 9999s ease-out;
+  caret-color: var(--ink);
+}
+
+:where(.auth-scope) .auth-field-hint {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+/* ---------- submit row ---------- */
+:where(.auth-scope) .auth-submit-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  position: relative;
+}
+
+/* ---------- primary CTA — wax-seal red stamp ---------- */
+/* The `.btn-stamp` background uses --seal-strong, which in
+   dark mode is a slightly darker red (#C95E50) so the
+   #FFFAF0 button text hits WCAG AA. In light mode
+   --seal-strong resolves to --seal (#B85543) — unchanged. */
+:where(.auth-scope) .btn-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: var(--seal-strong);
+  color: #FFFAF0;
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: transform .25s ease, box-shadow .25s ease;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  position: relative;
+  white-space: nowrap;
+}
+:where(.auth-scope) .btn-stamp:hover {
+  transform: translateY(-1px) rotate(-0.5deg);
+  box-shadow: 0 6px 18px rgba(184, 85, 67, 0.30);
+}
+:where(.auth-scope) .btn-stamp:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+:where(.auth-scope) .btn-stamp:disabled:hover {
+  transform: none;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+:where(.auth-scope) .btn-stamp .arrow {
+  transition: transform .2s ease;
+}
+:where(.auth-scope) .btn-stamp:hover .arrow {
+  transform: translateX(3px);
+}
+
+/* ---------- secondary alt-link ---------- */
+:where(.auth-scope) .auth-alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 0 0 1px;
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease;
+  align-self: flex-start;
+}
+:where(.auth-scope) .auth-alt:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink-line);
+}
+
+:where(.auth-scope) .auth-alt-small {
+  display: inline-flex;
+  align-self: flex-end;
+  margin-top: -8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-faint);
+  transition: color .2s ease;
+}
+:where(.auth-scope) .auth-alt-small:hover {
+  color: var(--ink);
+}
+
+/* ---------- wax-seal stamp decoration ---------- */
+:where(.auth-scope) .wax-stamp {
+  --stamp: var(--seal);
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 14px 11px;
+  border: 2px solid var(--stamp);
+  color: var(--stamp);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.88;
+}
+:where(.auth-scope) .wax-stamp::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--stamp);
+  opacity: 0.55;
+  pointer-events: none;
+}
+:where(.auth-scope) .wax-stamp .stamp-sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--stamp);
+  opacity: 0.85;
+  margin-top: 1px;
+}
+:where(.auth-scope) [data-lang="zh"] .wax-stamp {
+  letter-spacing: 0.14em;
+  font-size: 13px;
+  padding: 9px 14px 10px;
+}
+
+/* ---------- caveat margin note (login only) ---------- */
+:where(.auth-scope) .auth-note {
+  margin-top: 56px;
+  font-family: var(--font-hand);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--pen-blue);
+  opacity: 0.85;
+  transform: rotate(-1.2deg);
+  display: inline-block;
+  padding-left: 4px;
+}
+:where(.auth-scope) [data-lang="zh"] .auth-note {
+  font-family: var(--font-hand), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
+  font-size: 17px;
+}
+
+/* ---------- lang toggle (mono EN / 中) ---------- */
+:where(.auth-scope) .lang-toggle {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+:where(.auth-scope) .lang-toggle button {
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--ink-faint);
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: color .2s;
+}
+:where(.auth-scope) .lang-toggle button.active {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+:where(.auth-scope) .lang-toggle .slash {
+  color: var(--ink-faint);
+  padding: 0 2px;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  :where(.auth-scope) .auth-main {
+    padding: 110px 22px 60px;
+  }
+  :where(.auth-scope) .auth-submit-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 28px;
+  }
+  :where(.auth-scope) .wax-stamp {
+    transform: rotate(-4deg);
+    align-self: flex-end;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :where(.auth-scope) .wax-stamp,
+  :where(.auth-scope) .auth-note {
+    transform: none !important;
+  }
+  :where(.auth-scope) *:hover {
+    transform: none !important;
+  }
+}

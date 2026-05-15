@@ -1,0 +1,345 @@
+/* ============================================================
+   SoulLink — diary auth: view-specific rules
+
+   New classes for things the reference design didn't cover
+   (verify, forgot, reset) plus chrome elements added by the
+   prototype port (brand nav, tab switcher, ornamental
+   divider, muted secondary CTAs for Google + Guest, error
+   banner restyle).
+
+   All selectors scoped under `:where(.auth-scope)`.
+   ============================================================ */
+
+/* ---------- brand nav (top of /login page) ---------- */
+:where(.auth-scope) .brand-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: transparent;
+}
+:where(.auth-scope) .brand-mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+}
+:where(.auth-scope) .brand-mark .mark {
+  width: 22px;
+  height: 22px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  transform: translateY(2px);
+}
+:where(.auth-scope) .brand-mark .ver {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  margin-left: 4px;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- tab switcher (sign in · sign up) ---------- */
+:where(.auth-scope) .auth-tabs {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 28px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+:where(.auth-scope) .auth-tab {
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--ink-faint);
+  padding: 4px 2px;
+  cursor: pointer;
+  transition: color .2s ease;
+}
+:where(.auth-scope) .auth-tab:hover {
+  color: var(--ink-soft);
+}
+:where(.auth-scope) .auth-tab[aria-selected="true"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+:where(.auth-scope) .auth-tabs-sep {
+  color: var(--ink-faint);
+  padding: 0 2px;
+}
+
+/* ---------- 6-digit code grid ---------- */
+/* The hidden <input maxLength={6}> overlays the visible
+   cells, so paste + auto-submit-at-6 logic stays intact. */
+:where(.auth-scope) .code-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+:where(.auth-scope) .code-grid input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  background: transparent;
+  font-size: 16px; /* avoid iOS zoom-on-focus */
+  letter-spacing: 1em;
+  text-align: center;
+  cursor: text;
+  z-index: 1;
+}
+:where(.auth-scope) .code-digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--ink-line);
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--ink);
+  transition: border-color .2s ease, color .2s ease;
+}
+:where(.auth-scope) .code-digit[data-empty="true"] {
+  color: var(--ink-faint);
+}
+:where(.auth-scope) .code-grid:focus-within .code-digit[data-active="true"] {
+  border-bottom-color: var(--seal);
+}
+
+/* ---------- resend row ---------- */
+:where(.auth-scope) .resend-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+:where(.auth-scope) .resend-row .resend-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--seal);
+  cursor: pointer;
+  text-transform: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--seal) 35%, transparent);
+  padding-bottom: 1px;
+  transition: border-color .2s ease;
+}
+:where(.auth-scope) .resend-row .resend-btn:hover {
+  border-bottom-color: var(--seal);
+}
+:where(.auth-scope) .resend-row .resend-btn:disabled {
+  color: var(--ink-faint);
+  border-bottom-color: transparent;
+  cursor: not-allowed;
+}
+
+/* ---------- back link ---------- */
+:where(.auth-scope) .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color .2s ease;
+}
+:where(.auth-scope) .back-link:hover {
+  color: var(--ink);
+}
+
+/* ---------- error banner ---------- */
+:where(.auth-scope) .auth-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  margin: -8px 0 4px;
+}
+:where(.auth-scope) .auth-error-msg {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--seal);
+  letter-spacing: -0.005em;
+}
+:where(.auth-scope) .auth-error-cta {
+  background: transparent;
+  border: none;
+  padding: 0 0 1px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--seal);
+  border-bottom: 1px solid color-mix(in srgb, var(--seal) 35%, transparent);
+  transition: border-color .2s ease;
+}
+:where(.auth-scope) .auth-error-cta:hover {
+  border-bottom-color: var(--seal);
+}
+
+/* ---------- inline success line ---------- */
+:where(.auth-scope) .auth-success-inline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--seal);
+  margin-top: 4px;
+}
+
+/* ---------- ornamental divider (· · ·) ---------- */
+:where(.auth-scope) .auth-divider-orn {
+  display: block;
+  margin: 36px auto 22px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.6em;
+  color: var(--ink-faint);
+  user-select: none;
+}
+
+/* ---------- secondary CTAs (Google + Guest) ---------- */
+:where(.auth-scope) .auth-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+:where(.auth-scope) .btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 16px;
+  border: none;
+  border-bottom: 1px solid var(--ink-line);
+  border-radius: 0;
+  cursor: pointer;
+  transition: border-color .2s ease, color .2s ease;
+}
+:where(.auth-scope) .btn-quiet:hover {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+:where(.auth-scope) .btn-quiet:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+:where(.auth-scope) .btn-quiet .arrow {
+  transition: transform .2s ease;
+  font-style: normal;
+}
+:where(.auth-scope) .btn-quiet:hover .arrow {
+  transform: translateX(2px);
+}
+:where(.auth-scope) .btn-quiet-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+/* ---------- footnote (WeChat, version line, etc.) ---------- */
+:where(.auth-scope) .auth-footnote {
+  display: inline-block;
+  margin-top: 32px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-decoration: none;
+  transition: color .2s ease;
+}
+:where(.auth-scope) .auth-footnote:hover {
+  color: var(--ink-soft);
+}
+
+/* ---------- spinner ---------- */
+:where(.auth-scope) .btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: diary-spin 0.7s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes diary-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.auth-scope) .btn-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  :where(.auth-scope) .brand-nav {
+    padding: 14px 22px;
+  }
+  :where(.auth-scope) .code-grid {
+    gap: 8px;
+  }
+  :where(.auth-scope) .code-digit {
+    font-size: 24px;
+    min-height: 48px;
+  }
+}
