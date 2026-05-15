@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import iconSrc from '../icon.png';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { setCredentials } from '@/store/authSlice';
 import { settingsFromUser, updateSettings } from '@/store/settingsSlice';
@@ -240,7 +242,14 @@ export default function LoginPage() {
     <div className="auth-page" data-lang={lang}>
       <nav className="brand-nav">
         <a className="brand-mark" href="/">
-          <span className="mark" aria-hidden>S</span>
+          <Image
+            src={iconSrc}
+            alt=""
+            width={24}
+            height={24}
+            className="brand-icon"
+            priority
+          />
           <span>SoulLink</span>
           <span className="ver">{APP_VERSION}</span>
         </a>

@@ -35,21 +35,15 @@
   font-size: 19px;
   letter-spacing: -0.015em;
 }
-:where(.auth-scope) .brand-mark .mark {
-  width: 22px;
-  height: 22px;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 2px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1;
-  transform: translateY(2px);
+:where(.auth-scope) .brand-mark .brand-icon {
+  /* The icon ships with its own circular shape + colors. Don't wrap
+     it in the wax-frame from the reference — just align it with the
+     wordmark baseline. */
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  vertical-align: -5px;
+  flex-shrink: 0;
 }
 :where(.auth-scope) .brand-mark .ver {
   font-family: var(--font-mono);
