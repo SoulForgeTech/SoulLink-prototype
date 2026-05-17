@@ -230,7 +230,7 @@
 /* ---------- ornamental divider (· · ·) ---------- */
 :where(.auth-scope) .auth-divider-orn {
   display: block;
-  margin: 36px auto 22px;
+  margin: 20px auto 14px;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 12px;

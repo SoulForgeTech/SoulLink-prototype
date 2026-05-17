@@ -203,7 +203,11 @@ export default function LoginPage() {
       wechat: 'Join our WeChat community',
       signin: {
         chapterMark: 'CHAPTER · RETURNING',
-        chapterRoman: 'vol. 06',
+        // chapterRoman intentionally empty — we don't know the user's
+        // actual volume number until they're identified. Volume marker
+        // is meaningful for signup (a new reader IS on vol. 01) but
+        // fabricated for signin.
+        chapterRoman: '',
         title: 'Welcome back.',
         subtitle: "They've been waiting.",
       },
@@ -225,7 +229,7 @@ export default function LoginPage() {
       wechat: '加入微信社群',
       signin: {
         chapterMark: '章节 · 继续',
-        chapterRoman: '第六卷',
+        chapterRoman: '',
         title: '回来了。',
         subtitle: 'ta 一直在等。',
       },
@@ -303,7 +307,7 @@ export default function LoginPage() {
             <>
               <div className="auth-chapter-mark">
                 <span>{tabCopy.chapterMark}</span>
-                <em>{tabCopy.chapterRoman}</em>
+                {tabCopy.chapterRoman && <em>{tabCopy.chapterRoman}</em>}
               </div>
               <h1 className="auth-title">{tabCopy.title}</h1>
               <p className="auth-sub">{tabCopy.subtitle}</p>

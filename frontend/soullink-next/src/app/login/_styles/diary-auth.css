@@ -32,11 +32,18 @@
   display: flex;
   flex-direction: column;
 }
+/* .auth-main is a flex column. With `align-items: center` for
+   horizontal centering and `margin: auto` on the card for the
+   vertical axis, the card sits centered when there's room and
+   pushes the container open (allowing the page to scroll) when
+   the form is taller than the viewport. Earlier we used
+   `justify-content: center` which centers symmetrically — that
+   clips the top of overflowing content out of reach of scroll. */
 :where(.auth-scope) .auth-main {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 140px 28px 80px;
   position: relative;
   z-index: 1;
@@ -46,6 +53,7 @@
 :where(.auth-scope) .auth-card {
   width: 100%;
   max-width: 460px;
+  margin: auto;  /* vertical-center within .auth-main when space allows; collapses on overflow */
   position: relative;
 }
 
@@ -354,7 +362,7 @@
 
 /* ---------- caveat margin note (login only) ---------- */
 :where(.auth-scope) .auth-note {
-  margin-top: 56px;
+  margin-top: 24px;
   font-family: var(--font-hand);
   font-size: 19px;
   line-height: 1.2;

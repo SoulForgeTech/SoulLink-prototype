@@ -21,7 +21,10 @@ const i18n = {
     submit: 'Open the diary',
     submitting: 'Opening...',
     stampMain: 'RESUMING',
-    stampSub: 'vol · 06',
+    // stampSub intentionally empty — we don't know the user's actual
+    // volume number until they're authenticated. Removing rather than
+    // faking the data.
+    stampSub: '',
     fillAll: 'Please fill in all fields.',
     loginFailed: 'Login failed. Please try again.',
     networkError: 'Network error. Please check your connection.',
@@ -39,7 +42,7 @@ const i18n = {
     submit: '打开日记',
     submitting: '打开中...',
     stampMain: '继续',
-    stampSub: '第六卷',
+    stampSub: '',
     fillAll: '请填写所有字段',
     loginFailed: '登录失败，请重试',
     networkError: '网络错误，请检查网络连接',
@@ -188,7 +191,7 @@ export default function LoginForm({ onSuccess, onNeedVerification, onForgotPassw
 
         <div className="wax-stamp" aria-hidden>
           <span>{t.stampMain}</span>
-          <span className="stamp-sub">{t.stampSub}</span>
+          {t.stampSub && <span className="stamp-sub">{t.stampSub}</span>}
         </div>
       </div>
     </form>
