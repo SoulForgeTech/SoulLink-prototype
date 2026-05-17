@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { setCredentials } from '@/store/authSlice';
 import { settingsFromUser, updateSettings } from '@/store/settingsSlice';
 import { enterGuestMode } from '@/store/guestSlice';
+import { openModal } from '@/store/uiSlice';
 import { googleCallback } from '@/lib/api/auth';
 import { initGuestSession } from '@/lib/api/guest';
 import { APP_VERSION } from '@/lib/constants';
@@ -16,6 +17,7 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import VerifyForm from '@/components/auth/VerifyForm';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
+import CommunityPopup from '@/components/modals/CommunityPopup';
 import type { AuthResponse } from '@/types';
 
 type AuthTab = 'signin' | 'signup';
@@ -408,11 +410,22 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <span className="auth-footnote">{t.wechat}</span>
+              <button
+                type="button"
+                className="auth-footnote"
+                onClick={() => dispatch(openModal({ modal: 'community' }))}
+              >
+                {t.wechat}
+              </button>
             </>
           )}
         </div>
       </main>
+
+      {/* WeChat community QR popup — opens when .auth-footnote is clicked.
+          The popup reads its open/closed state from Redux (state.ui.modals.community)
+          and is no-op until openModal({ modal: 'community' }) is dispatched. */}
+      <CommunityPopup />
     </div>
   );
 }

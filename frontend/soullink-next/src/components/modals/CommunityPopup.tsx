@@ -123,7 +123,7 @@ export default function CommunityPopup() {
         <div style={qrContainerStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/wechat-qr.png"
+            src="/images/wechat_group_qr.jpg"
             alt="WeChat QR Code"
             style={qrImageStyle}
             onError={(e) => {

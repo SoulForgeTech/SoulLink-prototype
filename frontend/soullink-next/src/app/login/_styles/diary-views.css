@@ -287,15 +287,22 @@
 }
 
 /* ---------- footnote (WeChat, version line, etc.) ---------- */
+/* Rendered as <button> for proper a11y + keyboard reach since
+   it opens the community QR popup. Reset native button chrome
+   so it reads visually as the same mono-uppercase label. */
 :where(.auth-scope) .auth-footnote {
   display: inline-block;
   margin-top: 32px;
+  padding: 0;
+  background: none;
+  border: none;
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-faint);
   text-decoration: none;
+  cursor: pointer;
   transition: color .2s ease;
 }
 :where(.auth-scope) .auth-footnote:hover {
