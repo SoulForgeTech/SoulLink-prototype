@@ -52,8 +52,13 @@ body:has(.auth-scope) {
 
   --ink: #EBE3D2;
   --ink-soft: rgba(235, 227, 210, 0.72);
-  --ink-faint: rgba(235, 227, 210, 0.45);
-  --ink-line: rgba(235, 227, 210, 0.18);
+  /* --ink-faint / --ink-line bumped from the reference's
+     0.45 / 0.18 alpha — those values are tuned for decorative
+     marketing surfaces; for an interactive form (placeholders,
+     labels, input underlines) the canonical values render too
+     faint to read comfortably on paper. */
+  --ink-faint: rgba(235, 227, 210, 0.58);
+  --ink-line: rgba(235, 227, 210, 0.32);
 
   --sepia: #C9A87C;
   --pen-blue: #8FA9C4;
@@ -87,8 +92,9 @@ body:has(.auth-scope) {
 
     --ink: #2A2620;
     --ink-soft: rgba(42, 38, 32, 0.72);
-    --ink-faint: rgba(42, 38, 32, 0.45);
-    --ink-line: rgba(42, 38, 32, 0.18);
+    /* See the dark-block comment above — same readability bump. */
+    --ink-faint: rgba(42, 38, 32, 0.58);
+    --ink-line: rgba(42, 38, 32, 0.32);
 
     --sepia: #8B6F47;
     --pen-blue: #3A5A78;

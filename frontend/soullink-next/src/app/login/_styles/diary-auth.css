@@ -132,7 +132,9 @@
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  /* Labels use --ink-soft instead of --ink-faint so they read
+     as actual form labels — not just decorative captions. */
+  color: var(--ink-soft);
   display: flex;
   align-items: baseline;
   gap: 8px;
