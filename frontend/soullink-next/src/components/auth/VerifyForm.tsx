@@ -13,28 +13,34 @@ interface VerifyFormProps {
 
 const i18n = {
   en: {
-    title: 'Check your email',
-    subtitle: 'We sent a 6-digit code to',
+    chapterMark: 'CHAPTER · VERIFYING',
+    title: 'Check your inbox.',
+    subtitle: 'We left a six-digit mark for',
     codeLabel: 'Verification Code',
-    submit: 'Verify', submitting: 'Verifying...',
+    submit: 'Confirm', submitting: 'Confirming...',
+    stampMain: 'AWAITING',
     invalidCode: 'Invalid verification code.',
     networkError: 'Network error. Please try again.',
-    noCode: "Didn't receive the code? ",
-    resend: 'Resend', codeSent: 'Code sent! Check your email.',
+    noCode: "Didn't receive it?",
+    resend: 'send another',
+    codeSent: 'Code sent! Check your inbox.',
     resendFailed: 'Failed to resend code.',
-    back: '\u2190 Back to registration',
+    back: '← back',
   },
   zh: {
-    title: '查看你的邮箱',
-    subtitle: '我们已发送6位验证码到',
+    chapterMark: '章节 · 验证',
+    title: '去看看你的邮箱。',
+    subtitle: '我们给这个邮箱留了一个六位数的印记：',
     codeLabel: '验证码',
-    submit: '验证', submitting: '验证中...',
+    submit: '确认', submitting: '确认中...',
+    stampMain: '等待中',
     invalidCode: '验证码无效',
     networkError: '网络错误，请重试',
-    noCode: '没有收到验证码？',
-    resend: '重新发送', codeSent: '验证码已发送，请查看邮箱',
+    noCode: '没有收到?',
+    resend: '再发一次',
+    codeSent: '验证码已发送，请查看邮箱',
     resendFailed: '重新发送失败',
-    back: '\u2190 返回注册',
+    back: '← 返回',
   },
 };
 
@@ -83,7 +89,7 @@ export default function VerifyForm({ email, onSuccess, onBack, lang = 'en' }: Ve
         setLoading(false);
       }
     },
-    [email, onSuccess],
+    [email, onSuccess, t.invalidCode, t.networkError],
   );
 
   function handleChange(value: string) {
@@ -119,198 +125,98 @@ export default function VerifyForm({ email, onSuccess, onBack, lang = 'en' }: Ve
     }
   }
 
-  /* ---- Styles matching original CSS exactly ---- */
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 16px',
-    background: 'rgba(255, 255, 255, 0.15)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    borderRadius: '10px',
-    color: 'white',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box',
-    // .verify-code-input overrides
-    textAlign: 'center',
-    letterSpacing: '10px',
-    fontFamily: "'Courier New', monospace",
-    fontWeight: 700,
-  };
-
   return (
-    <div style={{ width: '100%', maxWidth: '400px', margin: '0 auto' }}>
-      {/* .verification-header */}
-      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        {/* .verification-icon */}
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>✉</div>
-        {/* h3 */}
-        <h3 style={{ color: 'white', fontSize: '1.3rem', margin: '0 0 8px 0' }}>
-          {t.title}
-        </h3>
-        {/* .verification-subtitle */}
-        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.88rem', margin: 0 }}>
-          {t.subtitle}
-        </p>
-        {/* .verification-email */}
-        <p style={{ color: '#e8b4b8', fontWeight: 600, fontSize: '0.95rem', margin: '4px 0 0 0' }}>
-          {email}
-        </p>
+    <>
+      <div className="auth-chapter-mark">
+        <span>{t.chapterMark}</span>
       </div>
+      <h1 className="auth-title">{t.title}</h1>
+      <p className="auth-sub">
+        {t.subtitle}{' '}
+        <em>{email}</em>
+      </p>
 
-      {/* .auth-error */}
-      {error && (
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.2)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            color: '#fca5a5',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '0.9rem',
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Code input — single input with letter-spacing, matching original */}
-      <div style={{ marginBottom: '16px', textAlign: 'left' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-          {t.codeLabel}
-        </label>
-        <input
-          ref={inputRef}
-          type="text"
-          inputMode="numeric"
-          maxLength={6}
-          value={code}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-          }}
-          placeholder="000000"
-          autoComplete="one-time-code"
-          disabled={loading}
-          style={{
-            ...inputStyle,
-            opacity: loading ? 0.5 : 1,
-          }}
-        />
-      </div>
-
-      {/* .auth-submit-btn */}
-      <button
-        onClick={() => handleSubmit(code)}
-        disabled={loading || code.length < 6}
-        style={{
-          width: '100%',
-          padding: '14px',
-          background: '#e8b4b8',
-          color: '#5a4a4a',
-          border: 'none',
-          borderRadius: '10px',
-          fontSize: '1rem',
-          fontWeight: 600,
-          cursor: (loading || code.length < 6) ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s',
-          marginTop: '8px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-          opacity: (loading || code.length < 6) ? 0.6 : 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-        }}
-        onMouseEnter={(e) => {
-          if (!loading && code.length === 6) {
-            e.currentTarget.style.background = '#d9a5a9';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#e8b4b8';
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-        }}
-      >
-        {loading ? (
-          <>
-            <span
-              style={{
-                display: 'inline-block',
-                width: '16px',
-                height: '16px',
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                borderColor: 'rgba(90,74,74,0.3)',
-                borderTopColor: '#5a4a4a',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-              }}
-            />
-            {t.submitting}
-          </>
-        ) : (
-          t.submit
+      <form className="auth-form" onSubmit={(e) => { e.preventDefault(); handleSubmit(code); }} noValidate>
+        {error && (
+          <div className="auth-error" role="alert">
+            <p className="auth-error-msg">— {error}</p>
+          </div>
         )}
-      </button>
 
-      {/* .verification-actions */}
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        {/* Resend text */}
-        <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-          {t.noCode}
+        <div className="auth-field">
+          <label className="auth-field-label" htmlFor="verify-code">{t.codeLabel}</label>
+          <div className="code-grid">
+            <input
+              id="verify-code"
+              ref={inputRef}
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoComplete="one-time-code"
+              disabled={loading}
+              aria-label={t.codeLabel}
+            />
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <span
+                key={i}
+                className="code-digit"
+                data-empty={!code[i]}
+                data-active={code.length === i}
+                aria-hidden
+              >
+                {code[i] || '·'}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="auth-submit-row">
           <button
+            type="submit"
+            className="btn-stamp"
+            disabled={loading || code.length < 6}
+          >
+            {loading ? (
+              <>
+                <span className="btn-spinner" aria-hidden />
+                <span>{t.submitting}</span>
+              </>
+            ) : (
+              <>
+                <span>{t.submit}</span>
+                <span className="arrow" aria-hidden>→</span>
+              </>
+            )}
+          </button>
+
+          <div className="wax-stamp" aria-hidden>
+            <span>{t.stampMain}</span>
+          </div>
+        </div>
+
+        <div className="resend-row">
+          <span>— {t.noCode}</span>
+          <button
+            type="button"
+            className="resend-btn"
             onClick={handleResend}
             disabled={cooldown > 0}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: cooldown > 0 ? 'rgba(255, 255, 255, 0.3)' : '#e8b4b8',
-              cursor: cooldown > 0 ? 'default' : 'pointer',
-              fontSize: '0.85rem',
-              textDecoration: cooldown > 0 ? 'none' : 'underline',
-              padding: 0,
-            }}
           >
             {cooldown > 0 ? `${t.resend} (${cooldown}s)` : t.resend}
           </button>
-        </p>
+        </div>
 
-        {/* Resend success */}
         {resendMsg && (
-          <p style={{ color: '#86efac', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-            {resendMsg}
-          </p>
+          <p className="auth-success-inline">{resendMsg}</p>
         )}
+      </form>
 
-        {/* Back link */}
-        <button
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'rgba(255, 255, 255, 0.45)',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            padding: 0,
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'; }}
-        >
-          {t.back}
-        </button>
-      </div>
-    </div>
+      <button type="button" className="back-link" onClick={onBack}>
+        {t.back}
+      </button>
+    </>
   );
 }
