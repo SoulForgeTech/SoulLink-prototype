@@ -11,6 +11,7 @@
  */
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 const GLASS_SELECTOR =
   '.chat-header, .sidebar, .input-wrapper, .new-chat-btn, .send-btn, .modal-btn.primary, .liquid-glass-btn';
@@ -84,7 +85,16 @@ function spawnRipple(e: MouseEvent | TouchEvent) {
 }
 
 export default function GlassRipple() {
+  const pathname = usePathname();
+  // The diary-aesthetic auth pages don't have any glass elements
+  // for the ripple to attach to, and the global mousedown listener
+  // would still fire on every click — wasted work + a potential
+  // visual surprise if a stray glass class ever appears on /login.
+  // Skip the listener registration entirely on auth routes.
+  const isAuthRoute = pathname?.startsWith('/login') ?? false;
+
   useEffect(() => {
+    if (isAuthRoute) return;
     document.addEventListener('mousedown', spawnRipple);
     document.addEventListener('touchstart', spawnRipple, { passive: true });
 
@@ -92,7 +102,7 @@ export default function GlassRipple() {
       document.removeEventListener('mousedown', spawnRipple);
       document.removeEventListener('touchstart', spawnRipple);
     };
-  }, []);
+  }, [isAuthRoute]);
 
   return null;
 }
