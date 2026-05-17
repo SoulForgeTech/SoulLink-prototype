@@ -27,6 +27,23 @@
    IBM Plex Mono) come in via next/font/google in login/layout.tsx. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=Long+Cang&display=swap');
 
+/* The prototype's globals.css locks html + body to
+   `height: 100%; overflow: hidden` (chat-app pattern — internal
+   scrolling inside #app-container). For the /login route the
+   signup form is taller than the viewport, so we need natural
+   document scroll. Use :has() to scope the override to pages
+   that contain .auth-scope; on /chat and other routes the
+   chat-app lock-down stays in place.
+
+   Specificity (0,0,1,1) beats the plain html/body selectors
+   (0,0,0,1) in globals.css regardless of cascade order. */
+html:has(.auth-scope),
+body:has(.auth-scope) {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .auth-scope {
   /* === DARK (default) === */
   --paper: #1A1814;
