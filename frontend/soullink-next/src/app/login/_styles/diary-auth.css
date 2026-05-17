@@ -202,17 +202,16 @@
   position: relative;
 }
 
-/* ---------- primary CTA — wax-seal red stamp ---------- */
-/* The `.btn-stamp` background uses --seal-strong, which in
-   dark mode is a slightly darker red (#C95E50) so the
-   #FFFAF0 button text hits WCAG AA. In light mode
-   --seal-strong resolves to --seal (#B85543) — unchanged. */
+/* ---------- primary CTA — cinnabar wax-seal stamp ---------- */
+/* Light mode: --seal (canonical cinnabar #B8312F).
+   Dark mode: --seal-strong (AA-compliant #B83A4A on dark paper).
+   Both palettes pass WCAG AA with #FFFAF0 button text. */
 :where(.auth-scope) .btn-stamp {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  background: var(--seal-strong);
+  background: var(--seal-strong); /* dark default */
   color: #FFFAF0;
   text-decoration: none;
   font-family: var(--font-display);
@@ -231,7 +230,18 @@
 }
 :where(.auth-scope) .btn-stamp:hover {
   transform: translateY(-1px) rotate(-0.5deg);
-  box-shadow: 0 6px 18px rgba(184, 85, 67, 0.30);
+  /* Dark hover glow uses --seal-strong tone */
+  box-shadow: 0 6px 18px rgba(184, 58, 74, 0.35);
+}
+@media (prefers-color-scheme: light) {
+  :where(.auth-scope) .btn-stamp {
+    /* Light mode CTA = canonical cinnabar, not deepened */
+    background: var(--seal);
+  }
+  :where(.auth-scope) .btn-stamp:hover {
+    /* Light hover glow uses --seal tone */
+    box-shadow: 0 6px 18px rgba(184, 49, 47, 0.30);
+  }
 }
 :where(.auth-scope) .btn-stamp:disabled {
   opacity: 0.6;
@@ -385,6 +395,43 @@
 :where(.auth-scope) .lang-toggle .slash {
   color: var(--ink-faint);
   padding: 0 2px;
+}
+
+/* ---------- Chinese typography ----------
+   Han glyphs have no real italic — the browser fakes it by
+   slanting, which looks ugly. Force upright on every italic
+   surface inside the [data-lang="zh"] subtree and rely on
+   colour + weight for emphasis instead.
+
+   This mirrors the reference's body.diary.lang-zh rules. */
+:where(.auth-scope) [data-lang="zh"] em,
+:where(.auth-scope) [data-lang="zh"] i,
+:where(.auth-scope) [data-lang="zh"] .auth-sub,
+:where(.auth-scope) [data-lang="zh"] .auth-alt,
+:where(.auth-scope) [data-lang="zh"] .auth-alt-small,
+:where(.auth-scope) [data-lang="zh"] .auth-field-hint,
+:where(.auth-scope) [data-lang="zh"] .auth-field-label .opt,
+:where(.auth-scope) [data-lang="zh"] .auth-error-msg,
+:where(.auth-scope) [data-lang="zh"] .auth-error-cta,
+:where(.auth-scope) [data-lang="zh"] .auth-success-inline,
+:where(.auth-scope) [data-lang="zh"] .auth-chapter-mark em,
+:where(.auth-scope) [data-lang="zh"] .wax-stamp .stamp-sub,
+:where(.auth-scope) [data-lang="zh"] .btn-quiet,
+:where(.auth-scope) [data-lang="zh"] .back-link,
+:where(.auth-scope) [data-lang="zh"] .resend-row .resend-btn,
+:where(.auth-scope) [data-lang="zh"] .auth-input::placeholder,
+:where(.auth-scope) [data-lang="zh"] .auth-field input::placeholder {
+  font-style: normal;
+}
+
+/* Where the reference uses italic <em> for emphasis inside
+   headings, the Chinese-mode equivalent gets cinnabar + 600. */
+:where(.auth-scope) [data-lang="zh"] .auth-title em,
+:where(.auth-scope) [data-lang="zh"] h1 em,
+:where(.auth-scope) [data-lang="zh"] h2 em,
+:where(.auth-scope) [data-lang="zh"] h3 em {
+  color: var(--seal);
+  font-weight: 600;
 }
 
 /* ---------- responsive ---------- */
