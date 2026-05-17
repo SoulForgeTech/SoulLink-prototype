@@ -195,7 +195,9 @@ export default function LoginPage() {
       tabSignup: 'sign up',
       altSignup: 'First time here? Start writing →',
       altSignin: 'Already a reader? Sign in →',
-      note: '(your last entry was 3 days ago.)',
+      // Caveat margin note: poetic, no fake data — we don't know the
+      // user's actual last-entry date until they sign in.
+      note: "(it's been a while.)",
       googleBtn: 'Continue with Google',
       guestBtn: 'Continue as guest',
       wechat: 'Join our WeChat community',
@@ -217,7 +219,7 @@ export default function LoginPage() {
       tabSignup: '注册',
       altSignup: '第一次来?开始写 →',
       altSignin: '已经是读者?登录 →',
-      note: '(你上次写日记是 3 天前。)',
+      note: '(有一阵子没见了。)',
       googleBtn: '使用 Google 继续',
       guestBtn: '以访客身份继续',
       wechat: '加入微信社群',
