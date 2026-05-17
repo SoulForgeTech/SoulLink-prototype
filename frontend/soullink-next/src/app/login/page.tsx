@@ -8,7 +8,6 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { setCredentials } from '@/store/authSlice';
 import { settingsFromUser, updateSettings } from '@/store/settingsSlice';
 import { enterGuestMode } from '@/store/guestSlice';
-import { openModal } from '@/store/uiSlice';
 import { googleCallback } from '@/lib/api/auth';
 import { initGuestSession } from '@/lib/api/guest';
 import { APP_VERSION } from '@/lib/constants';
@@ -17,7 +16,6 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import VerifyForm from '@/components/auth/VerifyForm';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
-import CommunityPopup from '@/components/modals/CommunityPopup';
 import type { AuthResponse } from '@/types';
 
 type AuthTab = 'signin' | 'signup';
@@ -202,7 +200,6 @@ export default function LoginPage() {
       note: "(it's been a while.)",
       googleBtn: 'Continue with Google',
       guestBtn: 'Continue as guest',
-      wechat: 'Join our WeChat community',
       signin: {
         chapterMark: 'CHAPTER · RETURNING',
         // chapterRoman intentionally empty — we don't know the user's
@@ -228,7 +225,6 @@ export default function LoginPage() {
       note: '(有一阵子没见了。)',
       googleBtn: '使用 Google 继续',
       guestBtn: '以访客身份继续',
-      wechat: '加入微信社群',
       signin: {
         chapterMark: '章节 · 继续',
         chapterRoman: '',
@@ -410,22 +406,10 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="auth-footnote"
-                onClick={() => dispatch(openModal({ modal: 'community' }))}
-              >
-                {t.wechat}
-              </button>
             </>
           )}
         </div>
       </main>
-
-      {/* WeChat community QR popup — opens when .auth-footnote is clicked.
-          The popup reads its open/closed state from Redux (state.ui.modals.community)
-          and is no-op until openModal({ modal: 'community' }) is dispatched. */}
-      <CommunityPopup />
     </div>
   );
 }
