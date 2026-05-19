@@ -22,9 +22,9 @@ export const APP_VERSION = 'v0.2.4-beta';
 export const BACKGROUNDS: BackgroundDef[] = [
   // Default brand fallback — Te Papa Tongarewa watercolor (Otago dunes).
   // The original anime bg.webp lives at public/images/bg.webp (unused now
-  // but kept on disk in case someone re-adopts it). No category so this
-  // thumbnail appears under every tab as the "default" reset option.
-  { id: 'default', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', label: 'Default' },
+  // but kept on disk in case someone re-adopts it). Categorized as 'painting'
+  // so it sits naturally in that tab — no special cross-tab rendering.
+  { id: 'default', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', label: 'Default', category: 'painting' },
   // Photo (Unsplash / Pexels licenses; see manifest if expanded)
   { id: 'bg01', file: 'aditya-anjagi-KZSDCocsOEE-unsplash.jpg', thumb: 'images/Background/thumbnails/aditya-anjagi-KZSDCocsOEE-unsplash.jpg', category: 'photo' },
   { id: 'bg02', file: 'alex-mesmer-6h6O17NjZ_I-unsplash.jpg', thumb: 'images/Background/thumbnails/alex-mesmer-6h6O17NjZ_I-unsplash.jpg', category: 'photo' },

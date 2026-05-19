@@ -3,10 +3,10 @@
 /**
  * Background selection panel.
  *
- * Top tab strip filters presets by category (ink / impressionist / photo);
+ * Top tab strip filters presets by category (monet / painting / photo);
  * a fourth 'custom' tab hosts the upload tile + the user's last uploaded
- * background. The `default` brand fallback shows under every tab as the
- * first thumbnail so users can always reset without changing tabs.
+ * background. The `default` preset carries category='painting', so it
+ * appears under that tab like any other entry — no cross-tab duplication.
  *
  * Uses original CSS classes: bg-picker-panel, bg-picker-header,
  * bg-picker-tabs, bg-picker-tab, bg-thumb-grid, bg-thumb-item,
@@ -42,7 +42,6 @@ export default function BackgroundPicker() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('monet');
 
-  const defaultBg = useMemo(() => BACKGROUNDS.find((b) => b.id === 'default'), []);
   const tabBgs = useMemo(() => {
     if (activeTab === 'custom') return [];
     return BACKGROUNDS.filter((b) => b.category === activeTab);
@@ -181,18 +180,6 @@ export default function BackgroundPicker() {
 
       {/* Thumbnail grid */}
       <div className="bg-thumb-grid">
-        {activeTab !== 'custom' && defaultBg && (
-          <div
-            key={defaultBg.id}
-            className={`bg-thumb-item${currentBg === defaultBg.id ? ' active' : ''}`}
-            onClick={() => handleSelectBackground(defaultBg.id)}
-          >
-            <img src={defaultBg.thumb} alt={defaultBg.label || defaultBg.id} loading="lazy" />
-            {currentBg === defaultBg.id && checkOverlay}
-            <div className="bg-thumb-label">{t(`bg.label.${defaultBg.id}`) || defaultBg.id}</div>
-          </div>
-        )}
-
         {tabBgs.map((bg) => {
           const isSelected = currentBg === bg.id;
           return (
