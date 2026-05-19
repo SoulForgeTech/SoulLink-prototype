@@ -22,6 +22,8 @@ export interface UserSettings {
   image_appearance?: string;
   language?: string;
   emoji_density?: 'none' | 'low' | 'medium' | 'high';
+  /** Visual surface theme — 'paper' (default) or 'glass' (legacy). */
+  theme?: 'paper' | 'glass';
 }
 
 export interface User {

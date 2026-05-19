@@ -80,7 +80,7 @@ export default function MicroCharacter({ onHide }: MicroCharacterProps) {
 
       {showMenu && (
         <div className="micro-character-menu-overlay" onClick={() => setShowMenu(false)}>
-          <div className="micro-character-menu" onClick={(e) => e.stopPropagation()}>
+          <div className="micro-character-menu diary-paper-panel" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => { setShowMenu(false); onHide?.(); }}>Hide</button>
             <button onClick={() => setShowMenu(false)}>Cancel</button>
           </div>

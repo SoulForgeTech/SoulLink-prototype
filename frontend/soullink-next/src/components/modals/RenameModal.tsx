@@ -9,51 +9,38 @@ import { updateSettings } from '@/lib/api/user';
 
 // ==================== Inline Style Constants ====================
 
+// Shell material via .diary-modal-scrim + .diary-paper-panel (see diary.css).
 const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
   zIndex: 10000,
-  background: 'rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
 };
 
 const modalContentStyle: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.6)',
   borderRadius: '20px',
-  background: 'rgba(255,255,255,0.78)',
-  backdropFilter: 'blur(40px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
   width: '90%',
   maxWidth: '500px',
   maxHeight: '85vh',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  color: '#1a202c',
   animation: 'modalScaleIn 0.25s ease',
-  position: 'relative',
   padding: '24px',
 };
 
 const modalHeaderTitleStyle: CSSProperties = {
   fontSize: '1.2rem',
   fontWeight: 600,
-  color: '#1a202c',
+  color: 'var(--ink)',
   textAlign: 'center',
   marginBottom: 4,
 };
 
 const formInputStyle: CSSProperties = {
   padding: '10px 14px',
-  background: 'rgba(255,255,255,0.5)',
-  border: '1px solid rgba(0,0,0,0.1)',
-  borderRadius: '8px',
-  color: '#1a202c',
+  background: 'transparent',
+  border: 'none',
+  borderBottom: '1px solid var(--ink-line)',
+  borderRadius: 0,
+  color: 'var(--ink)',
   fontSize: '0.95rem',
   width: '100%',
   boxSizing: 'border-box',
@@ -69,24 +56,24 @@ const modalFooterStyle: CSSProperties = {
 
 const btnSecondaryStyle: CSSProperties = {
   padding: '10px 20px',
-  borderRadius: '8px',
+  borderRadius: '2px',
   fontSize: '0.95rem',
   fontWeight: 500,
-  background: 'rgba(0,0,0,0.04)',
-  border: '1px solid rgba(0,0,0,0.1)',
-  color: '#4a5568',
+  background: 'transparent',
+  border: '1px solid var(--ink-line)',
+  color: 'var(--ink-soft)',
   cursor: 'pointer',
   flex: 1,
 };
 
 const btnPrimaryStyle: CSSProperties = {
   padding: '10px 20px',
-  borderRadius: '8px',
+  borderRadius: '2px',
   fontSize: '0.95rem',
   fontWeight: 500,
-  background: '#6BA3D6',
+  background: 'var(--seal)',
   border: 'none',
-  color: 'white',
+  color: '#FFFAF0',
   cursor: 'pointer',
   flex: 1,
 };
@@ -161,11 +148,13 @@ export default function RenameModal() {
 
   return (
     <div
+      className="diary-modal-scrim diary-scope"
       style={overlayStyle}
       onClick={handleClose}
     >
       {/* Modal Content */}
       <div
+        className="diary-paper-panel"
         style={modalContentStyle}
         onClick={(e) => e.stopPropagation()}
       >
@@ -173,7 +162,7 @@ export default function RenameModal() {
         <h3 style={modalHeaderTitleStyle}>
           Give {pronoun} a name
         </h3>
-        <p style={{ fontSize: '0.875rem', color: '#718096', textAlign: 'center', marginBottom: 20 }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--ink-soft)', textAlign: 'center', marginBottom: 20 }}>
           Max 20 characters
         </p>
 
@@ -188,17 +177,15 @@ export default function RenameModal() {
           placeholder="Enter a name..."
           style={formInputStyle}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#6BA3D6';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
+            e.currentTarget.style.borderBottomColor = 'var(--seal)';
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.borderBottomColor = 'var(--ink-line)';
           }}
         />
 
         {/* Character count */}
-        <div style={{ textAlign: 'right', marginTop: 6, fontSize: '0.75rem', color: '#a0aec0' }}>
+        <div style={{ textAlign: 'right', marginTop: 6, fontSize: '0.75rem', color: 'var(--ink-faint)' }}>
           {name.length}/20
         </div>
 
@@ -217,9 +204,9 @@ export default function RenameModal() {
             onMouseLeave={() => setPrimaryHover(false)}
             style={{
               ...btnPrimaryStyle,
-              background: primaryHover ? '#5A92C5' : '#6BA3D6',
               opacity: !name.trim() ? 0.4 : 1,
               cursor: !name.trim() ? 'not-allowed' : 'pointer',
+              transform: primaryHover ? 'translateY(-1px)' : 'none',
             }}
           >
             Save

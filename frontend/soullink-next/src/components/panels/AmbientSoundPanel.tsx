@@ -60,19 +60,14 @@ export default function AmbientSoundPanel() {
   // Build dynamic classes for the panel
   const panelClasses = [
     'ambient-panel-dropdown',
+    'diary-paper-panel',
     isOpen ? 'open' : '',
     masterPlaying ? 'is-playing' : '',
     activeSoundCount > 0 ? 'has-active' : '',
   ].filter(Boolean).join(' ');
 
   return (
-    <div
-      className={panelClasses}
-      style={{
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      }}
-    >
+    <div className={panelClasses}>
       {/* Header — uses .ambient-panel-header CSS */}
       <div className="ambient-panel-header">
         <span>{t('ambient.no_sounds')}</span>

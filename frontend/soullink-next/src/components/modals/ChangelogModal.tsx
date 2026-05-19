@@ -44,6 +44,14 @@ const BADGE_LABELS: Record<BadgeType, string> = {
 
 const CHANGELOG: VersionEntry[] = [
   {
+    version: 'v0.2.5-beta', date: '2026-05-19',
+    changes: [
+      { badge: 'ui', text: 'New diary-paper UI — warm paper texture, ink-colored text, unified across sidebar, menus, modals & onboarding. Prefer the original glass look? Switch back in Settings → Profile.', text_zh: '全新宣纸界面 — 温暖纸面 + 墨色文字,侧栏 / 菜单 / 弹窗 / onboarding 全部统一。想念原来的毛玻璃?设置 → 个人资料 里可以切回去。' },
+      { badge: 'ui', text: 'Login page redesigned — diary-style copy, hand-written touches, wax-seal CTA, and a refreshed signin / signup flow.', text_zh: '登录页改版 — 日记风文案、手写细节、印章风按钮,登录与注册流程整体打磨。' },
+      { badge: 'feat', text: 'Backdrop library expanded — Monet collection (AIC + CMA), impressionist paintings, Hubble / JWST space photography, plus 6 fresh NASA Artemis II "Hello, World" Earth views (April 2026, public domain). Pick a mood in the chat header.', text_zh: '壁纸库扩充 — 莫奈合集(AIC + CMA)、印象派画作、哈勃 / JWST 太空摄影,以及 6 张 NASA Artemis II "Hello, World" 地球照片(2026 年 4 月任务,公有领域)。点聊天页头部的图标换心情。' },
+    ],
+  },
+  {
     version: 'v0.2.4-beta', date: '2026-04-29',
     changes: [
       { badge: 'feat', text: 'Character memory — auto-extracted from canon wikis.', text_zh: '角色记忆 — 自动从原作 wiki 抽取角色设定。' },
@@ -317,14 +325,12 @@ export default function ChangelogModal() {
 
   return (
     <div
-      className="changelog-modal-overlay active"
+      className="changelog-modal-overlay active diary-modal-scrim diary-scope"
       onClick={handleClose}
-      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
     >
       <div
-        className="changelog-modal"
+        className="changelog-modal diary-paper-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)' }}
       >
         {/* Header */}
         <div className="changelog-header">

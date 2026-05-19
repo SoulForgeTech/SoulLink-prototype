@@ -77,28 +77,6 @@ export default function CompanionNaming() {
 
   return (
     <div style={{ position: 'relative', animation: 'fadeInUp 0.4s ease-out' }}>
-      {/* Background image + overlay */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: -1,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundImage: "url('/images/bg.webp')",
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(10, 10, 26, 0.65)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-          }}
-        />
-      </div>
-
       <div
         style={{
           position: 'relative',
@@ -117,7 +95,7 @@ export default function CompanionNaming() {
             style={{
               fontSize: '1.875rem',
               fontWeight: 700,
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: 'var(--ink)',
             }}
           >
             Give your companion a name
@@ -126,7 +104,7 @@ export default function CompanionNaming() {
             style={{
               marginTop: '8px',
               fontSize: '0.875rem',
-              color: 'rgba(255, 255, 255, 0.4)',
+              color: 'var(--ink-soft)',
             }}
           >
             You can always change it later in settings
@@ -143,23 +121,22 @@ export default function CompanionNaming() {
           style={{
             width: '100%',
             maxWidth: '280px',
-            borderRadius: '12px',
-            border: '2px solid rgba(255, 255, 255, 0.15)',
-            background: 'rgba(255, 255, 255, 0.08)',
-            padding: '12px 16px',
+            borderRadius: 0,
+            border: 'none',
+            borderBottom: '1px solid var(--ink-line)',
+            background: 'transparent',
+            padding: '8px 4px 10px',
             textAlign: 'center',
             fontSize: '1.125rem',
-            color: 'white',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            color: 'var(--ink)',
             outline: 'none',
             transition: 'border-color 0.2s',
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#6BA3D6';
+            e.currentTarget.style.borderBottomColor = 'var(--seal)';
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            e.currentTarget.style.borderBottomColor = 'var(--ink-line)';
           }}
         />
 
@@ -168,7 +145,7 @@ export default function CompanionNaming() {
           style={{
             fontSize: '0.875rem',
             fontWeight: 500,
-            color: 'rgba(255, 255, 255, 0.5)',
+            color: 'var(--ink-soft)',
           }}
         >
           Choose an AI model
@@ -200,25 +177,25 @@ export default function CompanionNaming() {
           disabled={isSaving}
           style={{
             marginTop: '8px',
-            borderRadius: '12px',
-            background: 'linear-gradient(to right, #6BA3D6, #5A8DB8)',
+            borderRadius: '2px',
+            background: 'var(--seal)',
             padding: '12px 40px',
             fontWeight: 600,
-            color: 'white',
+            color: '#FFFAF0',
             border: 'none',
             cursor: isSaving ? 'not-allowed' : 'pointer',
-            boxShadow: '0 10px 15px -3px rgba(107, 163, 214, 0.3)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
             transition: 'all 0.2s',
             opacity: isSaving ? 0.5 : 1,
             fontSize: '1rem',
           }}
           onMouseEnter={(e) => {
             if (!isSaving) {
-              e.currentTarget.style.boxShadow = '0 10px 25px -3px rgba(107, 163, 214, 0.5)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(107, 163, 214, 0.3)';
+            e.currentTarget.style.transform = 'none';
           }}
         >
           {isSaving ? (
@@ -259,37 +236,25 @@ function ModelCard({
   return (
     <button
       onClick={onSelect}
+      className="diary-paper-panel"
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
         borderRadius: '16px',
-        border: isSelected
-          ? '1px solid rgba(107, 163, 214, 0.6)'
-          : '1px solid rgba(255, 255, 255, 0.1)',
         padding: '16px',
         textAlign: 'left',
         transition: 'all 0.2s',
-        background: isSelected
-          ? 'rgba(107, 163, 214, 0.15)'
-          : 'rgba(255, 255, 255, 0.05)',
-        boxShadow: isSelected
-          ? '0 4px 6px -1px rgba(107, 163, 214, 0.1)'
-          : 'none',
+        outline: isSelected ? '2px solid var(--seal)' : 'none',
         cursor: 'pointer',
-        color: 'inherit',
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+          e.currentTarget.style.transform = 'translateY(-1px)';
         }
       }}
       onMouseLeave={(e) => {
-        if (!isSelected) {
-          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-        }
+        e.currentTarget.style.transform = 'none';
       }}
     >
       {/* Model icon */}
@@ -302,7 +267,7 @@ function ModelCard({
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: '12px',
-          background: 'rgba(255, 255, 255, 0.1)',
+          background: 'rgba(26, 26, 28, 0.05)',
         }}
         dangerouslySetInnerHTML={{ __html: model.svg }}
       />
@@ -314,7 +279,7 @@ function ModelCard({
             style={{
               fontSize: '0.875rem',
               fontWeight: 600,
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: 'var(--ink)',
             }}
           >
             {model.name}
@@ -323,11 +288,11 @@ function ModelCard({
             <span
               style={{
                 borderRadius: '9999px',
-                background: 'rgba(107, 163, 214, 0.2)',
+                background: 'rgba(184, 49, 47, 0.10)',
                 padding: '2px 8px',
                 fontSize: '10px',
                 fontWeight: 500,
-                color: '#6BA3D6',
+                color: 'var(--seal)',
               }}
             >
               Recommended
@@ -338,7 +303,7 @@ function ModelCard({
           style={{
             marginTop: '2px',
             fontSize: '0.75rem',
-            color: 'rgba(255, 255, 255, 0.4)',
+            color: 'var(--ink-soft)',
           }}
         >
           {model.desc_en}
@@ -351,11 +316,11 @@ function ModelCard({
           style={{
             flexShrink: 0,
             borderRadius: '9999px',
-            background: 'rgba(255, 255, 255, 0.08)',
+            background: 'rgba(26, 26, 28, 0.05)',
             padding: '4px 10px',
             fontSize: '10px',
             fontWeight: 500,
-            color: 'rgba(255, 255, 255, 0.5)',
+            color: 'var(--ink-soft)',
           }}
         >
           {model.badge_en}

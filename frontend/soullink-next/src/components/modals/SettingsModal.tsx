@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { closeModal, setSettingsTab, openModal, setCropImageSrc, setCroppedAvatarUrl } from '@/store/uiSlice';
-import { updateSettings, setCustomPersonaActive, setEmojiDensity, type EmojiDensity } from '@/store/settingsSlice';
+import { updateSettings, setCustomPersonaActive, setEmojiDensity, setTheme, type EmojiDensity, type ThemeMode } from '@/store/settingsSlice';
 import { setUser } from '@/store/authSlice';
 import { MODEL_DEFINITIONS, SUBTYPES } from '@/lib/constants';
 import { useT } from '@/hooks/useT';
@@ -255,6 +255,7 @@ export default function SettingsModal() {
   const model = useAppSelector((s) => s.settings.model);
   const kbEnabled = useAppSelector((s) => s.settings.kbEnabled);
   const emojiDensity = useAppSelector((s) => s.settings.emojiDensity);
+  const theme = useAppSelector((s) => s.settings.theme);
   const customPersonaActive = useAppSelector((s) => s.settings.customPersonaActive);
   const croppedAvatarUrl = useAppSelector((s) => s.ui.croppedAvatarUrl);
 
@@ -846,6 +847,63 @@ export default function SettingsModal() {
                   style={formInputDisabledStyle}
                 />
                 <p style={{ fontSize: '0.7rem', color: '#a0aec0', marginTop: 4 }}>{t('settings.email.hint')}</p>
+              </div>
+
+              {/* Surface theme (paper / glass) — personal visual preference.
+                  Diary-paper is the new default; glass is the legacy frosted
+                  look retained as an opt-in. Lives in the Profile tab next
+                  to nickname/avatar because it's the kind of personal-taste
+                  switch users expect to find first. */}
+              <div style={{
+                ...formGroupStyle,
+                padding: 12,
+                borderRadius: 'var(--r-sm)',
+                background: 'rgba(255,255,255,0.5)',
+                border: '1px solid rgba(0,0,0,0.1)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 500, color: '#1a202c', margin: 0 }}>
+                      {t('settings.theme.title')}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: '#a0aec0', marginTop: 2 }}>
+                      {t('settings.theme.hint')}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                  {(['paper', 'glass'] as const).map((th) => {
+                    const active = theme === th;
+                    const icon = th === 'paper' ? '📜' : '🪟';
+                    return (
+                      <button
+                        key={th}
+                        onClick={() => {
+                          dispatch(setTheme(th as ThemeMode));
+                          apiUpdateSettings(authFetch, { theme: th }).catch(console.error);
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          padding: '10px 4px',
+                          borderRadius: 'var(--r-sm)',
+                          border: `1px solid ${active ? 'var(--seal)' : 'rgba(0,0,0,0.1)'}`,
+                          background: active ? 'rgba(184, 49, 47, 0.08)' : 'white',
+                          color: active ? 'var(--seal)' : '#4A5568',
+                          fontSize: '0.78rem',
+                          fontWeight: active ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>{icon}</span>
+                        <span>{t(`settings.theme.${th}`)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Personality Test Results — not shown for guests */}

@@ -97,7 +97,7 @@ const btnPrimaryStyle: CSSProperties = {
   borderRadius: '8px',
   fontSize: '0.95rem',
   fontWeight: 500,
-  background: '#6BA3D6',
+  background: 'var(--seal)',
   border: 'none',
   color: 'white',
   cursor: 'pointer',
@@ -195,13 +195,13 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
 
   return (
     <div
-      className="about-modal-overlay active"
+      className="about-modal-overlay active diary-modal-scrim diary-scope"
       style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       onClick={handleClose}
     >
       {/* Modal Content */}
       <div
-        className="about-modal"
+        className="about-modal diary-paper-panel"
         style={{ backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -227,7 +227,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
               fontSize: '0.75rem',
               fontWeight: 500,
               background: 'rgba(107,163,214,0.1)',
-              color: '#6BA3D6',
+              color: 'var(--seal)',
             }}>
               v0.2.4-beta
             </span>
@@ -391,7 +391,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
                   style={{
                     marginTop: 12,
                     fontSize: '0.875rem',
-                    color: '#6BA3D6',
+                    color: 'var(--seal)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -421,7 +421,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
                         background: feedbackType === ft.value
                           ? 'rgba(107,163,214,0.1)'
                           : 'rgba(255,255,255,0.5)',
-                        color: feedbackType === ft.value ? '#6BA3D6' : '#4a5568',
+                        color: feedbackType === ft.value ? 'var(--seal)' : '#4a5568',
                         cursor: 'pointer',
                       }}
                     >
@@ -445,7 +445,7 @@ export default function AboutModal({ onSubmitFeedback }: AboutModalProps) {
                     minHeight: 80,
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#6BA3D6';
+                    e.currentTarget.style.borderColor = 'var(--seal)';
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
                   }}
                   onBlur={(e) => {

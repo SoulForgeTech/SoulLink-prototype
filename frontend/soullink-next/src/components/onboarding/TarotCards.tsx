@@ -91,11 +91,11 @@ function TarotCardItem({ card, index, isFlipped, isLocked, onFlip, language }: C
         >
           <span style={{ fontSize: '2rem' }}>{'\u{1F52E}'}</span>
           {posLabel && (
-            <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '1px', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.6rem', color: 'var(--ink-soft)', fontWeight: 500, letterSpacing: '1px', textTransform: 'uppercase' }}>
               {posLabel}
             </span>
           )}
-          <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', margin: 0 }}>
+          <p style={{ fontSize: '0.65rem', color: 'var(--ink-faint)', margin: 0 }}>
             {isLocked ? '' : (language === 'zh-CN' ? '点击揭示' : 'Tap to reveal')}
           </p>
         </div>
@@ -189,10 +189,10 @@ export default function TarotCards() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '8px', paddingBottom: '16px', animation: 'fadeInUp 0.4s ease-out' }}>
       {/* Title */}
       <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
           {language === 'zh-CN' ? '你的塔罗牌' : 'Your Cards'}
         </h1>
-        <p style={{ marginTop: '6px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ marginTop: '6px', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
           {language === 'zh-CN' ? '点击每张牌揭示你的灵魂解读' : 'Tap each card to reveal your soul reading'}
         </p>
       </div>
@@ -227,14 +227,14 @@ export default function TarotCards() {
           onClick={handleViewResults}
           style={{
             borderRadius: '16px',
-            background: 'linear-gradient(to right, #6BA3D6, #5A8DB8)',
+            background: 'linear-gradient(to right, var(--seal), var(--seal-strong))',
             paddingLeft: '32px',
             paddingRight: '32px',
             paddingTop: '12px',
             paddingBottom: '12px',
             fontWeight: 600,
             color: 'white',
-            boxShadow: '0 10px 15px -3px rgba(107,163,214,0.25)',
+            boxShadow: '0 10px 15px -3px rgba(184, 49, 47,0.25)',
             transition: 'all 0.2s',
             border: 'none',
             cursor: 'pointer',

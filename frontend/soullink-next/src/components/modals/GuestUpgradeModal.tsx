@@ -28,48 +28,38 @@ export default function GuestUpgradeModal() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 20000,
-        background: 'rgba(0,0,0,0.4)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
+      className="diary-modal-scrim diary-scope"
+      style={{ zIndex: 20000, padding: 24 }}
       onClick={() => dispatch(closeUpgradeModal())}
     >
       <div
+        className="diary-paper-panel"
         style={{
-          background: 'white',
           borderRadius: 20,
           padding: '32px 28px',
           maxWidth: 380,
           width: '100%',
           textAlign: 'center',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           animation: 'modalScaleIn 0.25s ease',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>✨</div>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1a202c', margin: '0 0 8px 0' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px 0' }}>
           {isZh ? '想继续聊吗？' : 'Want to keep chatting?'}
         </h2>
-        <p style={{ fontSize: '0.85rem', color: '#718096', margin: '0 0 20px 0' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', margin: '0 0 20px 0' }}>
           {reasonText}
         </p>
 
         <div style={{
           textAlign: 'left',
-          background: 'rgba(107,163,214,0.06)',
+          background: 'rgba(26,26,28,0.05)',
           borderRadius: 12,
           padding: '14px 18px',
           marginBottom: 20,
           fontSize: '0.8rem',
-          color: '#4a5568',
+          color: 'var(--ink-soft)',
           lineHeight: 1.8,
         }}>
           {isZh ? (
@@ -97,10 +87,10 @@ export default function GuestUpgradeModal() {
           style={{
             width: '100%',
             padding: '12px',
-            borderRadius: 10,
+            borderRadius: 2,
             border: 'none',
-            background: '#6BA3D6',
-            color: 'white',
+            background: 'var(--seal)',
+            color: '#FFFAF0',
             fontSize: '0.95rem',
             fontWeight: 600,
             cursor: 'pointer',

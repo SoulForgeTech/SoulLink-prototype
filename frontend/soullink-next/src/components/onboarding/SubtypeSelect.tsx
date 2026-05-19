@@ -56,8 +56,8 @@ export default function SubtypeSelect() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingTop: '16px', paddingBottom: '16px', animation: 'fadeInUp 0.4s ease-out' }}>
       {/* Title */}
       <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0 }}>{title}</h1>
-        <p style={{ marginTop: '8px', fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)' }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>{title}</h1>
+        <p style={{ marginTop: '8px', fontSize: '0.875rem', color: 'var(--ink-soft)' }}>
           Pick the personality that resonates with you
         </p>
       </div>
@@ -69,42 +69,35 @@ export default function SubtypeSelect() {
             key={s.id}
             onClick={() => handleSelect(s.id)}
             disabled={isLoading}
+            className="diary-paper-panel"
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: '12px',
               borderRadius: '24px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.05)',
               padding: '24px',
-              backdropFilter: 'blur(4px)',
               transition: 'all 0.2s',
               cursor: isLoading ? 'not-allowed' : 'pointer',
               opacity: isLoading ? 0.5 : 1,
               pointerEvents: isLoading ? 'none' : 'auto',
-              color: 'inherit',
             }}
             onMouseEnter={(e) => {
               if (!isLoading) {
-                e.currentTarget.style.borderColor = 'rgba(107,163,214,0.4)';
-                e.currentTarget.style.background = 'rgba(107,163,214,0.1)';
-                e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(107,163,214,0.1)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.transform = 'none';
             }}
           >
             <span style={{ fontSize: '2.25rem', transition: 'transform 0.2s' }}>
               {s.icon}
             </span>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
               {s.name_en}
             </h3>
-            <p style={{ textAlign: 'center', fontSize: '0.75rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+            <p style={{ textAlign: 'center', fontSize: '0.75rem', lineHeight: 1.6, color: 'var(--ink-soft)', margin: 0 }}>
               {s.desc_en}
             </p>
           </button>
@@ -120,8 +113,8 @@ export default function SubtypeSelect() {
             borderRadius: '50%',
             borderWidth: '2px',
             borderStyle: 'solid',
-            borderColor: 'rgba(255,255,255,0.2)',
-            borderTopColor: '#6BA3D6',
+            borderColor: 'var(--ink-line)',
+            borderTopColor: 'var(--seal)',
             animation: 'spin 1s linear infinite',
           }} />
         </div>

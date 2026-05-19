@@ -69,7 +69,7 @@ export default function MemoryPanel() {
         <p style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
           {language === 'zh-CN' ? 'AI 会记住你们的对话，建立长期记忆' : 'AI will remember your conversations and build long-term memory'}
         </p>
-        <button onClick={() => { window.location.href = '/login'; }} style={{ marginTop: 12, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#6BA3D6', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={() => { window.location.href = '/login'; }} style={{ marginTop: 12, padding: '8px 24px', borderRadius: 8, border: 'none', background: 'var(--seal)', color: 'white', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
           {language === 'zh-CN' ? '立即注册' : 'Sign Up Now'}
         </button>
       </div>
@@ -381,7 +381,7 @@ export default function MemoryPanel() {
                 disabled={addText.trim().length < 2 || submittingAdd}
                 style={{
                   padding: '4px 14px', borderRadius: 6, fontSize: '0.8rem',
-                  border: 'none', background: '#6BA3D6', color: 'white',
+                  border: 'none', background: 'var(--seal)', color: 'white',
                   fontWeight: 600,
                   cursor: addText.trim().length < 2 || submittingAdd ? 'not-allowed' : 'pointer',
                   opacity: addText.trim().length < 2 || submittingAdd ? 0.5 : 1,
@@ -477,7 +477,7 @@ export default function MemoryPanel() {
                               disabled={editText.trim().length < 2 || savingEdit}
                               style={{
                                 padding: '3px 12px', borderRadius: 6, fontSize: '0.78rem',
-                                border: 'none', background: '#6BA3D6', color: 'white',
+                                border: 'none', background: 'var(--seal)', color: 'white',
                                 fontWeight: 600,
                                 cursor: editText.trim().length < 2 || savingEdit ? 'not-allowed' : 'pointer',
                                 opacity: editText.trim().length < 2 || savingEdit ? 0.5 : 1,

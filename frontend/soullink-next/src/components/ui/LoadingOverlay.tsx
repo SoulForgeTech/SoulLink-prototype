@@ -37,7 +37,7 @@ export default function LoadingOverlay() {
           borderWidth: '3px',
           borderStyle: 'solid',
           borderColor: 'rgba(255,255,255,0.2)',
-          borderTopColor: '#6BA3D6',
+          borderTopColor: 'var(--seal)',
           animation: 'spin 0.8s linear infinite',
         }}
       />
@@ -73,7 +73,7 @@ export default function LoadingOverlay() {
               borderRadius: '9999px',
               transition: 'all 0.3s ease-out',
               width: `${Math.min(percent, 100)}%`,
-              background: 'linear-gradient(90deg, #6BA3D6, #9DC4E6)',
+              background: 'linear-gradient(90deg, var(--seal), #9DC4E6)',
             }}
           />
         </div>

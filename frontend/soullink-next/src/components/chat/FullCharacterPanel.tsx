@@ -38,7 +38,7 @@ export default function FullCharacterPanel({ onCollapse }: FullCharacterPanelPro
   if (displayMode !== 'full' || !webpUrls) return null;
 
   return (
-    <div className="full-character-panel">
+    <div className="full-character-panel diary-paper-panel">
       <div className="full-character-canvas-wrapper">
         {expressions?.neutralImage && (
           <img

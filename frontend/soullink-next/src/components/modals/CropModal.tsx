@@ -285,24 +285,12 @@ export default function CropModal() {
 
   return (
     <div
-      className="crop-modal-overlay active"
+      className="crop-modal-overlay active diary-modal-scrim diary-scope"
       onClick={handleClose}
-      style={{
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-      }}
     >
       <div
-        className="crop-modal"
+        className="crop-modal diary-paper-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'rgba(255, 255, 255, 0.78)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.6)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
-        }}
       >
         {/* Header */}
         <div className="crop-modal-header">

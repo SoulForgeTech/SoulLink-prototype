@@ -68,6 +68,15 @@ interface SettingsState {
   expressionStyle: 'anime' | 'realistic' | '3d' | 'illustration';
   /** How liberally the AI should use emojis in replies */
   emojiDensity: 'none' | 'low' | 'medium' | 'high';
+  /** Visual surface theme — 'paper' is the diary default (warm cream +
+   *  ink), 'glass' restores the legacy dark frosted-glass look as a
+   *  user preference. Applied via [data-theme] on the diary-scope root. */
+  theme: 'paper' | 'glass';
+}
+
+export type ThemeMode = SettingsState['theme'];
+function isThemeMode(v: unknown): v is ThemeMode {
+  return v === 'paper' || v === 'glass';
 }
 
 export type EmojiDensity = SettingsState['emojiDensity'];
@@ -118,6 +127,7 @@ function readUserSettings(): Partial<SettingsState> {
       characterDisplayMode: s.character_display_mode ?? 'micro',
       expressionStyle: s.expression_style ?? 'anime',
       emojiDensity: isEmojiDensity(s.emoji_density) ? s.emoji_density : 'medium',
+      theme: isThemeMode(s.theme) ? s.theme : 'paper',
     };
   } catch {
     return {};
@@ -156,6 +166,9 @@ export function settingsFromUser(user: unknown): Partial<SettingsState> {
   if (isEmojiDensity(s.emoji_density)) {
     out.emojiDensity = s.emoji_density;
   }
+  if (isThemeMode(s.theme)) {
+    out.theme = s.theme;
+  }
   return out;
 }
 
@@ -179,6 +192,7 @@ const initialState: SettingsState = {
   characterDisplayMode: persisted.characterDisplayMode ?? 'micro',
   expressionStyle: persisted.expressionStyle ?? 'anime',
   emojiDensity: persisted.emojiDensity ?? 'medium',
+  theme: persisted.theme ?? 'paper',
 };
 
 // ==================== Helpers ====================
@@ -293,6 +307,11 @@ const settingsSlice = createSlice({
       persistUserSetting('emoji_density', action.payload);
     },
 
+    setTheme(state, action: PayloadAction<ThemeMode>) {
+      state.theme = action.payload;
+      persistUserSetting('theme', action.payload);
+    },
+
     /** Bulk-update multiple settings at once (e.g. after fetching user profile) */
     updateSettings(state, action: PayloadAction<Partial<SettingsState>>) {
       const p = action.payload;
@@ -311,6 +330,7 @@ const settingsSlice = createSlice({
       if (p.characterDisplayMode != null) persistUserSetting('character_display_mode', p.characterDisplayMode);
       if (p.expressionStyle != null) persistUserSetting('expression_style', p.expressionStyle);
       if (p.emojiDensity != null) persistUserSetting('emoji_density', p.emojiDensity);
+      if (p.theme != null) persistUserSetting('theme', p.theme);
       return { ...state, ...p };
     },
   },
@@ -332,6 +352,7 @@ export const {
   setCharacterDisplayMode,
   setExpressionStyle,
   setEmojiDensity,
+  setTheme,
   updateSettings,
 } = settingsSlice.actions;
 

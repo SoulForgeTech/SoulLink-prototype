@@ -46,7 +46,7 @@ export default function GuestLockOverlay({ children }: Props) {
           }}
           style={{
             padding: '8px 24px', borderRadius: 8, border: 'none',
-            background: '#6BA3D6', color: 'white',
+            background: 'var(--seal)', color: 'white',
             fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
           }}
         >

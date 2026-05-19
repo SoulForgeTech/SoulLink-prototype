@@ -78,21 +78,13 @@ interface ChatInputProps {
 /** Outer wrapper — positioned by CSS .input-container (absolute bottom overlay) */
 const outerWrapperStyle: React.CSSProperties = {};
 
-/** .input-wrapper layout + glassmorphism (inline to avoid Turbopack stripping)
- *  NOTE: padding/borderRadius are NOT set here — controlled by CSS class
- *  so mobile media queries can override without !important.
- */
+/** .input-wrapper layout. Paper material from shared .diary-paper-panel
+ *  (see styles/diary.css). */
 const inputWrapperStyle: React.CSSProperties = {
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
   gap: 10,
-  /* Glassmorphism — duplicated inline to bypass Turbopack CSS transform issues */
-  border: '1.5px solid transparent',
-  background: `linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) padding-box, linear-gradient(160deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 15%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.06) 60%, rgba(255,255,255,0.10) 80%, rgba(255,255,255,0.20) 100%) border-box`,
-  backdropFilter: 'blur(40px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.20), 0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 0 12px rgba(255,255,255,0.04)',
 };
 
 /** #message-input textarea */
@@ -127,7 +119,7 @@ const attachBtnBase: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   transition: 'all 0.2s',
-  color: 'rgba(255,255,255,0.65)',
+  color: 'var(--seal)',
   flexShrink: 0,
   padding: 0,
 };
@@ -146,7 +138,7 @@ const sendBtnBase: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-  color: 'rgba(255,255,255,0.65)',
+  color: 'var(--seal)',
   flexShrink: 0,
   padding: 0,
 };
@@ -165,7 +157,7 @@ const voiceBtnBase: React.CSSProperties = {
   justifyContent: 'center',
   transition: 'all 0.2s',
   flexShrink: 0,
-  color: 'rgba(255,255,255,0.65)',
+  color: 'var(--seal)',
   padding: 0,
   position: 'relative',
 };
@@ -468,7 +460,7 @@ export default function ChatInput({
   // ---- Dynamic button styles ----
   const getAttachBtnStyle = (): React.CSSProperties => ({
     ...attachBtnBase,
-    color: hoveredBtn === 'attach' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.65)',
+    color: hoveredBtn === 'attach' ? 'var(--seal-strong)' : 'var(--seal)',
   });
 
   const getSendBtnStyle = (): React.CSSProperties => {
@@ -477,7 +469,7 @@ export default function ChatInput({
       return { ...sendBtnBase, opacity: 0.5, cursor: 'not-allowed' };
     }
     if (hoveredBtn === 'send') {
-      return { ...sendBtnBase, transform: 'scale(1.05)', color: 'rgba(255,255,255,0.9)' };
+      return { ...sendBtnBase, transform: 'scale(1.05)', color: 'var(--seal-strong)' };
     }
     return sendBtnBase;
   };
@@ -486,19 +478,19 @@ export default function ChatInput({
     if (isRecording) {
       return {
         ...voiceBtnBase,
-        color: '#e53e3e',
+        color: 'var(--seal-strong)',
         animation: 'voicePulse 1s ease-in-out infinite',
       };
     }
     return {
       ...voiceBtnBase,
-      color: hoveredBtn === 'mic' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.65)',
+      color: hoveredBtn === 'mic' ? 'var(--seal-strong)' : 'var(--seal)',
     };
   };
 
   const getPhoneBtnStyle = (): React.CSSProperties => ({
     ...voiceBtnBase,
-    color: hoveredBtn === 'phone' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.65)',
+    color: hoveredBtn === 'phone' ? 'var(--seal-strong)' : 'var(--seal)',
   });
 
   return (
@@ -519,7 +511,7 @@ export default function ChatInput({
       )}
 
       {/* Glass input wrapper */}
-      <div className="input-wrapper" style={inputWrapperStyle}>
+      <div className="input-wrapper diary-paper-panel" style={inputWrapperStyle}>
         {/* File error toast */}
         {fileError && (
           <div style={fileErrorStyle}>

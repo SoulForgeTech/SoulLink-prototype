@@ -53,6 +53,32 @@
   letter-spacing: 0.08em;
 }
 
+/* Product tagline next to the wordmark — plants the AI companion
+   framing up-front so the diary metaphor in the body doesn't have to
+   carry the whole positioning load. Separated from the version with
+   a thin ink rule so it reads as a distinct phrase, not just a
+   continuation of the version string. */
+:where(.auth-scope) .brand-mark .brand-tagline {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-soft);
+  letter-spacing: 0.01em;
+  margin-left: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--ink-line);
+}
+
+@media (max-width: 520px) {
+  /* On phones the version + tagline + lang toggle compete for the same
+     row; hide the tagline below 520px — the chapter-mark + subtitle in
+     the body still carry the framing. */
+  :where(.auth-scope) .brand-mark .brand-tagline {
+    display: none;
+  }
+}
+
 /* ---------- tab switcher (sign in · sign up) ---------- */
 :where(.auth-scope) .auth-tabs {
   display: inline-flex;

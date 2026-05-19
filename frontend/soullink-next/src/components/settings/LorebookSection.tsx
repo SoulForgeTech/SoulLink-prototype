@@ -239,7 +239,7 @@ export default function LorebookSection({ authFetch, language }: Props) {
                 padding: '6px 0',
                 background: 'transparent',
                 border: 'none',
-                color: '#6BA3D6',
+                color: 'var(--seal)',
                 cursor: 'pointer',
                 textAlign: 'center',
               }}
@@ -343,7 +343,7 @@ function LorebookEntryRow(props: RowProps) {
             onClick={onSaveEdit}
             style={{
               fontSize: '0.7rem', padding: '4px 12px', borderRadius: 4,
-              border: 'none', background: '#6BA3D6', color: 'white', cursor: 'pointer',
+              border: 'none', background: 'var(--seal)', color: 'white', cursor: 'pointer',
             }}
           >
             {t('Save', '保存')}

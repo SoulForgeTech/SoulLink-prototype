@@ -34,13 +34,7 @@ export default function GamesPanel() {
   );
 
   return (
-    <div
-      className={`games-panel-dropdown${isOpen ? ' open' : ''}`}
-      style={{
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      }}
-    >
+    <div className={`games-panel-dropdown diary-paper-panel${isOpen ? ' open' : ''}`}>
       {/* Header — uses .games-panel-header CSS */}
       <div className="games-panel-header">
         <span>{t('games.title')}</span>

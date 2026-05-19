@@ -74,7 +74,7 @@ const closeBtnBaseStyle: CSSProperties = {
   fontSize: '0.875rem',
   fontWeight: 500,
   color: '#ffffff',
-  background: '#6BA3D6',
+  background: 'var(--seal)',
   border: 'none',
   cursor: 'pointer',
   transition: 'all 0.2s',
@@ -101,15 +101,13 @@ export default function CommunityPopup() {
 
   return (
     <div
+      className="diary-modal-scrim diary-scope"
       style={overlayStyle}
       onClick={handleClose}
     >
-      {/* Overlay */}
-      <div className="glass-overlay" style={glassOverlayStyle} />
-
       {/* Modal Content */}
       <div
-        className="glass-modal"
+        className="glass-modal diary-paper-panel"
         style={modalContentStyle}
         onClick={(e) => e.stopPropagation()}
       >

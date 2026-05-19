@@ -36,15 +36,15 @@ function DimensionBar({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>{label}</span>
-        <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem' }}>
+        <span style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>{label}</span>
+        <span style={{ fontFamily: 'monospace', color: 'var(--ink-faint)', fontSize: '0.7rem' }}>
           {clamped > 0 ? `+${clamped}` : clamped}
         </span>
       </div>
       {/* Bar track with center marker */}
-      <div style={{ position: 'relative', height: '8px', width: '100%', borderRadius: '9999px', background: 'rgba(255,255,255,0.1)' }}>
+      <div style={{ position: 'relative', height: '8px', width: '100%', borderRadius: '9999px', background: 'rgba(26,26,28,0.08)' }}>
         {/* Center line */}
-        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.2)' }} />
+        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(26,26,28,0.15)' }} />
         {/* Fill bar from center */}
         <div
           style={{
@@ -52,7 +52,7 @@ function DimensionBar({
             top: 0,
             bottom: 0,
             borderRadius: '9999px',
-            background: 'linear-gradient(to right, #6BA3D6, #9DC4E6)',
+            background: 'linear-gradient(to right, var(--seal), var(--seal))',
             transition: 'all 0.7s ease-out',
             ...(clamped >= 0
               ? { left: '50%', width: `${(clamped / 4) * 50}%` }
@@ -69,15 +69,15 @@ function DimensionBar({
             width: '12px',
             height: '12px',
             borderRadius: '50%',
-            background: '#6BA3D6',
-            border: '2px solid rgba(255,255,255,0.8)',
-            boxShadow: '0 0 6px rgba(107,163,214,0.5)',
+            background: 'var(--seal)',
+            border: '2px solid var(--ink)',
+            boxShadow: '0 0 6px rgba(184, 49, 47,0.5)',
             transition: 'left 0.7s ease-out',
           }}
         />
       </div>
       {/* Low/high labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--ink-faint)' }}>
         <span>{lowLabel}</span>
         <span>{highLabel}</span>
       </div>
@@ -127,7 +127,7 @@ function MiniCard({ card, language }: { card: TarotCard; language: string }) {
         </h4>
       </div>
       {traits && (
-        <p style={{ textAlign: 'center', fontSize: '0.6rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.4)', margin: 0, padding: '0 4px' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.6rem', lineHeight: 1.5, color: 'var(--ink-faint)', margin: 0, padding: '0 4px' }}>
           {traits}
         </p>
       )}
@@ -165,11 +165,11 @@ export default function TarotResults() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingTop: '16px', paddingBottom: '16px', animation: 'fadeInUp 0.4s ease-out' }}>
       {/* Title */}
       <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
           {language === 'zh-CN' ? '你的灵魂档案' : 'Your Soul Profile'}
         </h1>
         {mbtiType && (
-          <p style={{ marginTop: '8px', fontSize: '1.125rem', fontWeight: 500, color: '#6BA3D6' }}>{mbtiType}</p>
+          <p style={{ marginTop: '8px', fontSize: '1.125rem', fontWeight: 500, color: 'var(--seal)' }}>{mbtiType}</p>
         )}
       </div>
 
@@ -184,17 +184,14 @@ export default function TarotResults() {
 
       {/* Dimension scores */}
       {dimEntries.length > 0 && (
-        <div style={{
+        <div className="diary-paper-panel" style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
           borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          background: 'rgba(255,255,255,0.05)',
           padding: '20px',
-          backdropFilter: 'blur(4px)',
         }}>
-          <h3 style={{ marginBottom: '4px', fontSize: '0.875rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+          <h3 style={{ marginBottom: '4px', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-soft)' }}>
             {language === 'zh-CN' ? '性格维度' : 'Personality Dimensions'}
           </h3>
           {dimEntries.map(([key, value]) => (
@@ -209,14 +206,14 @@ export default function TarotResults() {
           onClick={handleContinue}
           style={{
             borderRadius: '16px',
-            background: 'linear-gradient(to right, #6BA3D6, #5A8DB8)',
+            background: 'linear-gradient(to right, var(--seal), var(--seal-strong))',
             paddingLeft: '32px',
             paddingRight: '32px',
             paddingTop: '12px',
             paddingBottom: '12px',
             fontWeight: 600,
             color: 'white',
-            boxShadow: '0 10px 15px -3px rgba(107,163,214,0.25)',
+            boxShadow: '0 10px 15px -3px rgba(184, 49, 47,0.25)',
             transition: 'all 0.2s',
             border: 'none',
             cursor: 'pointer',

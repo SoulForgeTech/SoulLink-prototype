@@ -61,7 +61,7 @@ export default function OAuthCallbackPage() {
             width: 32,
             height: 32,
             border: '3px solid rgba(255,255,255,0.2)',
-            borderTopColor: '#6BA3D6',
+            borderTopColor: 'var(--seal)',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 16px',

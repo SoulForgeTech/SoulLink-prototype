@@ -27,6 +27,9 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     // ---- Chat ----
     'chat.online': 'Online',
+    'chat.rename': 'Rename',
+    'chat.delete': 'Delete',
+    'chat.more_actions': 'More actions',
     'chat.welcome.title': 'Welcome back!',
     'chat.welcome.subtitle': 'Start a conversation with your AI companion...',
     'chat.input.placeholder': 'Type a message...',
@@ -55,6 +58,11 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'settings.emoji.low': 'Light',
     'settings.emoji.medium': 'Normal',
     'settings.emoji.high': 'Lots',
+    // Visual surface theme — diary-paper (default) vs legacy frosted-glass.
+    'settings.theme.title': 'Surface Style',
+    'settings.theme.hint': 'Warm paper or frosted glass — pick what suits you.',
+    'settings.theme.paper': 'Paper',
+    'settings.theme.glass': 'Glass',
     'chat.memory.saved': 'Remembered',
     'chat.memory.updated': 'Updated',
     'chat.memory.view': 'View',
@@ -251,19 +259,21 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'bg.label.bg84': 'Charing Cross',
     'bg.label.bg85': 'Pourville Tide',
     'bg.label.bg86': 'Impression, Sunrise',
-    // bg100..bg111 — NASA deep-space (Hubble / JWST / Spitzer / WISE)
-    'bg.label.bg100': 'Dumbbell Nebula',
-    'bg.label.bg101': 'Soul Nebula',
-    'bg.label.bg102': 'Helix Nebula',
+    // Space — NASA imagery (PD-NASA).
+    // bg103..bg111: deep-space (Hubble / JWST / Spitzer).
+    // bg112..bg117: Artemis II Earth-from-Orion (April 2026, JSC).
     'bg.label.bg103': 'Helix NGC 7293',
     'bg.label.bg104': 'Doradus Nebula',
     'bg.label.bg105': 'Carina Cliffs',
-    'bg.label.bg106': 'Four Nebulae',
     'bg.label.bg107': 'Tarantula Nebula',
     'bg.label.bg108': 'Lagoon Nebula',
-    'bg.label.bg109': 'Red Spider Nebula',
-    'bg.label.bg110': 'Eta Carinae',
     'bg.label.bg111': 'Cosmic Beauty',
+    'bg.label.bg112': 'Hello, World',
+    'bg.label.bg113': 'Earth in View',
+    'bg.label.bg114': 'Home from Orion',
+    'bg.label.bg115': 'Home in the Distance',
+    'bg.label.bg116': 'Orion Looks Back',
+    'bg.label.bg117': 'Earth & Moon',
     // Category labels for BackgroundPicker top tabs
     'bg.cat.monet': 'Monet',
     'bg.cat.painting': 'Painting',
@@ -324,6 +334,14 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'loading.workspace.config': 'Configuring AI companion...',
     'loading.workspace.almost': 'Almost ready...',
     'loading.workspace.done': 'All set! Welcome!',
+    // ---- Personality test (onboarding) ----
+    'test.loading': 'Loading questions...',
+    'test.submitting': 'Analyzing your soul...',
+    'test.error.load': 'Failed to load questions. Please try again.',
+    'test.error.submit': 'Failed to submit answers. Please try again.',
+    'test.try_again': 'Try Again',
+    'test.skip': 'Skip personality test',
+    'test.close': 'Close',
 
     // ---- Hint ----
     'hint.switch.grok': 'GPT-4o may have content restrictions. Try Grok for a more open experience.',
@@ -402,6 +420,9 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 
     // ---- Chat ----
     'chat.online': '\u5728\u7EBF',
+    'chat.rename': '\u91CD\u547D\u540D',
+    'chat.delete': '\u5220\u9664',
+    'chat.more_actions': '\u66F4\u591A\u64CD\u4F5C',
     'chat.welcome.title': '\u6B22\u8FCE\u56DE\u6765\uFF01',
     'chat.welcome.subtitle': '\u5F00\u59CB\u4E0E\u4F60\u7684AI\u4F34\u4FA3\u804A\u5929...',
     'chat.input.placeholder': '\u8F93\u5165\u6D88\u606F...',
@@ -430,6 +451,11 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'settings.emoji.low': '\u5C11',
     'settings.emoji.medium': '\u6B63\u5E38',
     'settings.emoji.high': '\u591A',
+    // \u754C\u9762\u98CE\u683C \u2014 \u5BA3\u7EB8(\u9ED8\u8BA4)\u6216\u539F\u6765\u7684\u6BDB\u73BB\u7483\u3002
+    'settings.theme.title': '\u754C\u9762\u98CE\u683C',
+    'settings.theme.hint': '\u5BA3\u7EB8 \u6216 \u6BDB\u73BB\u7483,\u51ED\u4F60\u5FC3\u60C5\u3002',
+    'settings.theme.paper': '\u5BA3\u7EB8',
+    'settings.theme.glass': '\u6BDB\u73BB\u7483',
     'chat.memory.saved': '\u5DF2\u8BB0\u4F4F',
     'chat.memory.updated': '\u5DF2\u66F4\u65B0',
     'chat.memory.view': '\u67E5\u770B',
@@ -626,19 +652,21 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'bg.label.bg84': '\u67E5\u4EE4\u5341\u5B57\u6865',
     'bg.label.bg85': '\u666E\u7EF4\u5C14\u9000\u6F6E',
     'bg.label.bg86': '\u65E5\u51FA\u5370\u8C61',
-    // bg100..bg111 \u2014 NASA \u6DF1\u7A7A\uFF08\u54C8\u52C3 / JWST / \u65AF\u76AE\u7B56 / WISE\uFF09
-    'bg.label.bg100': '\u54D1\u94C3\u661F\u4E91',
-    'bg.label.bg101': '\u5FC3\u7075\u661F\u4E91',
-    'bg.label.bg102': '\u87BA\u65CB\u661F\u4E91',
+    // \u661F\u7A7A \u2014 NASA \u516C\u6709\u9886\u57DF\u5F71\u50CF\u3002
+    // bg103..bg111\uFF1A\u6DF1\u7A7A\uFF08\u54C8\u52C3 / JWST / \u65AF\u76AE\u7B56\uFF09\u3002
+    // bg112..bg117\uFF1AArtemis II \u730E\u6237\u5EA7\u98DE\u8239\u8237\u7A97\u5916\u7684\u5730\u7403\uFF082026 \u5E74 4 \u6708\uFF09\u3002
     'bg.label.bg103': '\u87BA\u65CB NGC 7293',
     'bg.label.bg104': '\u5251\u9C7C\u5EA7\u661F\u4E91',
     'bg.label.bg105': '\u8239\u5E95\u5EA7\u5B87\u5B99\u60AC\u5D16',
-    'bg.label.bg106': '\u56DB\u661F\u4E91',
     'bg.label.bg107': '\u8718\u86DB\u661F\u4E91',
     'bg.label.bg108': '\u7901\u6E56\u661F\u4E91',
-    'bg.label.bg109': '\u7EA2\u8718\u86DB\u661F\u4E91',
-    'bg.label.bg110': '\u8239\u5E95 Eta',
     'bg.label.bg111': '\u661F\u7A7A\u4E4B\u7F8E',
+    'bg.label.bg112': '\u4F60\u597D\uFF0C\u4E16\u754C',
+    'bg.label.bg113': '\u5730\u7403\u521D\u89C1',
+    'bg.label.bg114': '\u8237\u7A97\u5916\u7684\u5BB6',
+    'bg.label.bg115': '\u8FDC\u65B9\u7684\u5BB6',
+    'bg.label.bg116': '\u56DE\u671B\u5730\u7403',
+    'bg.label.bg117': '\u5730\u4E0E\u6708',
     // \u5206\u7C7B\u6807\u7B7E
     'bg.cat.monet': '\u83AB\u5948',
     'bg.cat.painting': '\u753B\u4F5C',
@@ -699,6 +727,14 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'loading.workspace.config': '\u914D\u7F6E AI \u4F34\u4FA3...',
     'loading.workspace.almost': '\u5373\u5C06\u5C31\u7EEA...',
     'loading.workspace.done': '\u5168\u90E8\u5B8C\u6210\uFF01\u6B22\u8FCE\uFF01',
+    // ---- \u6027\u683C\u6D4B\u8BD5\uFF08onboarding\uFF09----
+    'test.loading': '\u6B63\u5728\u52A0\u8F7D\u9898\u76EE...',
+    'test.submitting': '\u6B63\u5728\u5206\u6790\u4F60\u7684\u7075\u9B42...',
+    'test.error.load': '\u9898\u76EE\u52A0\u8F7D\u5931\u8D25,\u8BF7\u91CD\u8BD5\u3002',
+    'test.error.submit': '\u63D0\u4EA4\u5931\u8D25,\u8BF7\u91CD\u8BD5\u3002',
+    'test.try_again': '\u91CD\u8BD5',
+    'test.skip': '\u8DF3\u8FC7\u6027\u683C\u6D4B\u8BD5',
+    'test.close': '\u5173\u95ED',
 
     // ---- Hint ----
     'hint.switch.grok': 'GPT-4o 可能有内容限制。试试 Grok 获取更开放的体验。',

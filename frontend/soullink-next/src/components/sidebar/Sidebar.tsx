@@ -62,6 +62,18 @@ export default function Sidebar({
   }, [dispatch]);
 
   const handleNewChat = useCallback(async () => {
+    // Reuse an existing empty conversation if one already exists — prevents
+    // stacking duplicate "New Chat" rows when the user re-taps the button
+    // without ever sending a message in the previous one.
+    const existingEmpty = conversations.find(
+      (c) => (c.message_count ?? 0) === 0 && (!c.title || c.title.trim() === ''),
+    );
+    if (existingEmpty) {
+      dispatch(clearMessages());
+      dispatch(setSidebarOpen(false));
+      dispatch(setCurrentId(existingEmpty.id));
+      return;
+    }
     dispatch(clearMessages());
     dispatch(setSidebarOpen(false));
     try {
@@ -72,7 +84,7 @@ export default function Sidebar({
       // API failed — fall back to null ID (backend will create on first message)
       dispatch(setCurrentId(null));
     }
-  }, [dispatch, authFetch]);
+  }, [dispatch, authFetch, conversations]);
 
   const handleToggleLanguage = useCallback(() => {
     const next: Language = language === 'en' ? 'zh-CN' : 'en';

@@ -14,6 +14,7 @@ import { setCurrentId, removeConversation, updateConversation } from '@/store/co
 import { clearMessages, setMessages } from '@/store/chatSlice';
 import { setSidebarOpen } from '@/store/uiSlice';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
+import { useT } from '@/hooks/useT';
 import { getConversation } from '@/lib/api/conversations';
 import type { Conversation } from '@/types';
 
@@ -30,6 +31,7 @@ export default function ConversationItem({
 }: ConversationItemProps) {
   const dispatch = useAppDispatch();
   const authFetch = useAuthFetch();
+  const t = useT();
   const currentId = useAppSelector((s) => s.conversations.currentId);
   const isActive = currentId === conversation.id;
 
@@ -37,6 +39,7 @@ export default function ConversationItem({
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +63,17 @@ export default function ConversationItem({
   // ---- Right-click context menu ----
   const handleContextMenu = useCallback(
     (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setMenuPos({ x: e.clientX, y: e.clientY });
+      setShowMenu(true);
+    },
+    [],
+  );
+
+  // ---- Always-visible ⋯ menu button (so delete is discoverable) ----
+  const handleMenuButtonClick = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
       setMenuPos({ x: e.clientX, y: e.clientY });
@@ -137,26 +151,29 @@ export default function ConversationItem({
       <div
         ref={itemRef}
         style={{
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           gap: '2px',
           paddingLeft: '12px',
-          paddingRight: '12px',
+          paddingRight: '36px', // room for the ⋯ button
           paddingTop: '10px',
           paddingBottom: '10px',
           borderRadius: '12px',
           cursor: 'pointer',
           transition: 'all 0.2s',
           userSelect: 'none',
-          background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
-          boxShadow: isActive ? 'inset 0 0 0 1px rgba(255,255,255,0.15)' : 'none',
+          background: isActive ? 'rgba(184, 49, 47, 0.10)' : 'transparent',
+          boxShadow: isActive ? 'inset 2px 0 0 var(--seal)' : 'none',
         }}
         onMouseEnter={(e) => {
+          setIsHovered(true);
           if (!isActive) {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+            e.currentTarget.style.background = 'rgba(26, 26, 28, 0.05)';
           }
         }}
         onMouseLeave={(e) => {
+          setIsHovered(false);
           if (!isActive) {
             e.currentTarget.style.background = 'transparent';
           }
@@ -177,15 +194,15 @@ export default function ConversationItem({
             autoFocus
             style={{
               width: '100%',
-              background: 'rgba(255,255,255,0.1)',
-              color: 'white',
+              background: 'rgba(255,255,255,0.6)',
+              color: 'var(--ink)',
               fontSize: '0.875rem',
               borderRadius: '6px',
               paddingLeft: '8px',
               paddingRight: '8px',
               paddingTop: '4px',
               paddingBottom: '4px',
-              border: '1px solid rgba(255,255,255,0.2)',
+              border: '1px solid var(--ink-line)',
               outline: 'none',
             }}
           />
@@ -194,7 +211,7 @@ export default function ConversationItem({
             <span style={{
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.9)',
+              color: 'var(--ink)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -204,7 +221,7 @@ export default function ConversationItem({
             {lastMessagePreview && (
               <span style={{
                 fontSize: '0.75rem',
-                color: 'rgba(255,255,255,0.4)',
+                color: 'var(--ink-faint)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -214,9 +231,56 @@ export default function ConversationItem({
             )}
           </>
         )}
+
+        {/* ⋯ menu trigger — always present so Rename/Delete are discoverable.
+            Subtle by default (opacity 0.4), prominent on row hover or while
+            menu is open. Right-click + long-press still work as before. */}
+        {!isRenaming && (
+          <button
+            type="button"
+            onClick={handleMenuButtonClick}
+            aria-label={t('chat.more_actions')}
+            title={t('chat.more_actions')}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '8px',
+              transform: 'translateY(-50%)',
+              width: 24,
+              height: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: 'var(--ink-soft)',
+              opacity: showMenu || isHovered ? 1 : 0.4,
+              transition: 'opacity 0.15s, background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(26, 26, 28, 0.10)';
+              e.currentTarget.style.color = 'var(--ink)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--ink-soft)';
+            }}
+          >
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="5" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="19" cy="12" r="2" />
+            </svg>
+          </button>
+        )}
       </div>
 
-      {/* Context menu */}
+      {/* Context menu — paper material per CLAUDE.md (.diary-paper-panel,
+          no fork). Tokens (--ink / --seal) resolve via the .diary-scope
+          on #app. */}
       {showMenu && (
         <>
           {/* Invisible backdrop to close menu */}
@@ -225,17 +289,14 @@ export default function ConversationItem({
             onClick={handleMenuBackdropClick}
           />
           <div
+            className="diary-paper-panel"
             style={{
               position: 'fixed',
-              zIndex: 50,
-              minWidth: '140px',
+              zIndex: 51,
+              minWidth: '160px',
               paddingTop: '4px',
               paddingBottom: '4px',
-              borderRadius: '12px',
-              background: 'rgba(26,26,46,0.95)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(24px)',
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+              borderRadius: 'var(--r-md)',
               left: `${menuPos.x}px`,
               top: `${menuPos.y}px`,
               transform: 'translate(-10%, 0)',
@@ -250,23 +311,24 @@ export default function ConversationItem({
                 paddingTop: '8px',
                 paddingBottom: '8px',
                 fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.8)',
-                transition: 'background 0.2s',
+                color: 'var(--ink)',
+                transition: 'background 0.15s',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'none',
+                background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(26, 26, 28, 0.06)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               onClick={handleRenameStart}
             >
               <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              Rename
+              {t('chat.rename')}
             </button>
             <button
               style={{
@@ -277,23 +339,24 @@ export default function ConversationItem({
                 paddingTop: '8px',
                 paddingBottom: '8px',
                 fontSize: '0.875rem',
-                color: '#f87171',
-                transition: 'background 0.2s',
+                color: 'var(--seal)',
+                transition: 'background 0.15s',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'none',
+                background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(184, 49, 47, 0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               onClick={handleDelete}
             >
               <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Delete
+              {t('chat.delete')}
             </button>
           </div>
         </>

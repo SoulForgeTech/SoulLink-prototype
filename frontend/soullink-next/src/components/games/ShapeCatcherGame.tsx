@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SHAPE_TYPES = ['circle', 'square', 'triangle', 'diamond'] as const;
 const COLORS = [
-  '#9DC4E6', '#f472b6', '#60a5fa', '#34d399',
+  '#D85060', '#f472b6', '#60a5fa', '#34d399',
   '#fbbf24', '#f87171', '#38bdf8', '#fb923c',
 ];
 

@@ -253,3 +253,151 @@ body:has(.auth-scope) {
   justify-content: center;
 }
 
+/* ============================================================
+   Glass theme — legacy Apple/Vision-OS-style frosted glass as a
+   user opt-in via `data-theme="glass"` on the scope root. The
+   ORIGINAL pre-diary look from v0.1.8-beta "glassmorphism UI":
+   light translucent fill, bright gradient border (via padding-box
+   + border-box background-clip trick), strong backdrop blur, white
+   text on top of the user's photo background showing through.
+
+   Recipe lifted verbatim from the initial Next.js port (commit
+   3b8c8a6) — .sidebar / .chat-header had this exact stack.
+
+   Tokens + .diary-paper-panel override here so every component
+   that uses ink tokens + the shared panel utility flips together,
+   no per-component forks. Same single-source-of-truth rule as
+   paper. (CLAUDE.md is satisfied: one material, two finishes.)
+   ============================================================ */
+:where(.auth-scope, .diary-scope)[data-theme='glass'] {
+  /* The "paper" tokens still need to mean *something* — in glass
+     mode they're the frost color. Light translucent white over
+     the photo background. */
+  --paper: rgba(255, 255, 255, 0.10);
+  --paper-deep: rgba(255, 255, 255, 0.06);
+  --paper-shadow: rgba(0, 0, 0, 0.18);
+  --paper-translucent: rgba(255, 255, 255, 0.10);
+
+  /* Glass surfaces sit on top of dark photo backgrounds — the
+     frost lightens slightly but the photo still reads as dark.
+     White text reads correctly through this stack. */
+  --ink: rgba(255, 255, 255, 0.92);
+  --ink-soft: rgba(255, 255, 255, 0.68);
+  --ink-faint: rgba(255, 255, 255, 0.42);
+  --ink-line: rgba(255, 255, 255, 0.18);
+
+  /* Accent tints brightened slightly for the darker effective bg */
+  --sepia: #E8C99C;
+  --pen-blue: #B0CCE8;
+  --seal: #E96B7A;
+  --faded-red: #E96B7A;
+  --seal-strong: #D85060;
+
+  /* No paper grain or warm radial wash in glass mode */
+  --paper-grain-1: none;
+  --paper-grain-2: none;
+  --paper-grain-blend: normal;
+  --paper-grain-layer-opacity: 0;
+  --grain-opacity: 0;
+}
+
+/* Glass panel material — Apple-style frosted glass with white
+   gradient border + diagonal gloss reflection. THREE background
+   layers (in paint order, top→bottom):
+   1. 135° diagonal gloss reflection — the "lit edge from upper-left"
+      highlight that gives the panel its 3D feel. Was a separate
+      .sidebar::after pseudo-element in the original; baked in as
+      a background layer here so it works on position:fixed panels
+      (modal/menu) without needing position:relative.
+   2. 180° soft top→bottom white tint — the actual translucent fill.
+   3. 150° high-contrast white gradient clipped to border-box —
+      shows through the 1px transparent border = "lit edge of glass".
+   backdrop-filter: blur(40px) saturate(180%) is the original
+   Vision-OS recipe. */
+:where([data-theme='glass'] .diary-paper-panel) {
+  background-color: transparent;
+  background-image:
+    /* 1. gloss reflection (topmost) */
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.25) 0%,
+      rgba(255, 255, 255, 0.08) 20%,
+      rgba(255, 255, 255, 0.00) 45%,
+      rgba(255, 255, 255, 0.03) 80%,
+      rgba(255, 255, 255, 0.12) 100%),
+    /* 2. translucent fill */
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.04) 100%),
+    /* 3. gradient border (shows through transparent 1px border) */
+    linear-gradient(150deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.20) 18%,
+      rgba(255, 255, 255, 0.06) 40%,
+      rgba(255, 255, 255, 0.03) 60%,
+      rgba(255, 255, 255, 0.08) 80%,
+      rgba(255, 255, 255, 0.18) 100%);
+  background-origin: padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, border-box;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, auto;
+  background-blend-mode: normal, normal, normal;
+  border: 1px solid transparent;
+  color: var(--ink);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+/* Glass mode: full-page paper grain + warm wash off (those are
+   paper artefacts that would smudge the frost). */
+:where([data-theme='glass']) .diary-grain-layer,
+:where([data-theme='glass']) .diary-wash-layer {
+  opacity: 0;
+}
+
+/* ----------------------------------------------------------------
+   Modal recipe override — the original v0.1.8 UI had TWO different
+   glass surfaces:
+     • sidebar / chat-header → 10% white frost + gradient border
+       (handled by the .diary-paper-panel override above)
+     • modal-content        → 78% white frost + DARK text
+       (this block, scoped under .diary-modal-scrim)
+   Modal scope re-declares ink tokens as dark so every `var(--ink)`
+   text reads correctly against the bright white frost. ANY panel
+   rendered inside a modal scrim (Settings, Changelog, About,
+   ExpressionSetup, etc.) gets this treatment automatically — no
+   per-component edits.
+   ---------------------------------------------------------------- */
+:where([data-theme='glass']) .diary-modal-scrim {
+  /* Scrim itself: light haze over the photo, matches original's
+     modal-overlay (rgba(255,255,255,0.1) + blur). */
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+
+  /* Re-declare ink tokens DARK so modal text reads on white frost.
+     CSS variables inherit through the scope override, so every
+     child component automatically gets the right colors. */
+  --ink: #1a202c;
+  --ink-soft: rgba(26, 32, 44, 0.72);
+  --ink-faint: rgba(26, 32, 44, 0.48);
+  --ink-line: rgba(26, 32, 44, 0.12);
+}
+
+:where([data-theme='glass']) .diary-modal-scrim .diary-paper-panel {
+  /* Bright white frost — matches original .modal-content exactly:
+     78% white + 40px blur + 180% saturate + 60% white hairline. */
+  background-color: rgba(255, 255, 255, 0.78);
+  background-image: none;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+

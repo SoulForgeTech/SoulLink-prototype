@@ -112,7 +112,7 @@ export function ImageEditOverlay({
             onClick={handleSubmit}
             disabled={!prompt.trim()}
             style={{
-              background: prompt.trim() ? '#6BA3D6' : 'rgba(255,255,255,0.1)',
+              background: prompt.trim() ? 'var(--seal)' : 'rgba(255,255,255,0.1)',
               border: 'none', borderRadius: '8px', padding: '6px 12px',
               color: '#fff', fontSize: '0.8rem', cursor: prompt.trim() ? 'pointer' : 'default',
               flexShrink: 0,
@@ -248,7 +248,7 @@ export default function MessageBubble({
   // User avatar: avatar_url (Cloudinary) or avatar (legacy) or color initial
   const userAvatar = user?.avatar_url || user?.avatar;
   const userInitial = (user?.name || 'U').charAt(0).toUpperCase();
-  const userAvatarColor = user?.avatar_color || '#6BA3D6';
+  const userAvatarColor = user?.avatar_color || 'var(--seal)';
 
   const isUser = role === 'user';
   const isVoice = !!audioUrl;
@@ -341,8 +341,11 @@ export default function MessageBubble({
         </div>
       )}
 
-      {/* Bubble — CSS class handles glass effect, radius, etc. */}
-      <div className="message-content" style={userColorStyle ? { ...userColorStyle, position: 'relative' } : { position: 'relative' }}>
+      {/* Bubble — assistant uses shared diary paper material; user keeps Redux color. */}
+      <div
+        className={isUser ? 'message-content' : 'message-content diary-paper-panel'}
+        style={userColorStyle ? { ...userColorStyle, position: 'relative' } : { position: 'relative' }}
+      >
         {/* Image attachments (user) */}
         {imageAttachments.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: content ? '8px' : 0 }}>

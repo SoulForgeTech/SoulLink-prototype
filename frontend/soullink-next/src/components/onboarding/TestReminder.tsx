@@ -53,17 +53,14 @@ export default function TestReminder({
     >
       {/* Backdrop */}
       <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(4px)',
-        }}
+        className="diary-modal-scrim diary-scope"
+        style={{ position: 'absolute' }}
         onClick={handleDismiss}
       />
 
       {/* Popup card */}
       <div
+        className="diary-paper-panel diary-scope"
         style={{
           position: 'relative',
           width: '100%',
@@ -72,11 +69,8 @@ export default function TestReminder({
           flexDirection: 'column',
           gap: '20px',
           borderRadius: '24px',
-          border: '1px solid rgba(255,255,255,0.15)',
-          background: 'rgba(255,255,255,0.1)',
           padding: '32px',
           textAlign: 'center',
-          backdropFilter: 'blur(24px)',
           transition: 'all 0.3s',
           transform: isClosing ? 'scale(0.95)' : 'scale(1)',
           opacity: isClosing ? 0 : 1,
@@ -86,12 +80,12 @@ export default function TestReminder({
         <div style={{ fontSize: '3rem' }}>{'\u{1F52E}'}</div>
 
         {/* Title */}
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
           Discover Your Soul Match
         </h3>
 
         {/* Description */}
-        <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+        <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--ink-soft)', margin: 0 }}>
           Take a quick personality test so your companion can truly understand
           you.
         </p>
@@ -103,15 +97,15 @@ export default function TestReminder({
             style={{
               flex: 1,
               borderRadius: '12px',
-              border: '1px solid rgba(255,255,255,0.15)',
-              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--ink-line)',
+              background: 'transparent',
               paddingLeft: '16px',
               paddingRight: '16px',
               paddingTop: '12px',
               paddingBottom: '12px',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.6)',
+              color: 'var(--ink-soft)',
               transition: 'background 0.2s',
               cursor: 'pointer',
             }}
@@ -125,7 +119,7 @@ export default function TestReminder({
             style={{
               flex: 1,
               borderRadius: '12px',
-              background: 'linear-gradient(to right, #6BA3D6, #5A8DB8)',
+              background: 'linear-gradient(to right, var(--seal), var(--seal-strong))',
               paddingLeft: '16px',
               paddingRight: '16px',
               paddingTop: '12px',
@@ -133,7 +127,7 @@ export default function TestReminder({
               fontSize: '0.875rem',
               fontWeight: 600,
               color: 'white',
-              boxShadow: '0 10px 15px -3px rgba(107,163,214,0.25)',
+              boxShadow: '0 10px 15px -3px rgba(184, 49, 47,0.25)',
               transition: 'all 0.2s',
               border: 'none',
               cursor: 'pointer',

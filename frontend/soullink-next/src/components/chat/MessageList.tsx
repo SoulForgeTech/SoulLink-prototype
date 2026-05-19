@@ -65,7 +65,7 @@ function WelcomeMessage({ language }: { language: string }) {
 
   return (
     <div className="welcome-container">
-      {/* Companion avatar */}
+      {/* Companion avatar — floats over bg, no panel framing */}
       <div className="welcome-avatar" style={{ animation: 'pulse 3s ease-in-out infinite' }}>
         {companionAvatar ? (
           <img
@@ -81,7 +81,7 @@ function WelcomeMessage({ language }: { language: string }) {
         )}
       </div>
 
-      {/* Welcome text */}
+      {/* Welcome text — text-shadow keeps it readable on any user bg */}
       <h2 className="welcome-title">
         {t.title}
       </h2>

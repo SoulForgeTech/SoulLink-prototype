@@ -1,7 +1,7 @@
 import type { Viewport } from 'next';
 import { Fraunces, Crimson_Pro, Caveat, IBM_Plex_Mono } from 'next/font/google';
 import DiaryBackground from './_components/DiaryBackground';
-import './_styles/diary-tokens.css';
+import '@/styles/diary.css';
 import './_styles/diary-auth.css';
 import './_styles/diary-views.css';
 

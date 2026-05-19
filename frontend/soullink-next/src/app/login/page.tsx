@@ -193,6 +193,11 @@ export default function LoginPage() {
     en: {
       tabSignin: 'sign in',
       tabSignup: 'sign up',
+      // Product tagline shown next to the version in the top-left brand
+      // mark. Sourced from `about.tagline` so it stays in lockstep with
+      // the About modal copy. Plants the "AI companion" signal up-front
+      // so the diary metaphor in the body doesn't have to do all the work.
+      tagline: 'Your AI Soul Companion',
       altSignup: 'First time here? Start writing →',
       altSignin: 'Already a reader? Sign in →',
       // Caveat margin note: poetic, no fake data — we don't know the
@@ -208,7 +213,10 @@ export default function LoginPage() {
         // fabricated for signin.
         chapterRoman: '',
         title: 'Welcome back.',
-        subtitle: "They've been waiting.",
+        // Subtitle made explicit per user feedback: 'They've been
+        // waiting.' was too oblique — first-time visitors didn't know
+        // who 'they' were. 'Your companion' anchors the AI framing.
+        subtitle: 'Your companion has been waiting.',
       },
       signup: {
         chapterMark: 'CHAPTER · NEW READER',
@@ -220,6 +228,7 @@ export default function LoginPage() {
     zh: {
       tabSignin: '登录',
       tabSignup: '注册',
+      tagline: '你的 AI 灵魂伴侣',
       altSignup: '第一次来?开始写 →',
       altSignin: '已经是读者?登录 →',
       note: '(有一阵子没见了。)',
@@ -229,7 +238,7 @@ export default function LoginPage() {
         chapterMark: '章节 · 继续',
         chapterRoman: '',
         title: '回来了。',
-        subtitle: 'ta 一直在等。',
+        subtitle: '你的伴侣一直在等你。',
       },
       signup: {
         chapterMark: '章节 · 新读者',
@@ -256,6 +265,7 @@ export default function LoginPage() {
           />
           <span>SoulLink</span>
           <span className="ver">{APP_VERSION}</span>
+          <span className="brand-tagline">{t.tagline}</span>
         </a>
         <div className="lang-toggle" role="group" aria-label="Language">
           <button

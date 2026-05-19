@@ -45,7 +45,7 @@ function DimensionBar({
         <div
           style={{
             position: 'absolute', top: 0, bottom: 0, borderRadius: '9999px',
-            background: 'linear-gradient(to right, #6BA3D6, #9DC4E6)',
+            background: 'linear-gradient(to right, var(--seal), #9DC4E6)',
             ...(clamped >= 0
               ? { left: '50%', width: `${(clamped / 4) * 50}%` }
               : { right: '50%', width: `${(Math.abs(clamped) / 4) * 50}%` }),
@@ -56,7 +56,7 @@ function DimensionBar({
             position: 'absolute', top: '50%', left: `${percent}%`,
             transform: 'translate(-50%, -50%)',
             width: '10px', height: '10px', borderRadius: '50%',
-            background: '#6BA3D6', border: '2px solid white',
+            background: 'var(--seal)', border: '2px solid white',
             boxShadow: '0 0 4px rgba(107,163,214,0.4)',
           }}
         />
@@ -131,7 +131,7 @@ export default function PersonalityResultCard({ onRetake, onStartTest }: Persona
               padding: '8px 20px',
               borderRadius: '8px',
               border: 'none',
-              background: '#6BA3D6',
+              background: 'var(--seal)',
               color: 'white',
               fontSize: '0.8rem',
               fontWeight: 600,
@@ -161,7 +161,7 @@ export default function PersonalityResultCard({ onRetake, onStartTest }: Persona
         <span style={{
           padding: '3px 10px',
           borderRadius: '6px',
-          background: 'linear-gradient(135deg, #6BA3D6, #9DC4E6)',
+          background: 'linear-gradient(135deg, var(--seal), #9DC4E6)',
           color: 'white',
           fontSize: '0.85rem',
           fontWeight: 700,
@@ -199,7 +199,7 @@ export default function PersonalityResultCard({ onRetake, onStartTest }: Persona
             borderRadius: '8px',
             border: '1px solid rgba(107,163,214,0.3)',
             background: 'transparent',
-            color: '#6BA3D6',
+            color: 'var(--seal)',
             fontSize: '0.75rem',
             fontWeight: 500,
             cursor: 'pointer',

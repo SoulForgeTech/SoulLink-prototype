@@ -177,14 +177,12 @@ export default function CompanionAvatarModal() {
 
   return (
     <div
-      className="companion-avatar-modal-overlay active"
+      className="companion-avatar-modal-overlay active diary-modal-scrim diary-scope"
       onClick={handleClose}
-      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
     >
       <div
-        className="companion-avatar-modal"
+        className="companion-avatar-modal diary-paper-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)' }}
       >
         <h3>{t('companion.avatar.title')}</h3>
         <p>{t('companion.avatar.description')}</p>
@@ -206,7 +204,7 @@ export default function CompanionAvatarModal() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'var(--primary-color, #6BA3D6)',
+                background: 'var(--primary-color, var(--seal))',
                 color: 'white',
                 fontSize: '2rem',
               }}

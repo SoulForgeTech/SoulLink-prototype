@@ -20,25 +20,16 @@ import { useT } from '@/hooks/useT';
 
 // ==================== Styles (matching original CSS) ====================
 
-/** .chat-header positioning + layout + glassmorphism (inline to avoid Turbopack stripping)
- *  NOTE: padding/gap/borderRadius are NOT set here — they come from globals.css
- *  media queries so mobile can override them without !important battles.
- */
+/** .chat-header positioning + layout. Paper material from shared
+ *  .diary-paper-panel (see styles/diary.css). */
 const headerStyle: React.CSSProperties = {
   position: 'absolute',
   top: 0,
   left: 0,
   right: 0,
   zIndex: 20,
-  overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',
-  /* Glassmorphism — duplicated inline to bypass Turbopack CSS transform issues */
-  border: '1px solid transparent',
-  background: `linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%) padding-box, linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.04) 65%, rgba(255,255,255,0.10) 85%, rgba(255,255,255,0.18) 100%) border-box`,
-  backdropFilter: 'blur(40px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.12)',
 };
 
 /** All direct children need relative z-index to sit above the ::after overlay */
@@ -51,8 +42,8 @@ const aboveOverlay: React.CSSProperties = {
 const avatarStyle: React.CSSProperties = {
   borderRadius: '50%',
   objectFit: 'cover',
-  border: '3px solid rgba(255,255,255,0.9)',
-  boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+  border: '2px solid rgba(244, 240, 229, 0.9)',
+  boxShadow: '0 2px 8px rgba(26, 26, 28, 0.18)',
   cursor: 'pointer',
   transition: 'all 0.2s',
   flexShrink: 0,
@@ -64,7 +55,7 @@ const avatarPlaceholderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'var(--primary-color, #6BA3D6)',
+  background: 'var(--primary-color, var(--seal))',
   color: 'white',
   fontSize: '1rem',
   fontWeight: 600,
@@ -76,8 +67,7 @@ const avatarPlaceholderStyle: React.CSSProperties = {
 const nameStyle: React.CSSProperties = {
   fontSize: '1.15rem',
   fontWeight: 600,
-  color: '#2d3748',
-  textShadow: '0 1px 3px rgba(255, 255, 255, 0.8)',
+  color: 'var(--ink)',
   cursor: 'pointer',
   background: 'none',
   border: 'none',
@@ -108,15 +98,15 @@ const statusDotStyle: React.CSSProperties = {
 /** Status text — matches original .companion-status */
 const statusTextStyle: React.CSSProperties = {
   fontSize: '0.9rem',
-  color: 'rgba(255,255,255,0.75)',
+  color: 'var(--ink-soft)',
 };
 
 /** Model indicator — matches original .model-indicator */
 const modelBadgeStyle: React.CSSProperties = {
   fontSize: '0.7rem',
   padding: '2px 8px',
-  background: 'rgba(255,255,255,0.2)',
-  color: 'rgba(255,255,255,0.9)',
+  background: 'rgba(26, 26, 28, 0.06)',
+  color: 'var(--ink-soft)',
   borderRadius: 10,
   marginLeft: 6,
   fontWeight: 500,
@@ -134,10 +124,10 @@ const actionsContainerStyle: React.CSSProperties = {
 
 /** Each action button: bg-picker-btn style — padding/borderRadius via CSS for responsive */
 const actionBtnStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.2)',
-  border: 'none',
+  background: 'rgba(26, 26, 28, 0.05)',
+  border: '1px solid var(--ink-line)',
   cursor: 'pointer',
-  color: 'white',
+  color: 'var(--ink-soft)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -154,7 +144,7 @@ const menuBtnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
   cursor: 'pointer',
-  color: 'white',
+  color: 'var(--ink-soft)',
   alignItems: 'center',
   justifyContent: 'center',
   transition: 'all 0.2s',
@@ -226,14 +216,14 @@ export default function ChatHeader() {
     : avatarPlaceholderStyle;
 
   return (
-    <header className="chat-header" style={headerStyle}>
+    <header className="chat-header diary-paper-panel" style={headerStyle}>
       {/* Mobile menu button */}
       <button
         onClick={handleMenuClick}
         style={{
           ...menuBtnStyle,
           display: undefined, // let CSS media query control
-          color: hoveredBtn === 'menu' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.65)',
+          color: hoveredBtn === 'menu' ? 'var(--ink)' : 'var(--ink-soft)',
         }}
         className="mobile-menu-btn"
         onMouseEnter={() => setHoveredBtn('menu')}
@@ -378,7 +368,8 @@ function ActionButton({
       style={{
         ...actionBtnStyle,
         ...(isFirst ? { marginLeft: 'auto' } : {}),
-        background: isHovered ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.2)',
+        background: isHovered ? 'rgba(26, 26, 28, 0.10)' : 'rgba(26, 26, 28, 0.05)',
+        color: isHovered ? 'var(--ink)' : 'var(--ink-soft)',
         transform: isHovered ? 'scale(1.05)' : 'none',
       }}
       onMouseEnter={() => setHoveredBtn(id)}

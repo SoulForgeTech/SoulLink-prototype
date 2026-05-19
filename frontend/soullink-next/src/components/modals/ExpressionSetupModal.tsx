@@ -472,34 +472,37 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
   const progressPercent = totalSteps > 0 ? Math.round((step / totalSteps) * 100) : 0;
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-    }} onClick={onClose}>
-      <div style={{
-        background: 'rgba(25,25,40,0.95)', borderRadius: 20, padding: 24,
-        maxWidth: 420, width: '90%', border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 16px 48px rgba(0,0,0,0.5)', maxHeight: '85vh', overflowY: 'auto',
-      }} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="diary-modal-scrim diary-scope"
+      style={{ zIndex: 200 }}
+      onClick={onClose}
+    >
+      <div
+        className="diary-paper-panel"
+        style={{
+          borderRadius: 20, padding: 24,
+          maxWidth: 420, width: '90%', maxHeight: '85vh', overflowY: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {phase === 'loading' && (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', margin: '0 auto',
-              border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#7c4dff',
+              border: '3px solid var(--ink-line)', borderTopColor: '#7c4dff',
               animation: 'spin 0.8s linear infinite' }} />
           </div>
         )}
 
         {/* ===== EDIT: generate new expressions ===== */}
         {phase === 'edit' && (<>
-          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 4, textAlign: 'center' }}>{t('expr.title')}</h3>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>{t('expr.subtitle')}</p>
+          <h3 style={{ color: 'var(--ink)', fontSize: 18, marginBottom: 4, textAlign: 'center', fontFamily: 'var(--font-display)' }}>{t('expr.title')}</h3>
+          <p style={{ color: 'var(--ink-soft)', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>{t('expr.subtitle')}</p>
           <div style={{
             padding: '10px 14px', borderRadius: 10, marginBottom: 16,
             background: 'rgba(124,77,255,0.08)', border: '1px solid rgba(124,77,255,0.15)',
           }}>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+            <p style={{ color: 'var(--ink-soft)', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
               {t('expr.intro')}
             </p>
           </div>
@@ -520,7 +523,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             {COST_ITEMS.map((it) => (
               <div key={it.key} style={{
                 display: 'flex', justifyContent: 'space-between',
-                fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7,
+                fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.7,
               }}>
                 <span>{t(`expr.cost.${it.key}`)}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -529,7 +532,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               </div>
             ))}
             <p style={{
-              color: 'rgba(255,255,255,0.4)', fontSize: 11, lineHeight: 1.5,
+              color: 'var(--ink-faint)', fontSize: 11, lineHeight: 1.5,
               margin: '8px 0 0', fontStyle: 'italic',
             }}>
               {t('expr.cost_note_cheaper_coming')}
@@ -553,13 +556,13 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                   {t('expr.quota_title')}
                 </span>
                 <span style={{
-                  color: 'rgba(255,255,255,0.7)', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+                  color: 'var(--ink-soft)', fontSize: 12, fontVariantNumeric: 'tabular-nums',
                 }}>
                   {quota.used_5d}/{quota.limit_5d}
                 </span>
               </div>
               <p style={{
-                color: 'rgba(255,255,255,0.5)', fontSize: 11, lineHeight: 1.5, margin: '4px 0 0',
+                color: 'var(--ink-soft)', fontSize: 11, lineHeight: 1.5, margin: '4px 0 0',
               }}>
                 {quota.allowed
                   ? t('expr.quota_rule')
@@ -575,27 +578,27 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           )}
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
+            <label style={{ color: 'var(--ink-soft)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.appearance_label')}</label>
             <textarea value={appearance} onChange={(e) => handleAppearanceChange(e.target.value)}
               placeholder={t('expr.appearance_placeholder')} rows={4}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, resize: 'vertical',
-                fontFamily: 'inherit', outline: 'none', lineHeight: 1.5 }} />
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>{t('expr.appearance_tip')}</p>
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid var(--ink-line)',
+                background: 'rgba(26,26,28,0.03)', color: 'var(--ink)', fontSize: 13, resize: 'vertical',
+                fontFamily: 'var(--font-body)', outline: 'none', lineHeight: 1.5 }} />
+            <p style={{ color: 'var(--ink-faint)', fontSize: 11, marginTop: 4 }}>{t('expr.appearance_tip')}</p>
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.style_label')}</label>
+            <label style={{ color: 'var(--ink-soft)', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('expr.style_label')}</label>
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {styleOptions.map((opt) => (
                   <button key={opt.value} onClick={() => { setStyle(opt.value); }} style={{
                     padding: '10px 12px', borderRadius: 12, border: 'none', position: 'relative',
-                    background: style === opt.value ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
-                    color: '#fff', cursor: 'pointer', textAlign: 'left',
-                    outline: style === opt.value ? '2px solid rgba(124,77,255,0.6)' : 'none',
+                    background: style === opt.value ? 'rgba(124,77,255,0.18)' : 'rgba(26,26,28,0.04)',
+                    color: 'var(--ink)', fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'left',
+                    outline: style === opt.value ? '2px solid rgba(124,77,255,0.5)' : 'none',
                   }}>
                     <div style={{ fontSize: 14 }}>{opt.icon} {opt.label}</div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{opt.desc}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>{opt.desc}</div>
                     {recommendedStyle === opt.value && (
                       <span style={{
                         position: 'absolute', top: 4, right: 6,
@@ -618,7 +621,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                     border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#7c4dff',
                     animation: 'spin 0.8s linear infinite',
                   }} />
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>{t('expr.style_detecting')}</span>
+                  <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}>{t('expr.style_detecting')}</span>
                 </div>
               )}
             </div>
@@ -627,42 +630,42 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           <button onClick={handleGenerate} disabled={!!(quota && !quota.allowed)} style={{
             width: '100%', padding: '14px', borderRadius: 14, border: 'none',
             background: quota && !quota.allowed
-              ? 'rgba(255,255,255,0.1)'
+              ? 'rgba(26,26,28,0.08)'
               : 'linear-gradient(135deg, #7c4dff, #448aff)',
-            color: quota && !quota.allowed ? 'rgba(255,255,255,0.4)' : '#fff',
+            color: quota && !quota.allowed ? 'var(--ink-faint)' : '#fff',
             fontSize: 15, fontWeight: 600,
             cursor: quota && !quota.allowed ? 'not-allowed' : 'pointer',
           }}>{t('expr.generate_btn')}</button>
-          <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, textAlign: 'center', marginTop: 8 }}>{t('expr.generate_time')}</p>
+          <p style={{ color: 'var(--ink-faint)', fontSize: 11, textAlign: 'center', marginTop: 8 }}>{t('expr.generate_time')}</p>
         </>)}
 
         {/* ===== GENERATING: progress ===== */}
         {phase === 'generating' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px',
-              border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#7c4dff',
+              border: '3px solid var(--ink-line)', borderTopColor: '#7c4dff',
               animation: 'spin 0.8s linear infinite' }} />
-            <p style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4 }}>
+            <p style={{ color: 'var(--ink)', fontSize: 16, marginBottom: 8 }}>{t('expr.generating')}</p>
+            <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 4 }}>
               {t(`expr.step.${step}`) !== `expr.step.${step}` ? t(`expr.step.${step}`) : progress}
             </p>
             {phaseTotal > 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginBottom: 8 }}>
+              <p style={{ color: 'var(--ink-faint)', fontSize: 11, marginBottom: 8 }}>
                 ({phaseCompleted}/{phaseTotal})
               </p>
             )}
-            <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)' }}>
+            <div style={{ width: '80%', margin: '0 auto', height: 6, borderRadius: 3, background: 'rgba(26,26,28,0.08)' }}>
               <div style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 3,
                 background: 'linear-gradient(90deg, #7c4dff, #448aff)', transition: 'width 0.5s ease' }} />
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>{step}/{totalSteps}</p>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 12 }}>{t('expr.generating_wait')}</p>
+            <p style={{ color: 'var(--ink-faint)', fontSize: 11, marginTop: 4 }}>{step}/{totalSteps}</p>
+            <p style={{ color: 'var(--ink-faint)', fontSize: 11, marginTop: 12 }}>{t('expr.generating_wait')}</p>
           </div>
         )}
 
         {/* ===== PREVIEW: always show when data exists ===== */}
         {phase === 'preview' && previewData && (<>
-          <h3 style={{ color: '#fff', fontSize: 18, marginBottom: 12, textAlign: 'center' }}>{t('expr.preview_title')}</h3>
+          <h3 style={{ color: 'var(--ink)', fontSize: 18, marginBottom: 12, textAlign: 'center', fontFamily: 'var(--font-display)' }}>{t('expr.preview_title')}</h3>
 
           {/* Status badge */}
           {isActive && (
@@ -674,14 +677,14 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           )}
 
           <div style={{ width: 160, height: 160, margin: '0 auto 12px', borderRadius: 16, overflow: 'hidden',
-            background: 'rgba(255,255,255,0.05)', border: '2px solid rgba(124,77,255,0.3)' }}>
+            background: 'rgba(26,26,28,0.03)', border: '2px solid rgba(124,77,255,0.4)' }}>
             {isVideoPreview ? (
               <video ref={previewVidRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
             ) : (
               <img ref={previewImgRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
             )}
           </div>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
+          <p style={{ color: 'var(--ink-soft)', fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
             {t(`expr.emotion.${previewEmotion}`)}
           </p>
 
@@ -690,13 +693,14 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
               <div key={emo} style={{ position: 'relative' }}>
                 <button onClick={() => setPreviewEmotion(emo)} style={{
                   width: '100%', padding: '8px 4px', borderRadius: 10, border: 'none',
-                  background: previewEmotion === emo ? 'rgba(124,77,255,0.3)' : 'rgba(255,255,255,0.05)',
-                  color: '#fff', cursor: 'pointer', fontSize: 18, textAlign: 'center',
+                  background: previewEmotion === emo ? 'rgba(124,77,255,0.18)' : 'rgba(26,26,28,0.04)',
+                  color: 'var(--ink)', cursor: 'pointer', fontSize: 18, textAlign: 'center',
                   outline: previewEmotion === emo ? '2px solid rgba(124,77,255,0.5)' : 'none',
                   opacity: regeneratingEmotion === emo ? 0.4 : 1,
+                  fontFamily: 'var(--font-body)',
                 }}>
                   {EMOJI[emo]}
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{t(`expr.emotion.${emo}`)}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-soft)', marginTop: 2 }}>{t(`expr.emotion.${emo}`)}</div>
                 </button>
                 {/* Spinner overlay while regenerating */}
                 {regeneratingEmotion === emo && (
@@ -734,7 +738,7 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           {/* History — saved previously generated portraits */}
           {history.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 8 }}>
+              <div style={{ color: 'var(--ink-soft)', fontSize: 12, marginBottom: 8 }}>
                 {t('expr.history_title')}
               </div>
               <div style={{
@@ -752,8 +756,8 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
                     <div key={entry.id} style={{
                       position: 'relative', flexShrink: 0,
                       width: 64, height: 64, borderRadius: 10, overflow: 'hidden',
-                      border: isCurrent ? '2px solid #7c4dff' : '2px solid rgba(255,255,255,0.1)',
-                      cursor: 'pointer', background: 'rgba(255,255,255,0.05)',
+                      border: isCurrent ? '2px solid #7c4dff' : '2px solid var(--ink-line)',
+                      cursor: 'pointer', background: 'rgba(26,26,28,0.03)',
                     }}
                     onClick={() => handleRestoreHistory(entry)}
                     title={new Date(entry.created_at).toLocaleString()}
@@ -800,10 +804,11 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
           </div>
 
           <button onClick={handleRedo} disabled={!!regeneratingEmotion} style={{
-            width: '100%', padding: '10px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-            background: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 13,
+            width: '100%', padding: '10px', borderRadius: 12, border: '1px solid var(--ink-line)',
+            background: 'none', color: 'var(--ink-soft)', fontSize: 13,
             cursor: regeneratingEmotion ? 'not-allowed' : 'pointer',
             opacity: regeneratingEmotion ? 0.4 : 1,
+            fontFamily: 'var(--font-body)',
           }}>
             {t('expr.preview_redo')}
           </button>
@@ -816,11 +821,13 @@ export default function ExpressionSetupModal({ isOpen, onClose }: ExpressionSetu
             <p style={{ color: '#ff5252', fontSize: 15, marginBottom: 8 }}>{error}</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button onClick={() => { setPhase('edit'); localStorage.removeItem(JOB_KEY); }} style={{
-                padding: '10px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-                background: 'none', color: '#fff', fontSize: 13, cursor: 'pointer',
+                padding: '10px 20px', borderRadius: 12, border: '1px solid var(--ink-line)',
+                background: 'none', color: 'var(--ink)', fontSize: 13, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
               }}>{t('expr.error_retry')}</button>
               <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 12, border: 'none',
-                background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: 13, cursor: 'pointer',
+                background: 'rgba(26,26,28,0.08)', color: 'var(--ink-soft)', fontSize: 13, cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
               }}>{t('expr.error_close')}</button>
             </div>
           </div>

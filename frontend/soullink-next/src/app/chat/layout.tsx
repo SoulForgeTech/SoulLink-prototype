@@ -30,6 +30,7 @@ import {
 import { WORKSPACE } from '@/lib/api/endpoints';
 import AuthGuard from '@/components/auth/AuthGuard';
 import Sidebar from '@/components/sidebar/Sidebar';
+import '@/styles/diary.css';
 
 // Modals — lazy loaded (not needed on initial render)
 const SettingsModal = dynamic(() => import('@/components/modals/SettingsModal'), { ssr: false });
@@ -231,6 +232,7 @@ export default function ChatLayout({
   // Background — matches original .bg-layer (child of #app, not .main-content)
   const chatBackground = useAppSelector((s) => s.settings.chatBackground);
   const customBackgroundUrl = useAppSelector((s) => s.settings.customBackgroundUrl);
+  const theme = useAppSelector((s) => s.settings.theme);
   const backgroundUrl = useMemo(() => {
     if (chatBackground === 'custom' && customBackgroundUrl) return customBackgroundUrl;
     const bg = BACKGROUNDS.find((b) => b.id === chatBackground);
@@ -333,10 +335,13 @@ export default function ChatLayout({
   return (
     <AuthGuard>
       <VoiceCallProvider>
-      {/* Original #app container */}
+      {/* Original #app container. `data-theme` switches between the
+          diary-paper default and the legacy frosted-glass look — see
+          [data-theme="glass"] overrides in src/styles/diary.css. */}
       <div
         id="app"
-        className="active"
+        className="active diary-scope"
+        data-theme={theme}
         style={{
           display: 'flex',
           overflow: 'hidden',

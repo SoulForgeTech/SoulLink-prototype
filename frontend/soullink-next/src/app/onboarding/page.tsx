@@ -10,10 +10,14 @@
  * Each step renders a dedicated component that advances the step when done.
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { setOnboardingStep } from '@/store/personalitySlice';
+import { setLanguage } from '@/store/settingsSlice';
+import { useAuthFetch } from '@/hooks/useAuthFetch';
+import { updateSettings } from '@/lib/api/user';
+import type { Language } from '@/types';
 
 import PersonalityQuestions from '@/components/onboarding/PersonalityQuestions';
 import TarotCards from '@/components/onboarding/TarotCards';
@@ -51,10 +55,18 @@ function getStepIndex(step: string, steps: readonly string[]): number {
 export default function OnboardingPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const authFetch = useAuthFetch();
   const step = useAppSelector((s) => s.personality.onboardingStep);
   const isRetake = useAppSelector((s) => s.personality.isRetake);
+  const language = useAppSelector((s) => s.settings.language);
 
   const steps = isRetake ? RETAKE_STEPS : FULL_STEPS;
+
+  const handleToggleLanguage = useCallback(() => {
+    const next: Language = language === 'en' ? 'zh-CN' : 'en';
+    dispatch(setLanguage(next));
+    updateSettings(authFetch, { language: next }).catch(() => {});
+  }, [dispatch, language, authFetch]);
 
   // Start the flow on mount if step is idle
   useEffect(() => {
@@ -96,19 +108,34 @@ export default function OnboardingPage() {
             zIndex: 50,
             height: '4px',
             width: '100%',
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(26, 26, 28, 0.08)',
           }}
         >
           <div
             style={{
               height: '100%',
-              background: '#6BA3D6',
+              background: 'var(--seal)',
               transition: 'width 0.5s ease-out',
               width: `${progressPercent}%`,
             }}
           />
         </div>
       )}
+
+      {/* Language toggle — fixed top-right, mirrors Sidebar's lang-toggle-btn */}
+      <button
+        onClick={handleToggleLanguage}
+        className="lang-toggle-btn"
+        style={{
+          position: 'fixed',
+          top: 14,
+          right: 16,
+          zIndex: 60,
+        }}
+        title={language === 'en' ? 'Switch to Chinese' : '切换到英文'}
+      >
+        {language === 'en' ? '中文' : 'EN'}
+      </button>
 
       {/* Step content */}
       <div style={{ width: '100%', maxWidth: '32rem' }}>
@@ -128,7 +155,7 @@ export default function OnboardingPage() {
                 width: '32px',
                 height: '32px',
                 border: '2px solid rgba(255, 255, 255, 0.2)',
-                borderTopColor: '#6BA3D6',
+                borderTopColor: 'var(--seal)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }}
