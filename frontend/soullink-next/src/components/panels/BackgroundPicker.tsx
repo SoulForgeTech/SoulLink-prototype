@@ -40,7 +40,7 @@ export default function BackgroundPicker() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
 
-  const [activeTab, setActiveTab] = useState<TabKey>('ink');
+  const [activeTab, setActiveTab] = useState<TabKey>('painting');
 
   const defaultBg = useMemo(() => BACKGROUNDS.find((b) => b.id === 'default'), []);
   const tabBgs = useMemo(() => {

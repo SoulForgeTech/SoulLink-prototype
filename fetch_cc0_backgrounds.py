@@ -52,9 +52,32 @@ IMPRESSIONIST_QUERIES = [
     "haystack", "water lilies", "Giverny",
 ]
 
+# Soft watercolor / luminist / tonalist / plein-air landscape painters.
+# Tighter than IMPRESSIONIST_QUERIES — aim for delicate wash, not impasto.
+WATERCOLOR_QUERIES = [
+    # American luminist / Hudson River / watercolor
+    "Winslow Homer watercolor", "John Singer Sargent watercolor",
+    "Thomas Doughty", "Thomas Moran", "Childe Hassam",
+    "George Inness", "Maxfield Parrish landscape",
+    # French Barbizon / soft impressionist
+    "Camille Corot landscape", "Charles-Francois Daubigny",
+    "Eugene Boudin coast", "Henri-Joseph Harpignies",
+    "Theodore Rousseau landscape",
+    # British watercolor masters
+    "John Sell Cotman", "John Varley", "Peter De Wint",
+    "Joseph Mallord William Turner watercolor",
+    "David Cox landscape",
+    # Tonalist / general
+    "James McNeill Whistler nocturne",
+    "watercolor landscape", "watercolour landscape",
+    "plein air landscape", "tonalist landscape",
+    "marine watercolor", "coastal watercolor",
+]
+
 STYLE_GROUPS = {
     "ink": INK_QUERIES,
     "impressionist": IMPRESSIONIST_QUERIES,
+    "watercolor": WATERCOLOR_QUERIES,
 }
 # Backwards-compat alias used elsewhere in the file
 QUERIES = INK_QUERIES

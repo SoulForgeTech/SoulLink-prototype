@@ -32,7 +32,9 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg07', file: 'marek-piwnicki-pE9RxXqGbd4-unsplash.jpg', thumb: 'images/Background/thumbnails/marek-piwnicki-pE9RxXqGbd4-unsplash.jpg', category: 'photo' },
   { id: 'bg08', file: 'matt-liu-FT7J1SONJA8-unsplash.jpg', thumb: 'images/Background/thumbnails/matt-liu-FT7J1SONJA8-unsplash.jpg', category: 'photo' },
   { id: 'bg09', file: 'mike-hindle-By65zuM4fAc-unsplash.jpg', thumb: 'images/Background/thumbnails/mike-hindle-By65zuM4fAc-unsplash.jpg', category: 'photo' },
-  { id: 'bg10', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', category: 'photo' },
+  // bg10 — Te Papa Tongarewa watercolor (re-categorized from photo; the Unsplash
+  // filename is misleading: this is a 1900s NZ plein-air watercolor).
+  { id: 'bg10', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', category: 'painting' },
   { id: 'bg11', file: 'pascal-debrunner-8xkImX3so8U-unsplash.jpg', thumb: 'images/Background/thumbnails/pascal-debrunner-8xkImX3so8U-unsplash.jpg', category: 'photo' },
   { id: 'bg12', file: 'pexels-nolan-lee-109304063-10259638.jpg', thumb: 'images/Background/thumbnails/pexels-nolan-lee-109304063-10259638.jpg', category: 'photo' },
   { id: 'bg13', file: 'pexels-pauldeetman-2695679.jpg', thumb: 'images/Background/thumbnails/pexels-pauldeetman-2695679.jpg', category: 'photo' },
@@ -40,32 +42,30 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg15', file: 'robert-clark-XKaHnkxBc1w-unsplash.jpg', thumb: 'images/Background/thumbnails/robert-clark-XKaHnkxBc1w-unsplash.jpg', category: 'photo' },
   { id: 'bg16', file: 'shubham-dhage-TXTmUUGuvpQ-unsplash.jpg', thumb: 'images/Background/thumbnails/shubham-dhage-TXTmUUGuvpQ-unsplash.jpg', category: 'photo' },
   { id: 'bg17', file: 'tobias-reich-CI8UPpze-V4-unsplash.jpg', thumb: 'images/Background/thumbnails/tobias-reich-CI8UPpze-V4-unsplash.jpg', category: 'photo' },
-  // Ink (CC0 — CMA Open Access; provenance in manifest.csv)
-  // IDs are sparse on purpose (left over from the 32 → 8 trim).
-  { id: 'bg20', file: 'bg20.jpg', thumb: 'images/Background/thumbnails/bg20.jpg', category: 'ink' },
-  { id: 'bg21', file: 'bg21.jpg', thumb: 'images/Background/thumbnails/bg21.jpg', category: 'ink' },
-  { id: 'bg22', file: 'bg22.jpg', thumb: 'images/Background/thumbnails/bg22.jpg', category: 'ink' },
-  { id: 'bg27', file: 'bg27.jpg', thumb: 'images/Background/thumbnails/bg27.jpg', category: 'ink' },
-  { id: 'bg32', file: 'bg32.jpg', thumb: 'images/Background/thumbnails/bg32.jpg', category: 'ink' },
-  { id: 'bg42', file: 'bg42.jpg', thumb: 'images/Background/thumbnails/bg42.jpg', category: 'ink' },
-  { id: 'bg45', file: 'bg45.jpg', thumb: 'images/Background/thumbnails/bg45.jpg', category: 'ink' },
-  { id: 'bg49', file: 'bg49.jpg', thumb: 'images/Background/thumbnails/bg49.jpg', category: 'ink' },
-  // Impressionist (CC0 — CMA Open Access; provenance in manifest.csv)
-  { id: 'bg50', file: 'bg50.jpg', thumb: 'images/Background/thumbnails/bg50.jpg', category: 'impressionist' },
-  { id: 'bg51', file: 'bg51.jpg', thumb: 'images/Background/thumbnails/bg51.jpg', category: 'impressionist' },
-  { id: 'bg52', file: 'bg52.jpg', thumb: 'images/Background/thumbnails/bg52.jpg', category: 'impressionist' },
-  { id: 'bg53', file: 'bg53.jpg', thumb: 'images/Background/thumbnails/bg53.jpg', category: 'impressionist' },
-  { id: 'bg54', file: 'bg54.jpg', thumb: 'images/Background/thumbnails/bg54.jpg', category: 'impressionist' },
-  { id: 'bg55', file: 'bg55.jpg', thumb: 'images/Background/thumbnails/bg55.jpg', category: 'impressionist' },
-  { id: 'bg56', file: 'bg56.jpg', thumb: 'images/Background/thumbnails/bg56.jpg', category: 'impressionist' },
-  { id: 'bg57', file: 'bg57.jpg', thumb: 'images/Background/thumbnails/bg57.jpg', category: 'impressionist' },
-  { id: 'bg58', file: 'bg58.jpg', thumb: 'images/Background/thumbnails/bg58.jpg', category: 'impressionist' },
-  { id: 'bg59', file: 'bg59.jpg', thumb: 'images/Background/thumbnails/bg59.jpg', category: 'impressionist' },
-  { id: 'bg60', file: 'bg60.jpg', thumb: 'images/Background/thumbnails/bg60.jpg', category: 'impressionist' },
-  { id: 'bg61', file: 'bg61.jpg', thumb: 'images/Background/thumbnails/bg61.jpg', category: 'impressionist' },
-  { id: 'bg62', file: 'bg62.jpg', thumb: 'images/Background/thumbnails/bg62.jpg', category: 'impressionist' },
-  { id: 'bg63', file: 'bg63.jpg', thumb: 'images/Background/thumbnails/bg63.jpg', category: 'impressionist' },
-  { id: 'bg64', file: 'bg64.jpg', thumb: 'images/Background/thumbnails/bg64.jpg', category: 'impressionist' },
+  // Painting (CC0 — CMA Open Access; soft plein-air / watercolor / tonalist).
+  // Sparse IDs reflect prior cull rounds (20-49 = older trims, 50+ = curated).
+  // Provenance per file: public/images/Background/manifest.csv.
+  { id: 'bg50', file: 'bg50.jpg', thumb: 'images/Background/thumbnails/bg50.jpg', category: 'painting' },
+  { id: 'bg51', file: 'bg51.jpg', thumb: 'images/Background/thumbnails/bg51.jpg', category: 'painting' },
+  { id: 'bg52', file: 'bg52.jpg', thumb: 'images/Background/thumbnails/bg52.jpg', category: 'painting' },
+  { id: 'bg53', file: 'bg53.jpg', thumb: 'images/Background/thumbnails/bg53.jpg', category: 'painting' },
+  { id: 'bg54', file: 'bg54.jpg', thumb: 'images/Background/thumbnails/bg54.jpg', category: 'painting' },
+  { id: 'bg55', file: 'bg55.jpg', thumb: 'images/Background/thumbnails/bg55.jpg', category: 'painting' },
+  { id: 'bg58', file: 'bg58.jpg', thumb: 'images/Background/thumbnails/bg58.jpg', category: 'painting' },
+  { id: 'bg59', file: 'bg59.jpg', thumb: 'images/Background/thumbnails/bg59.jpg', category: 'painting' },
+  { id: 'bg60', file: 'bg60.jpg', thumb: 'images/Background/thumbnails/bg60.jpg', category: 'painting' },
+  { id: 'bg61', file: 'bg61.jpg', thumb: 'images/Background/thumbnails/bg61.jpg', category: 'painting' },
+  { id: 'bg62', file: 'bg62.jpg', thumb: 'images/Background/thumbnails/bg62.jpg', category: 'painting' },
+  { id: 'bg65', file: 'bg65.jpg', thumb: 'images/Background/thumbnails/bg65.jpg', category: 'painting' },
+  { id: 'bg66', file: 'bg66.jpg', thumb: 'images/Background/thumbnails/bg66.jpg', category: 'painting' },
+  { id: 'bg67', file: 'bg67.jpg', thumb: 'images/Background/thumbnails/bg67.jpg', category: 'painting' },
+  { id: 'bg68', file: 'bg68.jpg', thumb: 'images/Background/thumbnails/bg68.jpg', category: 'painting' },
+  { id: 'bg69', file: 'bg69.jpg', thumb: 'images/Background/thumbnails/bg69.jpg', category: 'painting' },
+  { id: 'bg70', file: 'bg70.jpg', thumb: 'images/Background/thumbnails/bg70.jpg', category: 'painting' },
+  { id: 'bg71', file: 'bg71.jpg', thumb: 'images/Background/thumbnails/bg71.jpg', category: 'painting' },
+  { id: 'bg72', file: 'bg72.jpg', thumb: 'images/Background/thumbnails/bg72.jpg', category: 'painting' },
+  { id: 'bg73', file: 'bg73.jpg', thumb: 'images/Background/thumbnails/bg73.jpg', category: 'painting' },
+  { id: 'bg74', file: 'bg74.jpg', thumb: 'images/Background/thumbnails/bg74.jpg', category: 'painting' },
 ];
 
 // ==================== Ambient Sounds ====================

@@ -327,12 +327,11 @@ export interface FeedbackRequest {
 
 // ==================== UI Constants ====================
 
-export type BackgroundCategory = 'photo' | 'ink' | 'impressionist';
+export type BackgroundCategory = 'painting' | 'photo';
 
 /** Ordered list of tabs to render in BackgroundPicker (left-to-right). */
 export const BACKGROUND_CATEGORIES: BackgroundCategory[] = [
-  'ink',
-  'impressionist',
+  'painting',
   'photo',
 ];
 
