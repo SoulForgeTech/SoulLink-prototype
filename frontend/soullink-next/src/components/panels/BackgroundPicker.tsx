@@ -3,13 +3,17 @@
 /**
  * Background selection panel.
  *
- * Renders as a fixed dropdown panel (slides from right).
+ * Top tab strip filters presets by category (ink / impressionist / photo);
+ * a fourth 'custom' tab hosts the upload tile + the user's last uploaded
+ * background. The `default` brand fallback shows under every tab as the
+ * first thumbnail so users can always reset without changing tabs.
+ *
  * Uses original CSS classes: bg-picker-panel, bg-picker-header,
- * bg-thumb-grid, bg-thumb-item, bg-thumb-label, bg-upload-tile,
- * bg-upload-icon.
+ * bg-picker-tabs, bg-picker-tab, bg-thumb-grid, bg-thumb-item,
+ * bg-thumb-label, bg-upload-tile, bg-upload-icon.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { closePanel } from '@/store/uiSlice';
 import { setChatBackground, setCustomBackgroundUrl } from '@/store/settingsSlice';
@@ -17,6 +21,10 @@ import { BACKGROUNDS } from '@/lib/constants';
 import { uploadBackground, updateSettings } from '@/lib/api/user';
 import { useAuthFetch } from '@/hooks/useAuthFetch';
 import { useT } from '@/hooks/useT';
+import { BACKGROUND_CATEGORIES, type BackgroundCategory } from '@/types';
+
+type TabKey = BackgroundCategory | 'custom';
+const TAB_ORDER: TabKey[] = [...BACKGROUND_CATEGORIES, 'custom'];
 
 // ==================== Component ====================
 
@@ -31,6 +39,14 @@ export default function BackgroundPicker() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
+
+  const [activeTab, setActiveTab] = useState<TabKey>('ink');
+
+  const defaultBg = useMemo(() => BACKGROUNDS.find((b) => b.id === 'default'), []);
+  const tabBgs = useMemo(() => {
+    if (activeTab === 'custom') return [];
+    return BACKGROUNDS.filter((b) => b.category === activeTab);
+  }, [activeTab]);
 
   const handleClose = useCallback(() => {
     dispatch(closePanel('backgroundPicker'));
@@ -106,113 +122,127 @@ export default function BackgroundPicker() {
         fileInputRef.current.value = '';
       }
     },
-    [dispatch, authFetch],
+    [dispatch, authFetch, language],
+  );
+
+  const checkOverlay = (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(107,163,214,0.2)',
+    }}>
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </div>
   );
 
   return (
     <div
-      className={`bg-picker-panel${isOpen ? ' open' : ''}`}
+      className={`bg-picker-panel diary-paper-panel${isOpen ? ' open' : ''}`}
       style={{
         backdropFilter: 'blur(40px) saturate(180%)',
         WebkitBackdropFilter: 'blur(40px) saturate(180%)',
       }}
     >
-      {/* Header — uses .bg-picker-header CSS */}
+      {/* Header */}
       <div className="bg-picker-header">
         <span>{t('bg.picker.title')}</span>
         <button onClick={handleClose} aria-label="Close">✕</button>
       </div>
 
-      {/* Thumbnail grid — uses .bg-thumb-grid CSS (3 columns) */}
-      <div className="bg-thumb-grid">
-        {BACKGROUNDS.map((bg) => {
-          const isSelected = currentBg === bg.id;
+      {/* Tab strip */}
+      <div className="bg-picker-tabs" role="tablist">
+        {TAB_ORDER.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            className={`bg-picker-tab${activeTab === tab ? ' active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {t(`bg.cat.${tab}`)}
+          </button>
+        ))}
+      </div>
 
+      {/* Thumbnail grid */}
+      <div className="bg-thumb-grid">
+        {activeTab !== 'custom' && defaultBg && (
+          <div
+            key={defaultBg.id}
+            className={`bg-thumb-item${currentBg === defaultBg.id ? ' active' : ''}`}
+            onClick={() => handleSelectBackground(defaultBg.id)}
+          >
+            <img src={defaultBg.thumb} alt={defaultBg.label || defaultBg.id} loading="lazy" />
+            {currentBg === defaultBg.id && checkOverlay}
+            <div className="bg-thumb-label">{t(`bg.label.${defaultBg.id}`) || defaultBg.id}</div>
+          </div>
+        )}
+
+        {tabBgs.map((bg) => {
+          const isSelected = currentBg === bg.id;
           return (
             <div
               key={bg.id}
               className={`bg-thumb-item${isSelected ? ' active' : ''}`}
               onClick={() => handleSelectBackground(bg.id)}
             >
-              <img
-                src={bg.thumb}
-                alt={bg.label || bg.id}
-                loading="lazy"
-              />
-              {isSelected && (
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'rgba(107,163,214,0.2)',
-                }}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-              )}
+              <img src={bg.thumb} alt={bg.label || bg.id} loading="lazy" />
+              {isSelected && checkOverlay}
               <div className="bg-thumb-label">{t(`bg.label.${bg.id}`) || bg.id}</div>
             </div>
           );
         })}
 
-        {/* Custom background thumbnail (shown when a custom bg exists) */}
-        {customBgUrl && (
-          <div
-            className={`bg-thumb-item${currentBg === 'custom' ? ' active' : ''}`}
-            onClick={() => handleSelectBackground('custom')}
-          >
-            <img src={customBgUrl} alt="Custom" loading="lazy" />
-            {currentBg === 'custom' && (
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(107,163,214,0.2)',
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+        {/* Custom tab: show user's uploaded thumbnail + upload tile */}
+        {activeTab === 'custom' && (
+          <>
+            {customBgUrl && (
+              <div
+                className={`bg-thumb-item${currentBg === 'custom' ? ' active' : ''}`}
+                onClick={() => handleSelectBackground('custom')}
+              >
+                <img src={customBgUrl} alt="Custom" loading="lazy" />
+                {currentBg === 'custom' && checkOverlay}
+                <div className="bg-thumb-label">{t('bg.custom.label')}</div>
               </div>
             )}
-            <div className="bg-thumb-label">{t('bg.custom.label')}</div>
-          </div>
+            <div
+              className="bg-thumb-item bg-upload-tile"
+              onClick={handleUploadClick}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className="bg-upload-icon"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <div className="bg-thumb-label">{t('bg.upload')}</div>
+            </div>
+          </>
         )}
-
-        {/* Upload custom background tile */}
-        <div
-          className="bg-thumb-item bg-upload-tile"
-          onClick={handleUploadClick}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            className="bg-upload-icon"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <div className="bg-thumb-label">{t('bg.custom.label')}</div>
-        </div>
       </div>
 
       {/* Hidden file input */}
