@@ -20,8 +20,11 @@ export const APP_VERSION = 'v0.2.4-beta';
 // ==================== Chat Backgrounds ====================
 
 export const BACKGROUNDS: BackgroundDef[] = [
-  // Default brand fallback — no category, visible under any tab.
-  { id: 'default', file: 'bg.webp', path: 'images/bg.webp', thumb: 'images/Background/thumbnails/bg.jpg', label: 'Default' },
+  // Default brand fallback — Te Papa Tongarewa watercolor (Otago dunes).
+  // The original anime bg.webp lives at public/images/bg.webp (unused now
+  // but kept on disk in case someone re-adopts it). No category so this
+  // thumbnail appears under every tab as the "default" reset option.
+  { id: 'default', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', label: 'Default' },
   // Photo (Unsplash / Pexels licenses; see manifest if expanded)
   { id: 'bg01', file: 'aditya-anjagi-KZSDCocsOEE-unsplash.jpg', thumb: 'images/Background/thumbnails/aditya-anjagi-KZSDCocsOEE-unsplash.jpg', category: 'photo' },
   { id: 'bg02', file: 'alex-mesmer-6h6O17NjZ_I-unsplash.jpg', thumb: 'images/Background/thumbnails/alex-mesmer-6h6O17NjZ_I-unsplash.jpg', category: 'photo' },
@@ -32,9 +35,9 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg07', file: 'marek-piwnicki-pE9RxXqGbd4-unsplash.jpg', thumb: 'images/Background/thumbnails/marek-piwnicki-pE9RxXqGbd4-unsplash.jpg', category: 'photo' },
   { id: 'bg08', file: 'matt-liu-FT7J1SONJA8-unsplash.jpg', thumb: 'images/Background/thumbnails/matt-liu-FT7J1SONJA8-unsplash.jpg', category: 'photo' },
   { id: 'bg09', file: 'mike-hindle-By65zuM4fAc-unsplash.jpg', thumb: 'images/Background/thumbnails/mike-hindle-By65zuM4fAc-unsplash.jpg', category: 'photo' },
-  // bg10 — Te Papa Tongarewa watercolor (re-categorized from photo; the Unsplash
-  // filename is misleading: this is a 1900s NZ plein-air watercolor).
-  { id: 'bg10', file: 'museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', thumb: 'images/Background/thumbnails/museum-of-new-zealand-te-papa-tongarewa-hFXKUCTWEMI-unsplash.jpg', category: 'painting' },
+  // (bg10 — Te Papa Otago Dunes watercolor — is now the 'default' entry above,
+  // so the dedicated bg10 entry has been retired. localStorage guard catches
+  // stale 'bg10' values and falls back to 'default' which serves the same image.)
   { id: 'bg11', file: 'pascal-debrunner-8xkImX3so8U-unsplash.jpg', thumb: 'images/Background/thumbnails/pascal-debrunner-8xkImX3so8U-unsplash.jpg', category: 'photo' },
   { id: 'bg12', file: 'pexels-nolan-lee-109304063-10259638.jpg', thumb: 'images/Background/thumbnails/pexels-nolan-lee-109304063-10259638.jpg', category: 'photo' },
   { id: 'bg13', file: 'pexels-pauldeetman-2695679.jpg', thumb: 'images/Background/thumbnails/pexels-pauldeetman-2695679.jpg', category: 'photo' },
