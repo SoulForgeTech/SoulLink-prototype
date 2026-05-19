@@ -327,12 +327,24 @@ export interface FeedbackRequest {
 
 // ==================== UI Constants ====================
 
+export type BackgroundCategory = 'photo' | 'ink' | 'impressionist';
+
+/** Ordered list of tabs to render in BackgroundPicker (left-to-right). */
+export const BACKGROUND_CATEGORIES: BackgroundCategory[] = [
+  'ink',
+  'impressionist',
+  'photo',
+];
+
 export interface BackgroundDef {
   id: string;
   file: string;
   path?: string;
   thumb: string;
   label?: string;
+  /** UI category for the BackgroundPicker top tabs. Omit on the
+   *  `default` brand fallback so it shows under whichever tab is open. */
+  category?: BackgroundCategory;
 }
 
 export interface AmbientSoundDef {
