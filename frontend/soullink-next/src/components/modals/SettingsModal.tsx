@@ -27,34 +27,22 @@ import GuestLockOverlay from '@/components/guest/GuestLockOverlay';
 
 // ==================== Inline Style Constants ====================
 
+// Overlay + content material come from shared .diary-modal-scrim +
+// .diary-paper-panel (see styles/diary.css). These style objects hold
+// only layout / size / animation.
 const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
   zIndex: 10000,
-  background: 'rgba(255,255,255,0.1)',
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
 };
 
 const modalContentStyle: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.6)',
-  borderRadius: '20px',
-  background: 'rgba(255,255,255,0.78)',
-  backdropFilter: 'blur(40px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+  borderRadius: 'var(--r-xl)',
   width: 'min(90%, 500px)',
   minWidth: 'min(90%, 500px)',
   height: '85vh',
-  boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  color: '#1a202c',
   animation: 'modalScaleIn 0.25s ease',
-  position: 'relative',
 };
 
 const modalHeaderStyle: CSSProperties = {
@@ -69,7 +57,7 @@ const modalHeaderStyle: CSSProperties = {
 const modalHeaderTitleStyle: CSSProperties = {
   fontSize: '1.2rem',
   fontWeight: 600,
-  color: '#1a202c',
+  color: 'var(--ink)',
   textAlign: 'center',
   marginBottom: 0,
 };
@@ -77,7 +65,7 @@ const modalHeaderTitleStyle: CSSProperties = {
 const settingsTabsStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'center',
-  borderBottom: '1px solid rgba(0,0,0,0.06)',
+  borderBottom: '1px solid var(--ink-line)',
   padding: '0 24px',
   flexShrink: 0,
 };
@@ -86,7 +74,7 @@ const settingsTabBaseStyle: CSSProperties = {
   padding: '10px 12px',
   fontSize: '0.8rem',
   fontWeight: 600,
-  color: '#718096',
+  color: 'var(--ink-faint)',
   borderBottom: '2px solid transparent',
   background: 'none',
   border: 'none',
@@ -104,8 +92,8 @@ const settingsTabBaseStyle: CSSProperties = {
 
 const settingsTabActiveStyle: CSSProperties = {
   ...settingsTabBaseStyle,
-  color: '#6BA3D6',
-  borderBottomColor: '#6BA3D6',
+  color: 'var(--seal)',
+  borderBottomColor: 'var(--seal)',
 };
 
 const modalBodyStyle: CSSProperties = {
@@ -119,7 +107,7 @@ const modalBodyStyle: CSSProperties = {
 
 const modalFooterStyle: CSSProperties = {
   padding: '16px 24px',
-  borderTop: '1px solid rgba(0,0,0,0.06)',
+  borderTop: '1px solid var(--ink-line)',
   display: 'flex',
   justifyContent: 'flex-end',
   gap: '12px',
@@ -128,7 +116,7 @@ const modalFooterStyle: CSSProperties = {
 
 const btnSecondaryStyle: CSSProperties = {
   padding: '10px 20px',
-  borderRadius: '8px',
+  borderRadius: 'var(--r-sm)',
   fontSize: '0.95rem',
   fontWeight: 500,
   background: 'rgba(0,0,0,0.04)',
@@ -140,12 +128,12 @@ const btnSecondaryStyle: CSSProperties = {
 
 const btnPrimaryStyle: CSSProperties = {
   padding: '10px 20px',
-  borderRadius: '8px',
+  borderRadius: 'var(--r-sm)',
   fontSize: '0.95rem',
   fontWeight: 500,
-  background: '#6BA3D6',
+  background: 'var(--seal)',
   border: 'none',
-  color: 'white',
+  color: '#FFFAF0',
   cursor: 'pointer',
   flex: 1,
 };
@@ -162,7 +150,7 @@ const formInputStyle: CSSProperties = {
   padding: '10px 14px',
   background: 'rgba(255,255,255,0.5)',
   border: '1px solid rgba(0,0,0,0.1)',
-  borderRadius: '8px',
+  borderRadius: 'var(--r-sm)',
   color: '#1a202c',
   fontSize: '0.95rem',
   width: '100%',
@@ -184,7 +172,7 @@ const formGroupStyle: CSSProperties = {
 // ==================== Constants ====================
 
 const AVATAR_COLORS = [
-  '#6BA3D6', '#9DC4E6', '#7B68EE', '#DDA0DD',
+  'var(--seal)', '#9DC4E6', '#7B68EE', '#DDA0DD',
   '#F08080', '#FFB347', '#77DD77', '#40E0D0',
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
 ];
@@ -720,11 +708,13 @@ export default function SettingsModal() {
 
   return (
     <div
+      className="diary-modal-scrim diary-scope"
       style={overlayStyle}
       onClick={handleClose}
     >
       {/* Modal Content */}
       <div
+        className="diary-paper-panel"
         style={modalContentStyle}
         onClick={(e) => e.stopPropagation()}
       >
@@ -836,7 +826,7 @@ export default function SettingsModal() {
                   maxLength={30}
                   style={isGuest ? formInputDisabledStyle : formInputStyle}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#6BA3D6';
+                    e.currentTarget.style.borderColor = 'var(--seal)';
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
                   }}
                   onBlur={(e) => {
@@ -902,7 +892,7 @@ export default function SettingsModal() {
                           });
                       }}
                       style={{
-                        flex: 1, padding: '10px', borderRadius: 8,
+                        flex: 1, padding: '10px', borderRadius: 'var(--r-sm)',
                         border: '1px solid rgba(107,163,214,0.3)',
                         background: 'rgba(107,163,214,0.06)',
                         color: '#4a5568', fontSize: '0.8rem', fontWeight: 500,
@@ -929,7 +919,7 @@ export default function SettingsModal() {
                           });
                       }}
                       style={{
-                        flex: 1, padding: '10px', borderRadius: 8,
+                        flex: 1, padding: '10px', borderRadius: 'var(--r-sm)',
                         border: '1px solid rgba(107,163,214,0.3)',
                         background: 'rgba(107,163,214,0.06)',
                         color: '#4a5568', fontSize: '0.8rem', fontWeight: 500,
@@ -993,7 +983,7 @@ export default function SettingsModal() {
                   }}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: 10,
+                    borderRadius: 'var(--r-sm)',
                     border: '1px solid rgba(124,77,255,0.3)',
                     background: 'linear-gradient(135deg, rgba(124,77,255,0.08), rgba(68,138,255,0.05))',
                     color: '#7c4dff',
@@ -1024,17 +1014,17 @@ export default function SettingsModal() {
                         style={{
                           flex: 1,
                           padding: '12px 16px',
-                          borderRadius: '12px',
+                          borderRadius: 'var(--r-md)',
                           fontSize: '15px',
                           fontWeight: 600,
                           textAlign: 'center',
                           border: isSelected
-                            ? '2px solid #6BA3D6'
+                            ? '2px solid var(--seal)'
                             : '2px solid rgba(0,0,0,0.06)',
                           background: isSelected
                             ? 'rgba(107,163,214,0.08)'
                             : 'rgba(255,255,255,0.5)',
-                          color: isSelected ? '#6BA3D6' : '#4a5568',
+                          color: isSelected ? 'var(--seal)' : '#4a5568',
                           cursor: 'pointer',
                           transition: 'all 0.2s',
                           boxShadow: isSelected
@@ -1059,17 +1049,17 @@ export default function SettingsModal() {
                       style={{
                         flex: 1,
                         padding: '8px 12px',
-                        borderRadius: '10px',
+                        borderRadius: 'var(--r-sm)',
                         fontSize: '13px',
                         fontWeight: 600,
                         textAlign: 'center',
                         border: localRelationship === opt.value
-                          ? '2px solid #6BA3D6'
+                          ? '2px solid var(--seal)'
                           : '2px solid rgba(0,0,0,0.06)',
                         background: localRelationship === opt.value
                           ? 'rgba(107,163,214,0.08)'
                           : 'rgba(255,255,255,0.5)',
-                        color: localRelationship === opt.value ? '#6BA3D6' : '#4a5568',
+                        color: localRelationship === opt.value ? 'var(--seal)' : '#4a5568',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                       }}
@@ -1095,17 +1085,17 @@ export default function SettingsModal() {
                           alignItems: 'center',
                           gap: 8,
                           padding: '10px 14px',
-                          borderRadius: '10px',
+                          borderRadius: 'var(--r-sm)',
                           fontSize: '13px',
                           fontWeight: 500,
                           textAlign: 'left',
                           border: isSelected
-                            ? '2px solid #6BA3D6'
+                            ? '2px solid var(--seal)'
                             : '2px solid rgba(0,0,0,0.06)',
                           background: isSelected
                             ? 'rgba(107,163,214,0.08)'
                             : 'rgba(255,255,255,0.5)',
-                          color: isSelected ? '#6BA3D6' : '#4a5568',
+                          color: isSelected ? 'var(--seal)' : '#4a5568',
                           cursor: localPersonaActive ? 'not-allowed' : 'pointer',
                           transition: 'all 0.2s',
                         }}
@@ -1143,7 +1133,7 @@ export default function SettingsModal() {
                   justifyContent: 'space-between',
                   padding: '12px 16px',
                   background: 'rgba(107,163,214,0.06)',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--r-md)',
                   gap: 12,
                   fontSize: '14px',
                   color: '#4a5568',
@@ -1155,8 +1145,8 @@ export default function SettingsModal() {
                       position: 'relative',
                       width: 44,
                       height: 24,
-                      borderRadius: 12,
-                      background: localTts ? '#6BA3D6' : '#CBD5E0',
+                      borderRadius: 'var(--r-md)',
+                      background: localTts ? 'var(--seal)' : '#CBD5E0',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'background 0.2s',
@@ -1187,7 +1177,7 @@ export default function SettingsModal() {
                     justifyContent: 'space-between',
                     padding: '10px 14px',
                     background: 'rgba(107,163,214,0.08)',
-                    borderRadius: '10px',
+                    borderRadius: 'var(--r-sm)',
                     marginTop: 10,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1200,13 +1190,13 @@ export default function SettingsModal() {
                       <span style={{
                         fontSize: '10px',
                         padding: '2px 8px',
-                        borderRadius: 4,
+                        borderRadius: 'var(--r-xs)',
                         fontWeight: 500,
                         background: voicePresets.some(v => v.id === localVoiceId)
                           ? 'rgba(107,163,214,0.15)'
                           : '#E8F5E9',
                         color: voicePresets.some(v => v.id === localVoiceId)
-                          ? '#6BA3D6'
+                          ? 'var(--seal)'
                           : '#2E7D32',
                       }}>
                         {voicePresets.some(v => v.id === localVoiceId)
@@ -1219,12 +1209,12 @@ export default function SettingsModal() {
                         onClick={() => handleVoicePreview(localVoiceId)}
                         style={{
                           padding: '4px 12px',
-                          borderRadius: '6px',
+                          borderRadius: 'var(--r-xs)',
                           fontSize: '0.75rem',
                           fontWeight: 500,
                           background: 'rgba(107,163,214,0.1)',
                           border: '1px solid rgba(107,163,214,0.2)',
-                          color: '#6BA3D6',
+                          color: 'var(--seal)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -1274,16 +1264,16 @@ export default function SettingsModal() {
                       }}
                       style={{
                         padding: '10px 12px',
-                        borderRadius: '10px',
+                        borderRadius: 'var(--r-sm)',
                         fontSize: '0.85rem',
                         textAlign: 'left',
                         border: localVoiceId === voice.id
-                          ? '2px solid #6BA3D6'
+                          ? '2px solid var(--seal)'
                           : '2px solid transparent',
                         background: localVoiceId === voice.id
                           ? 'rgba(107,163,214,0.12)'
                           : 'rgba(107,163,214,0.06)',
-                        color: localVoiceId === voice.id ? '#6BA3D6' : '#4a5568',
+                        color: localVoiceId === voice.id ? 'var(--seal)' : '#4a5568',
                         fontWeight: localVoiceId === voice.id ? 500 : 400,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
@@ -1308,7 +1298,7 @@ export default function SettingsModal() {
                         placeholder={t('settings.voice.search.placeholder')}
                         style={{ ...formInputStyle, flex: 1, fontSize: '0.8rem', padding: '8px 12px' }}
                         onFocus={(e) => {
-                          e.currentTarget.style.borderColor = '#6BA3D6';
+                          e.currentTarget.style.borderColor = 'var(--seal)';
                           e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
                         }}
                         onBlur={(e) => {
@@ -1338,7 +1328,7 @@ export default function SettingsModal() {
                         maxHeight: 240,
                         overflowY: 'auto',
                         border: '1px solid rgba(0,0,0,0.06)',
-                        borderRadius: 10,
+                        borderRadius: 'var(--r-sm)',
                       }}>
                         {voiceSearchResults.map((voice, idx) => {
                           const avatarUrl = `https://public-platform.r2.fish.audio/cdn-cgi/image/format=webp,width=64/coverimage/${voice.id}`;
@@ -1401,10 +1391,10 @@ export default function SettingsModal() {
                                 }}
                                 style={{
                                   padding: '4px 12px',
-                                  border: localVoiceId === voice.id ? '1.5px solid #6BA3D6' : '1.5px solid #6BA3D6',
-                                  borderRadius: 8,
-                                  background: localVoiceId === voice.id ? '#6BA3D6' : 'transparent',
-                                  color: localVoiceId === voice.id ? 'white' : '#6BA3D6',
+                                  border: localVoiceId === voice.id ? '1.5px solid var(--seal)' : '1.5px solid var(--seal)',
+                                  borderRadius: 'var(--r-sm)',
+                                  background: localVoiceId === voice.id ? 'var(--seal)' : 'transparent',
+                                  color: localVoiceId === voice.id ? 'white' : 'var(--seal)',
                                   fontSize: 12,
                                   cursor: 'pointer',
                                   transition: 'all 0.2s',
@@ -1413,14 +1403,14 @@ export default function SettingsModal() {
                                 }}
                                 onMouseEnter={(e) => {
                                   if (localVoiceId !== voice.id) {
-                                    e.currentTarget.style.background = '#6BA3D6';
+                                    e.currentTarget.style.background = 'var(--seal)';
                                     e.currentTarget.style.color = 'white';
                                   }
                                 }}
                                 onMouseLeave={(e) => {
                                   if (localVoiceId !== voice.id) {
                                     e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = '#6BA3D6';
+                                    e.currentTarget.style.color = 'var(--seal)';
                                   }
                                 }}
                               >
@@ -1473,7 +1463,7 @@ export default function SettingsModal() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: 12,
-                borderRadius: '8px',
+                borderRadius: 'var(--r-sm)',
                 background: 'rgba(255,255,255,0.5)',
                 border: '1px solid rgba(0,0,0,0.1)',
               }}>
@@ -1496,8 +1486,8 @@ export default function SettingsModal() {
                     position: 'relative',
                     width: 44,
                     height: 24,
-                    borderRadius: 12,
-                    background: localKb ? '#6BA3D6' : '#CBD5E0',
+                    borderRadius: 'var(--r-md)',
+                    background: localKb ? 'var(--seal)' : '#CBD5E0',
                     border: 'none',
                     cursor: 'pointer',
                     flexShrink: 0,
@@ -1524,7 +1514,7 @@ export default function SettingsModal() {
               <div style={{
                 ...formGroupStyle,
                 padding: 12,
-                borderRadius: '8px',
+                borderRadius: 'var(--r-sm)',
                 background: 'rgba(255,255,255,0.5)',
                 border: '1px solid rgba(0,0,0,0.1)',
               }}>
@@ -1555,8 +1545,8 @@ export default function SettingsModal() {
                           alignItems: 'center',
                           gap: 2,
                           padding: '8px 4px',
-                          borderRadius: 8,
-                          border: `1px solid ${active ? '#6BA3D6' : 'rgba(0,0,0,0.1)'}`,
+                          borderRadius: 'var(--r-sm)',
+                          border: `1px solid ${active ? 'var(--seal)' : 'rgba(0,0,0,0.1)'}`,
                           background: active ? 'rgba(107,163,214,0.12)' : 'white',
                           color: active ? '#2B6CB0' : '#4A5568',
                           fontSize: '0.72rem',
@@ -1580,7 +1570,7 @@ export default function SettingsModal() {
                   <div style={{
                     marginBottom: 8,
                     padding: '8px 12px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--r-sm)',
                     background: '#F0FFF4',
                     border: '1px solid #C6F6D5',
                     fontSize: '0.75rem',
@@ -1602,7 +1592,7 @@ export default function SettingsModal() {
                     fontFamily: 'inherit',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#6BA3D6';
+                    e.currentTarget.style.borderColor = 'var(--seal)';
                     e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,163,214,0.15)';
                   }}
                   onBlur={(e) => {
@@ -1659,7 +1649,7 @@ export default function SettingsModal() {
                   <div style={{
                     marginTop: 12,
                     padding: 12,
-                    borderRadius: '8px',
+                    borderRadius: 'var(--r-sm)',
                     background: 'rgba(255,255,255,0.5)',
                     border: '1px solid rgba(0,0,0,0.1)',
                   }}>
@@ -1721,7 +1711,7 @@ export default function SettingsModal() {
                     style={{
                       marginTop: 8,
                       padding: '6px 12px',
-                      borderRadius: '6px',
+                      borderRadius: 'var(--r-xs)',
                       fontSize: '0.75rem',
                       color: '#E53E3E',
                       background: 'rgba(229,62,62,0.05)',
@@ -1762,7 +1752,7 @@ export default function SettingsModal() {
                     onClick={() => loreFileRef.current?.click()}
                     disabled={loreDocs.length >= maxLoreDocs || loreSubmitting}
                     style={{
-                      flex: 1, padding: '10px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                      flex: 1, padding: '10px 12px', borderRadius: 'var(--r-sm)', fontSize: '13px', fontWeight: 500,
                       color: '#4a5568', background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(0,0,0,0.06)',
                       cursor: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 'not-allowed' : 'pointer',
                       opacity: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 0.4 : 1,
@@ -1791,7 +1781,7 @@ export default function SettingsModal() {
                     }}
                     disabled={loreDocs.length >= maxLoreDocs || loreSubmitting}
                     style={{
-                      flex: 1, padding: '10px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                      flex: 1, padding: '10px 12px', borderRadius: 'var(--r-sm)', fontSize: '13px', fontWeight: 500,
                       color: '#4a5568', background: 'rgba(255,255,255,0.6)', border: '2px solid rgba(0,0,0,0.06)',
                       cursor: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 'not-allowed' : 'pointer',
                       opacity: (loreDocs.length >= maxLoreDocs || loreSubmitting) ? 0.4 : 1,
@@ -1819,7 +1809,7 @@ export default function SettingsModal() {
                       <div
                         key={doc.id}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: '8px',
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--r-sm)',
                           background: doc.status === 'ready' ? '#F0FFF4' : doc.status === 'processing' ? '#FFFFF0' : '#FFF5F5',
                           border: doc.status === 'ready' ? '1px solid #C6F6D5' : doc.status === 'processing' ? '1px solid #FEFCBF' : '1px solid #FED7D7',
                         }}
@@ -1861,7 +1851,7 @@ export default function SettingsModal() {
                 <label style={formLabelStyle}>{t('settings.importChat')}</label>
                 <div style={{
                   padding: 12,
-                  borderRadius: '8px',
+                  borderRadius: 'var(--r-sm)',
                   background: 'rgba(255,255,255,0.5)',
                   border: '1px solid rgba(0,0,0,0.1)',
                 }}>
@@ -1873,7 +1863,7 @@ export default function SettingsModal() {
                     style={{
                       width: '100%',
                       padding: '8px',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--r-sm)',
                       fontSize: '0.75rem',
                       fontWeight: 500,
                       color: '#4a5568',
@@ -1924,7 +1914,7 @@ export default function SettingsModal() {
             onMouseLeave={() => setPrimaryHover(false)}
             style={{
               ...btnPrimaryStyle,
-              background: primaryHover ? '#5A92C5' : '#6BA3D6',
+              background: primaryHover ? '#5A92C5' : 'var(--seal)',
             }}
           >
             {saving ? (language === 'zh-CN' ? '保存中...' : 'Saving...') : t('settings.save')}

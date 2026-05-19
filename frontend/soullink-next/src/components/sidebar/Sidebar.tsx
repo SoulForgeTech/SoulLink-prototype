@@ -122,7 +122,7 @@ export default function Sidebar({
 
   // ---- User avatar ----
   const userInitial = user?.name?.[0]?.toUpperCase() || '?';
-  const avatarColor = user?.avatar_color || '#6BA3D6';
+  const avatarColor = user?.avatar_color || 'var(--seal)';
 
   // ---- Render ----
   return (
@@ -143,13 +143,9 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar panel */}
+      {/* Sidebar panel — paper material via shared .diary-paper-panel */}
       <aside
-        className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}
-        style={{
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        }}
+        className={`sidebar diary-paper-panel ${mobileOpen ? 'mobile-open' : ''}`}
       >
         {/* ---- Header ---- */}
         <div className="sidebar-header">
@@ -191,7 +187,7 @@ export default function Sidebar({
             <div
               style={{
                 textAlign: 'center',
-                color: 'rgba(255,255,255,0.3)',
+                color: 'var(--ink-faint)',
                 fontSize: '0.8rem',
                 paddingTop: 32,
                 paddingBottom: 32,
@@ -229,7 +225,7 @@ export default function Sidebar({
         <div
           style={{
             padding: 16,
-            borderTop: '1px solid rgba(255,255,255,0.15)',
+            borderTop: '1px solid var(--ink-line)',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -281,7 +277,7 @@ export default function Sidebar({
               style={{
                 fontSize: '0.9rem',
                 fontWeight: 500,
-                color: '#ffffff',
+                color: 'var(--ink)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -292,7 +288,7 @@ export default function Sidebar({
             <div
               style={{
                 fontSize: '0.75rem',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'var(--ink-faint)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -307,22 +303,22 @@ export default function Sidebar({
             onClick={handleLogout}
             style={{
               padding: '6px 12px',
-              borderRadius: 8,
-              color: 'rgba(255,255,255,0.9)',
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: 'var(--r-sm)',
+              color: 'var(--ink-soft)',
+              background: 'rgba(26, 26, 28, 0.05)',
+              border: '1px solid var(--ink-line)',
               cursor: 'pointer',
               fontSize: '0.8rem',
               transition: 'all 0.2s',
             }}
             title={t('sidebar.logout')}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
-              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.background = 'rgba(26, 26, 28, 0.10)';
+              e.currentTarget.style.color = 'var(--ink)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-              e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+              e.currentTarget.style.background = 'rgba(26, 26, 28, 0.05)';
+              e.currentTarget.style.color = 'var(--ink-soft)';
             }}
           >
             {t('sidebar.logout')}
@@ -367,9 +363,9 @@ function SidebarLink({
         display: 'block',
         width: '100%',
         padding: '8px 16px',
-        color: 'rgba(255,255,255,0.6)',
+        color: 'var(--ink-soft)',
         fontSize: 13,
-        borderRadius: 8,
+        borderRadius: 'var(--r-sm)',
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
@@ -377,12 +373,12 @@ function SidebarLink({
         transition: 'all 0.2s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-        e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+        e.currentTarget.style.background = 'rgba(26, 26, 28, 0.05)';
+        e.currentTarget.style.color = 'var(--ink)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+        e.currentTarget.style.color = 'var(--ink-soft)';
       }}
     >
       <span style={{ marginRight: 8 }}>{icon}</span>

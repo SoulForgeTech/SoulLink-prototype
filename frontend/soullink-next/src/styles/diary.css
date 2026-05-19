@@ -1,0 +1,255 @@
+/* ============================================================
+   SoulLink — Diary design tokens (SHARED: auth + chat)
+
+   Single source of truth for the diary paper material. The
+   tokens, full-page overlay layers, and panel-material utility
+   below are consumed by BOTH /login (whole-page paper) and
+   /chat (panel material on photo backgrounds).
+
+   Scoped under `.auth-scope` (the existing login gate class)
+   AND `.diary-scope` (added to chat's #app container), so a
+   page must opt in by carrying one of those classes. Tokens
+   cannot leak into routes that don't opt in.
+
+   DARK is the default palette. Light variant via
+   @media (prefers-color-scheme: light).
+
+   Ported verbatim from
+   `frontend/soullink-next/src/app/login/_styles/diary-tokens.css`.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&family=Long+Cang&display=swap');
+
+/* /login needs natural document scroll for the signup form.
+   /chat does its own internal scrolling so this :has() rule
+   is a no-op there. */
+html:has(.auth-scope),
+body:has(.auth-scope) {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+:where(.auth-scope, .diary-scope) {
+  /* === DARK (default) === */
+  --paper: #1A1814;
+  --paper-deep: #221F1A;
+  --paper-shadow: rgba(0, 0, 0, 0.4);
+  /* Panel-only translucent paper — glass fusion (≥0.93 alpha floor) */
+  --paper-translucent: rgba(26, 24, 20, 0.93);
+
+  --ink: #EBE3D2;
+  --ink-soft: rgba(235, 227, 210, 0.72);
+  --ink-faint: rgba(235, 227, 210, 0.58);
+  --ink-line: rgba(235, 227, 210, 0.32);
+
+  --sepia: #C9A87C;
+  --pen-blue: #8FA9C4;
+  --seal: #D85060;
+  --faded-red: #D85060;
+  --seal-strong: #B83A4A;
+  --kraft: #D4B896;
+  --amber: #D97742;
+  --amber-soft: #EAA76A;
+
+  --grain-opacity: 0.06;
+
+  /* Radius scale — single source of truth for corners across the app.
+     Buttons → --r-sm. Cards / list items → --r-md. Containers / modals
+     → --r-xl. Pill chips → --r-pill. Avoid hand-rolled px values. */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  --washi-pink: rgba(230, 168, 165, 0.45);
+  --washi-mint: rgba(184, 207, 173, 0.40);
+  --washi-kraft: rgba(201, 168, 124, 0.55);
+  --washi-blue: rgba(133, 162, 188, 0.45);
+
+  --font-display: var(--font-fraunces), 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, 'Times New Roman', serif;
+  --font-body: var(--font-crimson), var(--font-fraunces), 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, serif;
+  --font-hand: var(--font-caveat), 'Long Cang', 'Bradley Hand', 'STKaiti', 'KaiTi', cursive;
+  --font-mono: var(--font-plex-mono), 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', ui-monospace, Menlo, monospace;
+
+  /* Grain SVG tiles exposed as vars so the full-page <DiaryBackground />
+     overlay AND the bounded .diary-paper-panel utility below consume
+     the SAME image — one source. */
+  --paper-grain-1: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  --paper-grain-2: none;
+  --paper-grain-blend: screen;
+  --paper-grain-layer-opacity: calc(var(--grain-opacity) * 1.6);
+}
+
+@media (prefers-color-scheme: light) {
+  :where(.auth-scope, .diary-scope) {
+    --paper: #F4EFE6;
+    --paper-deep: #EAE3D2;
+    --paper-shadow: rgba(42, 38, 32, 0.08);
+    --paper-translucent: rgba(244, 239, 230, 0.93);
+
+    --ink: #2A2620;
+    --ink-soft: rgba(42, 38, 32, 0.72);
+    --ink-faint: rgba(42, 38, 32, 0.58);
+    --ink-line: rgba(42, 38, 32, 0.32);
+
+    --sepia: #8B6F47;
+    --pen-blue: #3A5A78;
+    --seal: #B8312F;
+    --faded-red: #B8312F;
+    --seal-strong: #9E2A29;
+    --kraft: #C9A87C;
+    --amber: #D97742;
+    --amber-soft: #EAA76A;
+
+    --grain-opacity: 0.045;
+
+    --washi-pink: rgba(230, 168, 165, 0.78);
+    --washi-mint: rgba(184, 207, 173, 0.78);
+    --washi-kraft: rgba(201, 168, 124, 0.85);
+    --washi-blue: rgba(133, 162, 188, 0.72);
+
+    /* Light: two-layer xuan paper effect — alphas bumped per user feedback. */
+    --paper-grain-1: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'><filter id='g1'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.12 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g1)'/></svg>");
+    --paper-grain-2: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'><filter id='g2'><feTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g2)'/></svg>");
+    --paper-grain-blend: multiply;
+    --paper-grain-layer-opacity: 1;
+  }
+}
+
+/* ---------- Outer shell (auth-only) ---------- */
+.auth-scope {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background .5s ease, color .5s ease;
+}
+
+/* ---------- Full-viewport overlay layers (auth uses both) ----------
+   Mounted by <DiaryBackground />. Render the diary paper grain +
+   soft radial wash across the whole viewport. */
+.diary-grain-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--paper-grain-1);
+  background-repeat: repeat;
+  background-size: auto;
+  opacity: var(--paper-grain-layer-opacity);
+  mix-blend-mode: var(--paper-grain-blend);
+}
+
+@media (prefers-color-scheme: light) {
+  .diary-grain-layer {
+    background-image: var(--paper-grain-1), var(--paper-grain-2);
+    background-repeat: no-repeat, no-repeat;
+    background-size: cover, cover;
+    background-position: center, center;
+  }
+}
+
+.diary-wash-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 85% 12%, rgba(217, 119, 66, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 8% 75%, rgba(58, 90, 120, 0.08) 0%, transparent 50%);
+}
+
+@media (prefers-color-scheme: light) {
+  .diary-wash-layer {
+    background:
+      radial-gradient(circle 6000px at -10% -10%, rgba(232, 222, 196, 0.03) 0%, rgba(232, 222, 196, 0) 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+}
+
+/* ============================================================
+   Panel material — same paper as full-page, but bounded.
+   Applied to chat surfaces (sidebar, header, input, bubbles,
+   welcome card, background picker) that sit ON TOP of a photo
+   background. Uses the SAME --paper, --paper-grain-* tokens
+   and the SAME blend mode as the full-page layer above.
+
+   Wrapped in :where() so this rule has specificity 0 — consumer
+   classes (e.g. .bg-picker-panel { position: fixed }) win their
+   own positioning/transform/animation declarations.
+   ============================================================ */
+:where(.diary-paper-panel) {
+  /* Paper + glass fusion:
+     - --paper-translucent (alpha 0.93) lets bg color play through subtly
+     - backdrop-filter blurs the user's photo into a soft color wash
+     - lit edge gradient = 135° diagonal sheen catching light upper-left
+     - inner top highlight = glass edge gloss
+     - inner warm radial glow = paper warmth + ambient light
+     - outer drop shadow = panel weight */
+  background-color: var(--paper-translucent);
+  background-image:
+    linear-gradient(135deg,
+      rgba(255, 251, 239, 0.55) 0%,
+      rgba(255, 251, 239, 0.16) 12%,
+      rgba(255, 251, 239, 0.04) 28%,
+      transparent 46%),
+    var(--paper-grain-1);
+  background-repeat: no-repeat, repeat;
+  background-size: auto, auto;
+  background-blend-mode: normal, var(--paper-grain-blend);
+  color: var(--ink);
+  font-family: var(--font-body);
+  backdrop-filter: blur(36px) saturate(160%);
+  -webkit-backdrop-filter: blur(36px) saturate(160%);
+  box-shadow:
+    0 8px 28px var(--paper-shadow),
+    0 1px 3px var(--paper-shadow),
+    inset 0 1px 0 rgba(255, 251, 239, 0.7),
+    inset 0 -1px 0 rgba(26, 22, 16, 0.06),
+    inset 0 0 36px rgba(255, 251, 239, 0.10);
+}
+
+@media (prefers-color-scheme: light) {
+  :where(.diary-paper-panel) {
+    background-image:
+      linear-gradient(135deg,
+        rgba(255, 251, 239, 0.55) 0%,
+        rgba(255, 251, 239, 0.16) 12%,
+        rgba(255, 251, 239, 0.04) 28%,
+        transparent 46%),
+      var(--paper-grain-1),
+      var(--paper-grain-2);
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-size: auto, cover, cover;
+    background-position: top left, center, center;
+  }
+}
+
+/* ============================================================
+   Modal scrim — dim + blur the underlying view while a modal is
+   open. NOT paper material — this is the "dim the world" layer.
+   Modal CONTENT itself uses .diary-paper-panel on top of this.
+   ============================================================ */
+.diary-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 16, 12, 0.32);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
