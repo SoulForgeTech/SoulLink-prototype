@@ -74,10 +74,22 @@ WATERCOLOR_QUERIES = [
     "marine watercolor", "coastal watercolor",
 ]
 
+# Monet-only deep dive. The iconic "Impression, Sunrise" (1872) lives at
+# the Musée Marmottan (Paris) and is NOT in CMA OpenAccess, so this set
+# focuses on what CMA actually holds: water lilies, Giverny garden,
+# Etretat coast, Argenteuil sails, Rouen cathedral, haystacks.
+MONET_QUERIES = [
+    "Claude Monet", "Monet water lilies", "Monet Giverny",
+    "Monet Etretat", "Monet Argenteuil", "Monet Rouen",
+    "Monet haystack", "Monet poplars", "Monet Vetheuil",
+    "Monet garden", "Monet pond", "Monet Seine",
+]
+
 STYLE_GROUPS = {
     "ink": INK_QUERIES,
     "impressionist": IMPRESSIONIST_QUERIES,
     "watercolor": WATERCOLOR_QUERIES,
+    "monet": MONET_QUERIES,
 }
 # Backwards-compat alias used elsewhere in the file
 QUERIES = INK_QUERIES

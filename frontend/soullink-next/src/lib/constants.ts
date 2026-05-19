@@ -51,11 +51,11 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg53', file: 'bg53.jpg', thumb: 'images/Background/thumbnails/bg53.jpg', category: 'painting' },
   { id: 'bg54', file: 'bg54.jpg', thumb: 'images/Background/thumbnails/bg54.jpg', category: 'painting' },
   { id: 'bg55', file: 'bg55.jpg', thumb: 'images/Background/thumbnails/bg55.jpg', category: 'painting' },
-  { id: 'bg58', file: 'bg58.jpg', thumb: 'images/Background/thumbnails/bg58.jpg', category: 'painting' },
+  { id: 'bg58', file: 'bg58.jpg', thumb: 'images/Background/thumbnails/bg58.jpg', category: 'monet' },
   { id: 'bg59', file: 'bg59.jpg', thumb: 'images/Background/thumbnails/bg59.jpg', category: 'painting' },
   { id: 'bg60', file: 'bg60.jpg', thumb: 'images/Background/thumbnails/bg60.jpg', category: 'painting' },
   { id: 'bg61', file: 'bg61.jpg', thumb: 'images/Background/thumbnails/bg61.jpg', category: 'painting' },
-  { id: 'bg62', file: 'bg62.jpg', thumb: 'images/Background/thumbnails/bg62.jpg', category: 'painting' },
+  { id: 'bg62', file: 'bg62.jpg', thumb: 'images/Background/thumbnails/bg62.jpg', category: 'monet' },
   { id: 'bg65', file: 'bg65.jpg', thumb: 'images/Background/thumbnails/bg65.jpg', category: 'painting' },
   { id: 'bg66', file: 'bg66.jpg', thumb: 'images/Background/thumbnails/bg66.jpg', category: 'painting' },
   { id: 'bg67', file: 'bg67.jpg', thumb: 'images/Background/thumbnails/bg67.jpg', category: 'painting' },
@@ -66,6 +66,19 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg72', file: 'bg72.jpg', thumb: 'images/Background/thumbnails/bg72.jpg', category: 'painting' },
   { id: 'bg73', file: 'bg73.jpg', thumb: 'images/Background/thumbnails/bg73.jpg', category: 'painting' },
   { id: 'bg74', file: 'bg74.jpg', thumb: 'images/Background/thumbnails/bg74.jpg', category: 'painting' },
+  // Monet (CC0 — AIC OpenAccess bg75..bg84, CMA bg85). Curated greatest hits.
+  // bg58 + bg62 (existing CMA Monets) also live under this category.
+  { id: 'bg75', file: 'bg75.jpg', thumb: 'images/Background/thumbnails/bg75.jpg', category: 'monet' },
+  { id: 'bg76', file: 'bg76.jpg', thumb: 'images/Background/thumbnails/bg76.jpg', category: 'monet' },
+  { id: 'bg77', file: 'bg77.jpg', thumb: 'images/Background/thumbnails/bg77.jpg', category: 'monet' },
+  { id: 'bg78', file: 'bg78.jpg', thumb: 'images/Background/thumbnails/bg78.jpg', category: 'monet' },
+  { id: 'bg79', file: 'bg79.jpg', thumb: 'images/Background/thumbnails/bg79.jpg', category: 'monet' },
+  { id: 'bg80', file: 'bg80.jpg', thumb: 'images/Background/thumbnails/bg80.jpg', category: 'monet' },
+  { id: 'bg81', file: 'bg81.jpg', thumb: 'images/Background/thumbnails/bg81.jpg', category: 'monet' },
+  { id: 'bg82', file: 'bg82.jpg', thumb: 'images/Background/thumbnails/bg82.jpg', category: 'monet' },
+  { id: 'bg83', file: 'bg83.jpg', thumb: 'images/Background/thumbnails/bg83.jpg', category: 'monet' },
+  { id: 'bg84', file: 'bg84.jpg', thumb: 'images/Background/thumbnails/bg84.jpg', category: 'monet' },
+  { id: 'bg85', file: 'bg85.jpg', thumb: 'images/Background/thumbnails/bg85.jpg', category: 'monet' },
 ];
 
 // ==================== Ambient Sounds ====================
