@@ -38,40 +38,16 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg15', file: 'robert-clark-XKaHnkxBc1w-unsplash.jpg', thumb: 'images/Background/thumbnails/robert-clark-XKaHnkxBc1w-unsplash.jpg' },
   { id: 'bg16', file: 'shubham-dhage-TXTmUUGuvpQ-unsplash.jpg', thumb: 'images/Background/thumbnails/shubham-dhage-TXTmUUGuvpQ-unsplash.jpg' },
   { id: 'bg17', file: 'tobias-reich-CI8UPpze-V4-unsplash.jpg', thumb: 'images/Background/thumbnails/tobias-reich-CI8UPpze-V4-unsplash.jpg' },
-  // bg18..bg49 — CC0 ink-landscape set from Cleveland Museum Open Access.
-  // Provenance + license per file is in
-  // public/images/Background/manifest.csv (frozen, do not extend).
-  { id: 'bg18', file: 'bg18.jpg', thumb: 'images/Background/thumbnails/bg18.jpg' },
-  { id: 'bg19', file: 'bg19.jpg', thumb: 'images/Background/thumbnails/bg19.jpg' },
+  // bg20..bg49 — CC0 ink-landscape set from CMA Open Access (8 keepers).
+  // IDs are sparse on purpose (avoid renumbering after the trim).
+  // Provenance per file: public/images/Background/manifest.csv.
   { id: 'bg20', file: 'bg20.jpg', thumb: 'images/Background/thumbnails/bg20.jpg' },
   { id: 'bg21', file: 'bg21.jpg', thumb: 'images/Background/thumbnails/bg21.jpg' },
   { id: 'bg22', file: 'bg22.jpg', thumb: 'images/Background/thumbnails/bg22.jpg' },
-  { id: 'bg23', file: 'bg23.jpg', thumb: 'images/Background/thumbnails/bg23.jpg' },
-  { id: 'bg24', file: 'bg24.jpg', thumb: 'images/Background/thumbnails/bg24.jpg' },
-  { id: 'bg25', file: 'bg25.jpg', thumb: 'images/Background/thumbnails/bg25.jpg' },
-  { id: 'bg26', file: 'bg26.jpg', thumb: 'images/Background/thumbnails/bg26.jpg' },
   { id: 'bg27', file: 'bg27.jpg', thumb: 'images/Background/thumbnails/bg27.jpg' },
-  { id: 'bg28', file: 'bg28.jpg', thumb: 'images/Background/thumbnails/bg28.jpg' },
-  { id: 'bg29', file: 'bg29.jpg', thumb: 'images/Background/thumbnails/bg29.jpg' },
-  { id: 'bg30', file: 'bg30.jpg', thumb: 'images/Background/thumbnails/bg30.jpg' },
-  { id: 'bg31', file: 'bg31.jpg', thumb: 'images/Background/thumbnails/bg31.jpg' },
   { id: 'bg32', file: 'bg32.jpg', thumb: 'images/Background/thumbnails/bg32.jpg' },
-  { id: 'bg33', file: 'bg33.jpg', thumb: 'images/Background/thumbnails/bg33.jpg' },
-  { id: 'bg34', file: 'bg34.jpg', thumb: 'images/Background/thumbnails/bg34.jpg' },
-  { id: 'bg35', file: 'bg35.jpg', thumb: 'images/Background/thumbnails/bg35.jpg' },
-  { id: 'bg36', file: 'bg36.jpg', thumb: 'images/Background/thumbnails/bg36.jpg' },
-  { id: 'bg37', file: 'bg37.jpg', thumb: 'images/Background/thumbnails/bg37.jpg' },
-  { id: 'bg38', file: 'bg38.jpg', thumb: 'images/Background/thumbnails/bg38.jpg' },
-  { id: 'bg39', file: 'bg39.jpg', thumb: 'images/Background/thumbnails/bg39.jpg' },
-  { id: 'bg40', file: 'bg40.jpg', thumb: 'images/Background/thumbnails/bg40.jpg' },
-  { id: 'bg41', file: 'bg41.jpg', thumb: 'images/Background/thumbnails/bg41.jpg' },
   { id: 'bg42', file: 'bg42.jpg', thumb: 'images/Background/thumbnails/bg42.jpg' },
-  { id: 'bg43', file: 'bg43.jpg', thumb: 'images/Background/thumbnails/bg43.jpg' },
-  { id: 'bg44', file: 'bg44.jpg', thumb: 'images/Background/thumbnails/bg44.jpg' },
   { id: 'bg45', file: 'bg45.jpg', thumb: 'images/Background/thumbnails/bg45.jpg' },
-  { id: 'bg46', file: 'bg46.jpg', thumb: 'images/Background/thumbnails/bg46.jpg' },
-  { id: 'bg47', file: 'bg47.jpg', thumb: 'images/Background/thumbnails/bg47.jpg' },
-  { id: 'bg48', file: 'bg48.jpg', thumb: 'images/Background/thumbnails/bg48.jpg' },
   { id: 'bg49', file: 'bg49.jpg', thumb: 'images/Background/thumbnails/bg49.jpg' },
 ];
 
