@@ -1,5 +1,15 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Language } from '@/types';
+import { BACKGROUNDS } from '@/lib/constants';
+
+// Defensive rehydrate guard: untrusted strings from localStorage / server
+// (`chat_background`) might reference a preset that no longer exists (after
+// the CC0 preset replacement froze the list). Fall back to 'default' rather
+// than render a 404 background.
+const VALID_BG_IDS = new Set<string>(['custom', ...BACKGROUNDS.map((b) => b.id)]);
+function sanitizeBgId(id: unknown): string {
+  return typeof id === 'string' && VALID_BG_IDS.has(id) ? id : 'default';
+}
 
 // ==================== Types ====================
 
@@ -97,7 +107,7 @@ function readUserSettings(): Partial<SettingsState> {
       model: s.model ?? '',
       companionName: s.companion_name ?? '',
       companionAvatar: s.companion_avatar ?? '',
-      chatBackground: s.chat_background ?? 'default',
+      chatBackground: sanitizeBgId(s.chat_background),
       customBackgroundUrl: s.custom_background_url ?? '',
       userBubbleColor: s.user_bubble_color ?? '',
       voicePresetId: s.voice_id ?? '',
@@ -127,7 +137,7 @@ export function settingsFromUser(user: unknown): Partial<SettingsState> {
   if (typeof s.model === 'string') out.model = s.model;
   if (typeof s.companion_name === 'string') out.companionName = s.companion_name;
   if (typeof s.companion_avatar === 'string') out.companionAvatar = s.companion_avatar;
-  if (typeof s.chat_background === 'string') out.chatBackground = s.chat_background;
+  if (typeof s.chat_background === 'string') out.chatBackground = sanitizeBgId(s.chat_background);
   if (typeof s.custom_background_url === 'string') out.customBackgroundUrl = s.custom_background_url;
   if (typeof s.user_bubble_color === 'string') out.userBubbleColor = s.user_bubble_color;
   if (typeof s.voice_id === 'string') out.voicePresetId = s.voice_id;
