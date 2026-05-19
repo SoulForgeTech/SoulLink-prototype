@@ -86,6 +86,20 @@ export const BACKGROUNDS: BackgroundDef[] = [
   // Wikimedia Commons. The single non-CC0 entry in the library; manifest
   // records license='PD' to keep audit honest.
   { id: 'bg86', file: 'bg86.jpg', thumb: 'images/Background/thumbnails/bg86.jpg', category: 'monet' },
+  // bg100..bg111 — NASA deep-space (Hubble / JWST / Spitzer / WISE).
+  // U.S. federal works, public domain. Manifest license='PD-NASA'.
+  { id: 'bg100', file: 'bg100.jpg', thumb: 'images/Background/thumbnails/bg100.jpg', category: 'space' },
+  { id: 'bg101', file: 'bg101.jpg', thumb: 'images/Background/thumbnails/bg101.jpg', category: 'space' },
+  { id: 'bg102', file: 'bg102.jpg', thumb: 'images/Background/thumbnails/bg102.jpg', category: 'space' },
+  { id: 'bg103', file: 'bg103.jpg', thumb: 'images/Background/thumbnails/bg103.jpg', category: 'space' },
+  { id: 'bg104', file: 'bg104.jpg', thumb: 'images/Background/thumbnails/bg104.jpg', category: 'space' },
+  { id: 'bg105', file: 'bg105.jpg', thumb: 'images/Background/thumbnails/bg105.jpg', category: 'space' },
+  { id: 'bg106', file: 'bg106.jpg', thumb: 'images/Background/thumbnails/bg106.jpg', category: 'space' },
+  { id: 'bg107', file: 'bg107.jpg', thumb: 'images/Background/thumbnails/bg107.jpg', category: 'space' },
+  { id: 'bg108', file: 'bg108.jpg', thumb: 'images/Background/thumbnails/bg108.jpg', category: 'space' },
+  { id: 'bg109', file: 'bg109.jpg', thumb: 'images/Background/thumbnails/bg109.jpg', category: 'space' },
+  { id: 'bg110', file: 'bg110.jpg', thumb: 'images/Background/thumbnails/bg110.jpg', category: 'space' },
+  { id: 'bg111', file: 'bg111.jpg', thumb: 'images/Background/thumbnails/bg111.jpg', category: 'space' },
 ];
 
 // ==================== Ambient Sounds ====================

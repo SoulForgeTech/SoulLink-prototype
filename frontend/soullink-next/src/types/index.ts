@@ -327,14 +327,16 @@ export interface FeedbackRequest {
 
 // ==================== UI Constants ====================
 
-export type BackgroundCategory = 'monet' | 'painting' | 'photo';
+export type BackgroundCategory = 'monet' | 'painting' | 'space' | 'photo';
 
 /** Ordered list of tabs to render in BackgroundPicker (left-to-right).
  *  'monet' is a featured single-artist subset; 'painting' is the broader
- *  plein-air / watercolor / tonalist set. */
+ *  plein-air / watercolor / tonalist set; 'space' is NASA's public-domain
+ *  deep-space photography. */
 export const BACKGROUND_CATEGORIES: BackgroundCategory[] = [
   'monet',
   'painting',
+  'space',
   'photo',
 ];
 
