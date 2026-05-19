@@ -79,6 +79,10 @@ export const BACKGROUNDS: BackgroundDef[] = [
   { id: 'bg83', file: 'bg83.jpg', thumb: 'images/Background/thumbnails/bg83.jpg', category: 'monet' },
   { id: 'bg84', file: 'bg84.jpg', thumb: 'images/Background/thumbnails/bg84.jpg', category: 'monet' },
   { id: 'bg85', file: 'bg85.jpg', thumb: 'images/Background/thumbnails/bg85.jpg', category: 'monet' },
+  // bg86 — Impression, Sunrise (1872). PD by age (Monet died 1926), via
+  // Wikimedia Commons. The single non-CC0 entry in the library; manifest
+  // records license='PD' to keep audit honest.
+  { id: 'bg86', file: 'bg86.jpg', thumb: 'images/Background/thumbnails/bg86.jpg', category: 'monet' },
 ];
 
 // ==================== Ambient Sounds ====================
