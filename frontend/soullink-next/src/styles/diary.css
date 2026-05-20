@@ -135,6 +135,23 @@ body:has(.auth-scope) {
   transition: background .5s ease, color .5s ease;
 }
 
+/* ---------- Landing / onboarding grain softening ----------
+   Auth-scope pages (login + onboarding) want a polished
+   landing-page feel — keep the xuan-paper character (both grain
+   layers) so the surface is recognizably paper, but dial back
+   the visibility. The chat page (.diary-scope) is untouched —
+   its texture is part of the immersive companion experience.
+
+   Dark mode's grain is already subtle (--paper-grain-layer-opacity
+   computes to 0.06 * 1.6 ≈ 0.096) so we only soften light mode
+   where the original `opacity: 1` + multiply blend made the
+   grain too heavy for a landing surface. */
+@media (prefers-color-scheme: light) {
+  :where(.auth-scope) {
+    --paper-grain-layer-opacity: 0.55;
+  }
+}
+
 /* ---------- Full-viewport overlay layers (auth uses both) ----------
    Mounted by <DiaryBackground />. Render the diary paper grain +
    soft radial wash across the whole viewport. */
